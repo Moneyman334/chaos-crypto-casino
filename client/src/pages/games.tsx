@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Skeleton } from "@/components/ui/skeleton";
 import { useWeb3 } from "@/hooks/use-web3";
 import { useToast } from "@/hooks/use-toast";
+import SEO from "@/components/seo";
 import { 
   Dice1, 
   Spade, 
@@ -709,7 +710,38 @@ export default function GamesPage() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-8">
+    <>
+      <SEO 
+        title="Crypto Casino Games - Slots, Poker, Dice & Live Dealer Games"
+        description="Play provably fair crypto casino games including slots, poker, blackjack, roulette and dice. Instant payouts, transparent odds, and blockchain-verified results with ETH, BTC and other cryptocurrencies."
+        keywords={["crypto casino games", "provably fair slots", "crypto poker", "blockchain blackjack", "crypto dice games", "live crypto casino", "ethereum gambling", "bitcoin slots", "web3 gaming", "decentralized poker", "crypto roulette", "instant crypto payouts"]}
+        canonicalUrl="/games"
+        structuredData={{
+          "@context": "https://schema.org",
+          "@type": "WebPage",
+          "name": "Crypto Casino Games - CryptoCasino",
+          "description": "Play provably fair crypto casino games including slots, poker, blackjack, roulette and dice with instant cryptocurrency payouts.",
+          "url": "/games",
+          "mainEntity": {
+            "@type": "ItemList",
+            "name": "Casino Games",
+            "description": "Collection of provably fair cryptocurrency casino games",
+            "numberOfItems": games.length,
+            "itemListElement": games.map((game, index) => ({
+              "@type": "Game",
+              "position": index + 1,
+              "name": game.name,
+              "description": game.description,
+              "category": game.category,
+              "provider": {
+                "@type": "Organization",
+                "name": game.provider
+              }
+            }))
+          }
+        }}
+      />
+      <div className="max-w-7xl mx-auto px-6 py-8">
       {/* Header */}
       <div className="text-center mb-8">
         <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
@@ -906,6 +938,7 @@ export default function GamesPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

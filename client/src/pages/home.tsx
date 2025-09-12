@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Coins, TrendingUp, Users, Star, ArrowRight, Shield, Zap, CheckCircle, Award, Lock, Clock } from "lucide-react";
 import { Link } from "wouter";
 import { useWeb3 } from "@/hooks/use-web3";
+import SEO from "@/components/seo";
 
 export default function HomePage() {
   const { isConnected, connectWallet } = useWeb3();
@@ -15,7 +16,31 @@ export default function HomePage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-8">
+    <>
+      <SEO 
+        title="Provably Fair Crypto Casino & Blockchain Gaming Platform"
+        description="Experience the future of fair gaming with our provably fair cryptocurrency casino. Instant crypto payouts, transparent blockchain verification, slots, poker, dice games and more with ETH, BTC."
+        keywords={["crypto casino home", "blockchain gaming platform", "provably fair crypto slots", "instant crypto payouts", "ethereum casino", "bitcoin gambling", "web3 gaming", "decentralized casino", "crypto gaming platform", "fair blockchain gambling"]}
+        canonicalUrl="/"
+        structuredData={{
+          "@context": "https://schema.org",
+          "@type": "WebPage",
+          "name": "Home - CryptoCasino",
+          "description": "Experience the future of fair gaming with provably fair cryptocurrency games, instant payouts, and transparent blockchain verification.",
+          "url": "/",
+          "mainEntity": {
+            "@type": "Organization",
+            "name": "CryptoCasino",
+            "description": "Provably fair cryptocurrency casino platform",
+            "offers": {
+              "@type": "Offer",
+              "category": "Gaming Services",
+              "description": "Cryptocurrency gambling with provably fair algorithms"
+            }
+          }
+        }}
+      />
+      <div className="max-w-7xl mx-auto px-6 py-8">
       {/* Hero Section */}
       <div className="text-center mb-12">
         <div className="inline-block">
@@ -263,6 +288,7 @@ export default function HomePage() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
