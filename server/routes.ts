@@ -8,8 +8,13 @@ import {
   insertUserTokenSchema,
   insertContractSchema,
   insertContractCallSchema,
-  insertContractEventSubSchema 
+  insertContractEventSubSchema,
+  insertUserSchema
 } from "@shared/schema";
+import { nftService } from "./nft";
+import rateLimit from "express-rate-limit";
+import slowDown from "express-slow-down";
+import bcrypt from "bcrypt";
 
 // Ethereum address validation schema
 const ethereumAddressSchema = z.string()
@@ -35,10 +40,167 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/health", (req, res) => {
     res.json({ 
       status: "healthy", 
-      services: ["transactions", "wallets", "tokens", "networks"],
+      services: ["transactions", "wallets", "tokens", "networks", "authentication"],
       database: "connected",
       timestamp: new Date().toISOString()
     });
+  });
+
+  // Rate limiting for auth endpoints
+  const authRateLimit = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10, // Limit each IP to 10 authentication requests per window
+    message: {
+      error: "Too many authentication attempts, please try again later.",
+      retryAfter: "15 minutes"
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  // ===== AUTHENTICATION ROUTES =====
+
+  // User registration with secure password hashing
+  app.post("/api/auth/register", authRateLimit, async (req, res) => {
+    try {
+      const registrationSchema = z.object({
+        username: z.string()
+          .min(3, "Username must be at least 3 characters")
+          .max(30, "Username must not exceed 30 characters")
+          .regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and hyphens"),
+        password: z.string()
+          .min(8, "Password must be at least 8 characters")
+          .max(128, "Password must not exceed 128 characters")
+      });
+
+      const { username, password } = registrationSchema.parse(req.body);
+
+      // Check if username already exists
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.status(409).json({ error: "Username already exists" });
+      }
+
+      // Hash the password with bcrypt (cost factor 12 for security)
+      const hashedPassword = await bcrypt.hash(password, 12);
+
+      // Create user with hashed password
+      const user = await storage.createUser({
+        username,
+        password: hashedPassword
+      });
+
+      // Return user without password
+      const { password: _, ...userWithoutPassword } = user;
+      res.status(201).json({
+        success: true,
+        message: "User registered successfully",
+        user: userWithoutPassword
+      });
+
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid registration data", 
+          details: error.errors 
+        });
+      }
+      console.error("Registration failed:", error);
+      res.status(500).json({ error: "Registration failed" });
+    }
+  });
+
+  // User login with password verification
+  app.post("/api/auth/login", authRateLimit, async (req, res) => {
+    try {
+      const loginSchema = z.object({
+        username: z.string().min(1, "Username is required"),
+        password: z.string().min(1, "Password is required")
+      });
+
+      const { username, password } = loginSchema.parse(req.body);
+
+      // Get user by username
+      const user = await storage.getUserByUsername(username);
+      if (!user) {
+        // Generic error message to prevent username enumeration
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+
+      // Verify password with bcrypt
+      const isValidPassword = await bcrypt.compare(password, user.password);
+      if (!isValidPassword) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+
+      // Return user without password
+      const { password: _, ...userWithoutPassword } = user;
+      res.json({
+        success: true,
+        message: "Login successful",
+        user: userWithoutPassword
+      });
+
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid login data", 
+          details: error.errors 
+        });
+      }
+      console.error("Login failed:", error);
+      res.status(500).json({ error: "Login failed" });
+    }
+  });
+
+  // Get user profile (requires user ID)
+  app.get("/api/auth/user/:id", async (req, res) => {
+    try {
+      const userId = z.string().parse(req.params.id);
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Return user without password
+      const { password: _, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+      console.error("Failed to get user:", error);
+      res.status(500).json({ error: "Failed to get user" });
+    }
+  });
+
+  // Check if username is available
+  app.get("/api/auth/check-username/:username", async (req, res) => {
+    try {
+      const username = z.string()
+        .min(3)
+        .max(30)
+        .regex(/^[a-zA-Z0-9_-]+$/)
+        .parse(req.params.username);
+
+      const existingUser = await storage.getUserByUsername(username);
+      res.json({ 
+        available: !existingUser,
+        username 
+      });
+
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid username format",
+          details: error.errors 
+        });
+      }
+      console.error("Failed to check username:", error);
+      res.status(500).json({ error: "Failed to check username" });
+    }
   });
 
   // Get transactions for a wallet address (enhanced with pagination and filtering)
@@ -1052,11 +1214,367 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update health check to include contracts service
+  // Rate limiting configuration for NFT endpoints
+  const nftRateLimit = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests per windowMs for NFTs
+    message: {
+      error: "Too many NFT requests from this IP, please try again later.",
+      retryAfter: "15 minutes"
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  const nftSlowDown = slowDown({
+    windowMs: 5 * 60 * 1000, // 5 minutes
+    delayAfter: 20, // Allow 20 requests per 5 minutes at full speed
+    delayMs: 500, // Add 500ms delay per request after limit
+    maxDelayMs: 10000, // Maximum delay of 10 seconds
+    skipFailedRequests: false,
+    skipSuccessfulRequests: false,
+  });
+
+  // Stricter rate limiting for refresh endpoints
+  const nftRefreshRateLimit = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 10, // Only 10 refresh requests per hour
+    message: {
+      error: "Too many NFT refresh requests from this IP, please try again later.",
+      retryAfter: "1 hour"
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  // ===== NFT API ROUTES =====
+
+  // Get NFTs for a wallet address with comprehensive filtering and pagination
+  app.get("/api/nfts/:address", nftRateLimit, nftSlowDown, async (req, res) => {
+    try {
+      const address = ethereumAddressSchema.parse(req.params.address);
+      
+      // Parse query parameters
+      const page = Math.max(parseInt(req.query.page as string) || 1, 1);
+      const limit = Math.min(parseInt(req.query.limit as string) || 25, 100);
+      const chains = req.query.chains ? 
+        (Array.isArray(req.query.chains) ? req.query.chains : [req.query.chains]) : 
+        ["0x1", "0x89", "0x38", "0xa4b1", "0xa"]; // Default supported chains
+      const collection = req.query.collection as string;
+      const search = req.query.search as string;
+      const forceRefresh = req.query.refresh === "true";
+      const maxAge = parseInt(req.query.maxAge as string) || 24; // hours
+      const sortBy = (req.query.sortBy as string) || "acquired";
+      const sortOrder = (req.query.sortOrder as string) || "desc";
+      
+      // Validate chain IDs
+      const validChains = chains.filter(chain => 
+        typeof chain === 'string' && /^0x[a-fA-F0-9]+$/.test(chain)
+      );
+      
+      if (validChains.length === 0) {
+        return res.status(400).json({ 
+          error: "At least one valid chain ID is required" 
+        });
+      }
+
+      const result = await nftService.fetchNFTsForWallet(address, validChains, {
+        forceRefresh,
+        maxAge,
+        page,
+        limit,
+        collection,
+        search,
+        sortBy,
+        sortOrder
+      });
+
+      res.json({
+        nfts: result.nfts,
+        collections: result.collections,
+        stats: result.stats,
+        pagination: result.pagination,
+        filters: {
+          chains: validChains,
+          collection,
+          search,
+          sortBy,
+          sortOrder
+        }
+      });
+
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid wallet address format",
+          details: error.errors 
+        });
+      }
+      console.error("Failed to fetch NFTs:", error);
+      res.status(500).json({ 
+        error: "Failed to fetch NFTs",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Get NFT collections for a wallet
+  app.get("/api/nfts/:address/collections", nftRateLimit, nftSlowDown, async (req, res) => {
+    try {
+      const address = ethereumAddressSchema.parse(req.params.address);
+      const chainId = req.query.chainId as string;
+      
+      const collections = await storage.getCollectionsByWallet(address, chainId);
+      
+      res.json({ collections });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid wallet address format",
+          details: error.errors 
+        });
+      }
+      console.error("Failed to fetch NFT collections:", error);
+      res.status(500).json({ error: "Failed to fetch NFT collections" });
+    }
+  });
+
+  // Get NFT statistics for a wallet
+  app.get("/api/nfts/:address/stats", nftRateLimit, nftSlowDown, async (req, res) => {
+    try {
+      const address = ethereumAddressSchema.parse(req.params.address);
+      
+      const stats = await storage.getNftStats(address);
+      
+      res.json({ stats });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid wallet address format",
+          details: error.errors 
+        });
+      }
+      console.error("Failed to fetch NFT stats:", error);
+      res.status(500).json({ error: "Failed to fetch NFT stats" });
+    }
+  });
+
+  // Get NFT attribute facets for filtering
+  app.get("/api/nfts/:address/facets", nftRateLimit, nftSlowDown, async (req, res) => {
+    try {
+      const address = ethereumAddressSchema.parse(req.params.address);
+      const chainId = req.query.chainId as string;
+      const collectionId = req.query.collectionId as string;
+      
+      const facets = await storage.getNftAttributeFacets(address, {
+        chainId,
+        collectionId
+      });
+      
+      res.json({ facets });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid wallet address format",
+          details: error.errors 
+        });
+      }
+      console.error("Failed to fetch NFT facets:", error);
+      res.status(500).json({ error: "Failed to fetch NFT facets" });
+    }
+  });
+
+  // Force refresh NFTs for a wallet
+  app.post("/api/nfts/:address/refresh", nftRefreshRateLimit, nftSlowDown, async (req, res) => {
+    try {
+      const address = ethereumAddressSchema.parse(req.params.address);
+      const chains = req.body.chains || ["0x1", "0x89", "0x38", "0xa4b1", "0xa"];
+      
+      // Validate chain IDs
+      const validChains = chains.filter((chain: string) => 
+        typeof chain === 'string' && /^0x[a-fA-F0-9]+$/.test(chain)
+      );
+      
+      if (validChains.length === 0) {
+        return res.status(400).json({ 
+          error: "At least one valid chain ID is required" 
+        });
+      }
+
+      // Force refresh with no cache
+      const result = await nftService.fetchNFTsForWallet(address, validChains, {
+        forceRefresh: true,
+        maxAge: 0
+      });
+
+      res.json({
+        success: true,
+        message: "NFT data refreshed successfully",
+        stats: result.stats,
+        refreshedAt: new Date().toISOString()
+      });
+
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid request data",
+          details: error.errors 
+        });
+      }
+      console.error("Failed to refresh NFTs:", error);
+      res.status(500).json({ 
+        error: "Failed to refresh NFTs",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Get specific NFT details
+  app.get("/api/nfts/:chainId/:contractAddress/:tokenId", nftRateLimit, nftSlowDown, async (req, res) => {
+    try {
+      const chainId = z.string().parse(req.params.chainId);
+      const contractAddress = ethereumAddressSchema.parse(req.params.contractAddress);
+      const tokenId = z.string().parse(req.params.tokenId);
+      
+      const nft = await storage.getNftByToken(contractAddress, tokenId, chainId);
+      
+      if (!nft) {
+        return res.status(404).json({ error: "NFT not found" });
+      }
+
+      let collection = null;
+      if (nft.collectionId) {
+        collection = await storage.getNftCollection(nft.collectionId);
+      }
+
+      const ownerships = await storage.getNftOwnershipsByNft(nft.id);
+
+      res.json({
+        nft,
+        collection,
+        ownerships
+      });
+
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid NFT parameters",
+          details: error.errors 
+        });
+      }
+      console.error("Failed to fetch NFT details:", error);
+      res.status(500).json({ error: "Failed to fetch NFT details" });
+    }
+  });
+
+  // Refresh metadata for a specific NFT
+  app.post("/api/nfts/:chainId/:contractAddress/:tokenId/refresh", nftRefreshRateLimit, nftSlowDown, async (req, res) => {
+    try {
+      const chainId = z.string().parse(req.params.chainId);
+      const contractAddress = ethereumAddressSchema.parse(req.params.contractAddress);
+      const tokenId = z.string().parse(req.params.tokenId);
+      
+      const refreshedNft = await nftService.refreshNFTMetadata(contractAddress, tokenId, chainId);
+      
+      if (!refreshedNft) {
+        return res.status(404).json({ error: "Failed to refresh NFT metadata" });
+      }
+
+      res.json({
+        success: true,
+        message: "NFT metadata refreshed successfully",
+        nft: refreshedNft,
+        refreshedAt: new Date().toISOString()
+      });
+
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid NFT parameters",
+          details: error.errors 
+        });
+      }
+      console.error("Failed to refresh NFT metadata:", error);
+      res.status(500).json({ error: "Failed to refresh NFT metadata" });
+    }
+  });
+
+  // Update NFT ownership visibility
+  app.patch("/api/nfts/:address/:nftId/visibility", async (req, res) => {
+    try {
+      const address = ethereumAddressSchema.parse(req.params.address);
+      const nftId = z.string().parse(req.params.nftId);
+      const { hidden } = z.object({
+        hidden: z.boolean()
+      }).parse(req.body);
+      
+      const ownership = await storage.getNftOwnershipByWalletAndNft(address, nftId);
+      
+      if (!ownership) {
+        return res.status(404).json({ error: "NFT ownership not found" });
+      }
+
+      const updatedOwnership = await storage.updateNftOwnership(ownership.id, {
+        isHidden: hidden ? "true" : "false"
+      });
+
+      res.json({
+        success: true,
+        ownership: updatedOwnership
+      });
+
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid request parameters",
+          details: error.errors 
+        });
+      }
+      console.error("Failed to update NFT visibility:", error);
+      res.status(500).json({ error: "Failed to update NFT visibility" });
+    }
+  });
+
+  // Search NFTs across all collections
+  app.get("/api/nfts/search", nftRateLimit, nftSlowDown, async (req, res) => {
+    try {
+      const query = z.string().min(1).parse(req.query.q);
+      const chainId = req.query.chainId as string;
+      const page = Math.max(parseInt(req.query.page as string) || 1, 1);
+      const limit = Math.min(parseInt(req.query.limit as string) || 25, 100);
+      
+      const nfts = await storage.searchNfts(query, chainId, { page, limit });
+      
+      res.json({
+        nfts,
+        pagination: {
+          page,
+          limit,
+          hasMore: nfts.length === limit
+        },
+        query: {
+          search: query,
+          chainId
+        }
+      });
+
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid search parameters",
+          details: error.errors 
+        });
+      }
+      console.error("Failed to search NFTs:", error);
+      res.status(500).json({ error: "Failed to search NFTs" });
+    }
+  });
+
+  // Update health check to include NFTs service
   app.get("/api/health", (req, res) => {
     res.json({ 
       status: "healthy", 
-      services: ["transactions", "wallets", "tokens", "networks", "contracts"],
+      services: ["transactions", "wallets", "tokens", "networks", "contracts", "nfts"],
       database: "connected",
       timestamp: new Date().toISOString()
     });

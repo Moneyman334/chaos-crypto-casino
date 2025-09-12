@@ -21,6 +21,12 @@ import {
   type InsertContractEventSub,
   type ContractEvent,
   type InsertContractEvent,
+  type NftCollection,
+  type InsertNftCollection,
+  type Nft,
+  type InsertNft,
+  type NftOwnership,
+  type InsertNftOwnership,
   users,
   wallets,
   transactions,
@@ -31,7 +37,10 @@ import {
   contracts,
   contractCalls,
   contractEventSubs,
-  contractEvents
+  contractEvents,
+  nftCollections,
+  nfts,
+  nftOwnerships
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/neon-http";
@@ -120,6 +129,56 @@ export interface IStorage {
   getContractEvents(contractId: string, pagination?: { page: number; limit: number }): Promise<ContractEvent[]>;
   getContractEventsBySubscription(subscriptionId: string, pagination?: { page: number; limit: number }): Promise<ContractEvent[]>;
   createContractEvent(event: InsertContractEvent): Promise<ContractEvent>;
+
+  // NFT Collection methods
+  getNftCollection(id: string): Promise<NftCollection | undefined>;
+  getNftCollectionByContract(contractAddress: string, chainId: string): Promise<NftCollection | undefined>;
+  getNftCollections(filters?: { chainId?: string; verified?: boolean; search?: string }): Promise<NftCollection[]>;
+  upsertNftCollection(collection: InsertNftCollection): Promise<NftCollection>;
+  updateNftCollection(id: string, updates: Partial<InsertNftCollection>): Promise<NftCollection | undefined>;
+
+  // NFT methods
+  getNft(id: string): Promise<Nft | undefined>;
+  getNftByToken(contractAddress: string, tokenId: string, chainId: string): Promise<Nft | undefined>;
+  getNftsByCollection(collectionId: string, pagination?: { page: number; limit: number }): Promise<Nft[]>;
+  getNftsByContract(contractAddress: string, chainId: string, pagination?: { page: number; limit: number }): Promise<Nft[]>;
+  searchNfts(query: string, chainId?: string, pagination?: { page: number; limit: number }): Promise<Nft[]>;
+  upsertNft(nft: InsertNft): Promise<Nft>;
+  updateNft(id: string, updates: Partial<InsertNft>): Promise<Nft | undefined>;
+  refreshNftMetadata(id: string): Promise<Nft | undefined>;
+
+  // NFT Ownership methods
+  getNftOwnership(id: string): Promise<NftOwnership | undefined>;
+  getNftOwnershipByWalletAndNft(walletAddress: string, nftId: string): Promise<NftOwnership | undefined>;
+  getNftOwnershipsByWallet(
+    walletAddress: string, 
+    filters?: { 
+      chainId?: string; 
+      contractAddress?: string; 
+      collectionId?: string; 
+      hidden?: boolean; 
+      search?: string;
+      attributes?: Record<string, string | string[]>;
+    },
+    pagination?: { page: number; limit: number; sortBy?: 'name' | 'collection' | 'acquired'; sortOrder?: 'asc' | 'desc' }
+  ): Promise<NftOwnership[]>;
+  getNftOwnershipsByNft(nftId: string): Promise<NftOwnership[]>;
+  getCollectionsByWallet(walletAddress: string, chainId?: string): Promise<NftCollection[]>;
+  upsertNftOwnership(ownership: InsertNftOwnership): Promise<NftOwnership>;
+  updateNftOwnership(id: string, updates: Partial<InsertNftOwnership>): Promise<NftOwnership | undefined>;
+  removeNftOwnership(walletAddress: string, nftId: string): Promise<boolean>;
+
+  // NFT Aggregated queries
+  getNftStats(walletAddress: string): Promise<{
+    totalNfts: number;
+    totalCollections: number;
+    chainCounts: Record<string, number>;
+    collectionCounts: Record<string, number>;
+  }>;
+  getNftAttributeFacets(
+    walletAddress: string,
+    filters?: { chainId?: string; collectionId?: string }
+  ): Promise<Record<string, Record<string, number>>>;
 }
 
 export class MemStorage implements IStorage {
@@ -1094,6 +1153,504 @@ export class PostgreSQLStorage implements IStorage {
     };
     const result = await db.insert(contractEvents).values(eventData).returning();
     return result[0];
+  }
+
+  // NFT Collection methods
+  async getNftCollection(id: string): Promise<NftCollection | undefined> {
+    const result = await db.select().from(nftCollections)
+      .where(eq(nftCollections.id, id))
+      .limit(1);
+    return result[0];
+  }
+
+  async getNftCollectionByContract(contractAddress: string, chainId: string): Promise<NftCollection | undefined> {
+    const normalizedAddress = normalizeAddress(contractAddress);
+    const result = await db.select().from(nftCollections)
+      .where(sql`lower(${nftCollections.contractAddress}) = ${normalizedAddress} AND ${nftCollections.chainId} = ${chainId}`)
+      .limit(1);
+    return result[0];
+  }
+
+  async getNftCollections(filters?: { chainId?: string; verified?: boolean; search?: string }): Promise<NftCollection[]> {
+    let query = db.select().from(nftCollections);
+    const conditions = [];
+
+    if (filters?.chainId) {
+      conditions.push(eq(nftCollections.chainId, filters.chainId));
+    }
+
+    if (filters?.verified !== undefined) {
+      conditions.push(eq(nftCollections.isVerified, filters.verified ? "true" : "false"));
+    }
+
+    if (filters?.search) {
+      const searchTerm = `%${filters.search.toLowerCase()}%`;
+      conditions.push(
+        or(
+          sql`lower(${nftCollections.name}) LIKE ${searchTerm}`,
+          sql`lower(${nftCollections.symbol}) LIKE ${searchTerm}`,
+          sql`lower(${nftCollections.slug}) LIKE ${searchTerm}`
+        )
+      );
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(sql`${sql.join(conditions, sql` AND `)}`);
+    }
+
+    return query.orderBy(desc(nftCollections.updatedAt));
+  }
+
+  async upsertNftCollection(insertCollection: InsertNftCollection): Promise<NftCollection> {
+    const collectionData = {
+      ...insertCollection,
+      contractAddress: normalizeAddress(insertCollection.contractAddress),
+      isVerified: insertCollection.isVerified || "false",
+      contractStandard: insertCollection.contractStandard || "ERC721"
+    };
+
+    // Try to update first
+    const existingCollection = await this.getNftCollectionByContract(
+      insertCollection.contractAddress, 
+      insertCollection.chainId
+    );
+
+    if (existingCollection) {
+      const updateData = {
+        ...collectionData,
+        updatedAt: sql`now()`
+      };
+      const result = await db.update(nftCollections)
+        .set(updateData)
+        .where(eq(nftCollections.id, existingCollection.id))
+        .returning();
+      return result[0];
+    } else {
+      const result = await db.insert(nftCollections).values(collectionData).returning();
+      return result[0];
+    }
+  }
+
+  async updateNftCollection(id: string, updates: Partial<InsertNftCollection>): Promise<NftCollection | undefined> {
+    const updateData = {
+      ...updates,
+      contractAddress: updates.contractAddress ? normalizeAddress(updates.contractAddress) : undefined,
+      updatedAt: sql`now()`
+    };
+    const result = await db.update(nftCollections)
+      .set(updateData)
+      .where(eq(nftCollections.id, id))
+      .returning();
+    return result[0];
+  }
+
+  // NFT methods
+  async getNft(id: string): Promise<Nft | undefined> {
+    const result = await db.select().from(nfts)
+      .where(eq(nfts.id, id))
+      .limit(1);
+    return result[0];
+  }
+
+  async getNftByToken(contractAddress: string, tokenId: string, chainId: string): Promise<Nft | undefined> {
+    const normalizedAddress = normalizeAddress(contractAddress);
+    const result = await db.select().from(nfts)
+      .where(sql`lower(${nfts.contractAddress}) = ${normalizedAddress} AND ${nfts.tokenId} = ${tokenId} AND ${nfts.chainId} = ${chainId}`)
+      .limit(1);
+    return result[0];
+  }
+
+  async getNftsByCollection(collectionId: string, pagination?: { page: number; limit: number }): Promise<Nft[]> {
+    const page = pagination?.page || 1;
+    const limit = Math.min(pagination?.limit || 25, 100);
+    const offset = (page - 1) * limit;
+
+    const result = await db.select().from(nfts)
+      .where(eq(nfts.collectionId, collectionId))
+      .orderBy(nfts.name, nfts.tokenId)
+      .limit(limit)
+      .offset(offset);
+    return result;
+  }
+
+  async getNftsByContract(contractAddress: string, chainId: string, pagination?: { page: number; limit: number }): Promise<Nft[]> {
+    const normalizedAddress = normalizeAddress(contractAddress);
+    const page = pagination?.page || 1;
+    const limit = Math.min(pagination?.limit || 25, 100);
+    const offset = (page - 1) * limit;
+
+    const result = await db.select().from(nfts)
+      .where(sql`lower(${nfts.contractAddress}) = ${normalizedAddress} AND ${nfts.chainId} = ${chainId}`)
+      .orderBy(nfts.name, nfts.tokenId)
+      .limit(limit)
+      .offset(offset);
+    return result;
+  }
+
+  async searchNfts(query: string, chainId?: string, pagination?: { page: number; limit: number }): Promise<Nft[]> {
+    const searchTerm = `%${query.toLowerCase()}%`;
+    const page = pagination?.page || 1;
+    const limit = Math.min(pagination?.limit || 25, 100);
+    const offset = (page - 1) * limit;
+
+    const conditions = [
+      or(
+        sql`lower(${nfts.name}) LIKE ${searchTerm}`,
+        sql`lower(${nfts.description}) LIKE ${searchTerm}`
+      )
+    ];
+
+    if (chainId) {
+      conditions.push(eq(nfts.chainId, chainId));
+    }
+
+    const result = await db.select().from(nfts)
+      .where(sql`${sql.join(conditions, sql` AND `)}`)
+      .orderBy(nfts.name)
+      .limit(limit)
+      .offset(offset);
+    return result;
+  }
+
+  async upsertNft(insertNft: InsertNft): Promise<Nft> {
+    const nftData = {
+      ...insertNft,
+      contractAddress: normalizeAddress(insertNft.contractAddress),
+      standard: insertNft.standard || "ERC721"
+    };
+
+    // Try to update first
+    const existingNft = await this.getNftByToken(
+      insertNft.contractAddress, 
+      insertNft.tokenId, 
+      insertNft.chainId
+    );
+
+    if (existingNft) {
+      const updateData = {
+        ...nftData,
+        updatedAt: sql`now()`,
+        lastRefreshed: sql`now()`
+      };
+      const result = await db.update(nfts)
+        .set(updateData)
+        .where(eq(nfts.id, existingNft.id))
+        .returning();
+      return result[0];
+    } else {
+      const result = await db.insert(nfts).values(nftData).returning();
+      return result[0];
+    }
+  }
+
+  async updateNft(id: string, updates: Partial<InsertNft>): Promise<Nft | undefined> {
+    const updateData = {
+      ...updates,
+      contractAddress: updates.contractAddress ? normalizeAddress(updates.contractAddress) : undefined,
+      updatedAt: sql`now()`,
+      lastRefreshed: sql`now()`
+    };
+    const result = await db.update(nfts)
+      .set(updateData)
+      .where(eq(nfts.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async refreshNftMetadata(id: string): Promise<Nft | undefined> {
+    const result = await db.update(nfts)
+      .set({ lastRefreshed: sql`now()` })
+      .where(eq(nfts.id, id))
+      .returning();
+    return result[0];
+  }
+
+  // NFT Ownership methods
+  async getNftOwnership(id: string): Promise<NftOwnership | undefined> {
+    const result = await db.select().from(nftOwnerships)
+      .where(eq(nftOwnerships.id, id))
+      .limit(1);
+    return result[0];
+  }
+
+  async getNftOwnershipByWalletAndNft(walletAddress: string, nftId: string): Promise<NftOwnership | undefined> {
+    const normalizedAddress = normalizeAddress(walletAddress);
+    const result = await db.select().from(nftOwnerships)
+      .where(sql`lower(${nftOwnerships.walletAddress}) = ${normalizedAddress} AND ${nftOwnerships.nftId} = ${nftId}`)
+      .limit(1);
+    return result[0];
+  }
+
+  async getNftOwnershipsByWallet(
+    walletAddress: string, 
+    filters?: { 
+      chainId?: string; 
+      contractAddress?: string; 
+      collectionId?: string; 
+      hidden?: boolean; 
+      search?: string;
+      attributes?: Record<string, string | string[]>;
+    },
+    pagination?: { page: number; limit: number; sortBy?: 'name' | 'collection' | 'acquired'; sortOrder?: 'asc' | 'desc' }
+  ): Promise<NftOwnership[]> {
+    const normalizedAddress = normalizeAddress(walletAddress);
+    const page = pagination?.page || 1;
+    const limit = Math.min(pagination?.limit || 25, 100);
+    const offset = (page - 1) * limit;
+
+    // Start with base query joining NFTs for filtering
+    let query = db.select({
+      ownership: nftOwnerships,
+      nft: nfts,
+      collection: nftCollections
+    })
+    .from(nftOwnerships)
+    .leftJoin(nfts, eq(nftOwnerships.nftId, nfts.id))
+    .leftJoin(nftCollections, eq(nfts.collectionId, nftCollections.id))
+    .where(sql`lower(${nftOwnerships.walletAddress}) = ${normalizedAddress}`);
+
+    const conditions = [sql`lower(${nftOwnerships.walletAddress}) = ${normalizedAddress}`];
+
+    if (filters?.chainId) {
+      conditions.push(eq(nftOwnerships.chainId, filters.chainId));
+    }
+
+    if (filters?.contractAddress) {
+      const normalizedContract = normalizeAddress(filters.contractAddress);
+      conditions.push(sql`lower(${nftOwnerships.contractAddress}) = ${normalizedContract}`);
+    }
+
+    if (filters?.collectionId) {
+      conditions.push(eq(nfts.collectionId, filters.collectionId));
+    }
+
+    if (filters?.hidden !== undefined) {
+      conditions.push(eq(nftOwnerships.isHidden, filters.hidden ? "true" : "false"));
+    }
+
+    if (filters?.search) {
+      const searchTerm = `%${filters.search.toLowerCase()}%`;
+      conditions.push(
+        or(
+          sql`lower(${nfts.name}) LIKE ${searchTerm}`,
+          sql`lower(${nfts.description}) LIKE ${searchTerm}`,
+          sql`lower(${nftCollections.name}) LIKE ${searchTerm}`
+        )
+      );
+    }
+
+    // Apply all conditions
+    if (conditions.length > 0) {
+      query = query.where(sql`${sql.join(conditions, sql` AND `)}`);
+    }
+
+    // Apply sorting
+    const sortBy = pagination?.sortBy || 'acquired';
+    const sortOrder = pagination?.sortOrder || 'desc';
+    
+    if (sortBy === 'name') {
+      query = sortOrder === 'asc' 
+        ? query.orderBy(nfts.name, nfts.tokenId)
+        : query.orderBy(desc(nfts.name), desc(nfts.tokenId));
+    } else if (sortBy === 'collection') {
+      query = sortOrder === 'asc'
+        ? query.orderBy(nftCollections.name, nfts.name)
+        : query.orderBy(desc(nftCollections.name), desc(nfts.name));
+    } else {
+      query = sortOrder === 'asc'
+        ? query.orderBy(nftOwnerships.lastUpdated)
+        : query.orderBy(desc(nftOwnerships.lastUpdated));
+    }
+
+    const result = await query.limit(limit).offset(offset);
+    
+    // Extract just the ownership records
+    return result.map(row => row.ownership);
+  }
+
+  async getNftOwnershipsByNft(nftId: string): Promise<NftOwnership[]> {
+    const result = await db.select().from(nftOwnerships)
+      .where(eq(nftOwnerships.nftId, nftId))
+      .orderBy(desc(nftOwnerships.lastUpdated));
+    return result;
+  }
+
+  async getCollectionsByWallet(walletAddress: string, chainId?: string): Promise<NftCollection[]> {
+    const normalizedAddress = normalizeAddress(walletAddress);
+    
+    let query = db.select({
+      collection: nftCollections
+    })
+    .from(nftOwnerships)
+    .innerJoin(nfts, eq(nftOwnerships.nftId, nfts.id))
+    .innerJoin(nftCollections, eq(nfts.collectionId, nftCollections.id))
+    .where(sql`lower(${nftOwnerships.walletAddress}) = ${normalizedAddress}`)
+    .groupBy(nftCollections.id);
+
+    if (chainId) {
+      query = query.where(sql`lower(${nftOwnerships.walletAddress}) = ${normalizedAddress} AND ${nftOwnerships.chainId} = ${chainId}`);
+    }
+
+    const result = await query.orderBy(nftCollections.name);
+    return result.map(row => row.collection);
+  }
+
+  async upsertNftOwnership(insertOwnership: InsertNftOwnership): Promise<NftOwnership> {
+    const ownershipData = {
+      ...insertOwnership,
+      walletAddress: normalizeAddress(insertOwnership.walletAddress),
+      contractAddress: normalizeAddress(insertOwnership.contractAddress),
+      balance: insertOwnership.balance || "1",
+      isHidden: insertOwnership.isHidden || "false"
+    };
+
+    // Try to update first
+    const existingOwnership = await this.getNftOwnershipByWalletAndNft(
+      insertOwnership.walletAddress, 
+      insertOwnership.nftId
+    );
+
+    if (existingOwnership) {
+      const updateData = {
+        ...ownershipData,
+        lastUpdated: sql`now()`
+      };
+      const result = await db.update(nftOwnerships)
+        .set(updateData)
+        .where(eq(nftOwnerships.id, existingOwnership.id))
+        .returning();
+      return result[0];
+    } else {
+      const result = await db.insert(nftOwnerships).values(ownershipData).returning();
+      return result[0];
+    }
+  }
+
+  async updateNftOwnership(id: string, updates: Partial<InsertNftOwnership>): Promise<NftOwnership | undefined> {
+    const updateData = {
+      ...updates,
+      walletAddress: updates.walletAddress ? normalizeAddress(updates.walletAddress) : undefined,
+      contractAddress: updates.contractAddress ? normalizeAddress(updates.contractAddress) : undefined,
+      lastUpdated: sql`now()`
+    };
+    const result = await db.update(nftOwnerships)
+      .set(updateData)
+      .where(eq(nftOwnerships.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async removeNftOwnership(walletAddress: string, nftId: string): Promise<boolean> {
+    const normalizedAddress = normalizeAddress(walletAddress);
+    const result = await db.delete(nftOwnerships)
+      .where(sql`lower(${nftOwnerships.walletAddress}) = ${normalizedAddress} AND ${nftOwnerships.nftId} = ${nftId}`)
+      .returning();
+    return result.length > 0;
+  }
+
+  // NFT Aggregated queries
+  async getNftStats(walletAddress: string): Promise<{
+    totalNfts: number;
+    totalCollections: number;
+    chainCounts: Record<string, number>;
+    collectionCounts: Record<string, number>;
+  }> {
+    const normalizedAddress = normalizeAddress(walletAddress);
+
+    // Get total NFTs
+    const totalNftsResult = await db.select({
+      count: sql<number>`count(*)`
+    }).from(nftOwnerships)
+      .where(sql`lower(${nftOwnerships.walletAddress}) = ${normalizedAddress} AND ${nftOwnerships.isHidden} = 'false'`);
+
+    // Get total collections
+    const totalCollectionsResult = await db.select({
+      count: sql<number>`count(DISTINCT ${nfts.collectionId})`
+    }).from(nftOwnerships)
+      .innerJoin(nfts, eq(nftOwnerships.nftId, nfts.id))
+      .where(sql`lower(${nftOwnerships.walletAddress}) = ${normalizedAddress} AND ${nftOwnerships.isHidden} = 'false'`);
+
+    // Get chain counts
+    const chainCountsResult = await db.select({
+      chainId: nftOwnerships.chainId,
+      count: sql<number>`count(*)`
+    }).from(nftOwnerships)
+      .where(sql`lower(${nftOwnerships.walletAddress}) = ${normalizedAddress} AND ${nftOwnerships.isHidden} = 'false'`)
+      .groupBy(nftOwnerships.chainId);
+
+    // Get collection counts
+    const collectionCountsResult = await db.select({
+      collectionName: nftCollections.name,
+      count: sql<number>`count(*)`
+    }).from(nftOwnerships)
+      .innerJoin(nfts, eq(nftOwnerships.nftId, nfts.id))
+      .innerJoin(nftCollections, eq(nfts.collectionId, nftCollections.id))
+      .where(sql`lower(${nftOwnerships.walletAddress}) = ${normalizedAddress} AND ${nftOwnerships.isHidden} = 'false'`)
+      .groupBy(nftCollections.name)
+      .limit(10);
+
+    const chainCounts: Record<string, number> = {};
+    chainCountsResult.forEach(row => {
+      chainCounts[row.chainId] = row.count;
+    });
+
+    const collectionCounts: Record<string, number> = {};
+    collectionCountsResult.forEach(row => {
+      collectionCounts[row.collectionName || 'Unknown'] = row.count;
+    });
+
+    return {
+      totalNfts: totalNftsResult[0]?.count || 0,
+      totalCollections: totalCollectionsResult[0]?.count || 0,
+      chainCounts,
+      collectionCounts
+    };
+  }
+
+  async getNftAttributeFacets(
+    walletAddress: string,
+    filters?: { chainId?: string; collectionId?: string }
+  ): Promise<Record<string, Record<string, number>>> {
+    const normalizedAddress = normalizeAddress(walletAddress);
+    
+    const conditions = [sql`lower(${nftOwnerships.walletAddress}) = ${normalizedAddress}`];
+    
+    if (filters?.chainId) {
+      conditions.push(eq(nftOwnerships.chainId, filters.chainId));
+    }
+    
+    if (filters?.collectionId) {
+      conditions.push(eq(nfts.collectionId, filters.collectionId));
+    }
+
+    // Get all NFT attributes for the wallet
+    const attributesResult = await db.select({
+      attributes: nfts.attributes
+    }).from(nftOwnerships)
+      .innerJoin(nfts, eq(nftOwnerships.nftId, nfts.id))
+      .where(sql`${sql.join(conditions, sql` AND `)}`)
+      .where(sql`${nfts.attributes} IS NOT NULL`);
+
+    const facets: Record<string, Record<string, number>> = {};
+
+    attributesResult.forEach(row => {
+      if (row.attributes && Array.isArray(row.attributes)) {
+        row.attributes.forEach((attr: any) => {
+          if (attr.trait_type && attr.value) {
+            const traitType = attr.trait_type;
+            const value = attr.value.toString();
+            
+            if (!facets[traitType]) {
+              facets[traitType] = {};
+            }
+            
+            facets[traitType][value] = (facets[traitType][value] || 0) + 1;
+          }
+        });
+      }
+    });
+
+    return facets;
   }
 }
 

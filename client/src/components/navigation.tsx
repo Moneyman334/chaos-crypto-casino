@@ -15,7 +15,8 @@ import {
   Coins,
   Network,
   AlertTriangle,
-  CheckCircle2
+  CheckCircle2,
+  Palette
 } from "lucide-react";
 
 interface NavigationProps {
@@ -26,7 +27,8 @@ interface NavigationProps {
 const navigationItems = [
   { path: "/", label: "Home", icon: Home },
   { path: "/games", label: "Games", icon: Gamepad2 },
-  { path: "/wallet", label: "Wallet", icon: Wallet }
+  { path: "/wallet", label: "Wallet", icon: Wallet },
+  { path: "/nfts", label: "NFT Gallery", icon: Palette }
 ];
 
 export default function Navigation({ onConnect, onDisconnect }: NavigationProps) {

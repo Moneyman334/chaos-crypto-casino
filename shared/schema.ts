@@ -199,6 +199,105 @@ export const contractEvents = pgTable("contract_events", {
   eventIdx: index("contract_events_event_idx").on(table.eventName),
 }));
 
+export const nftCollections = pgTable("nft_collections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  chainId: text("chain_id").notNull(),
+  contractAddress: text("contract_address").notNull(),
+  name: text("name").notNull(),
+  slug: text("slug"),
+  symbol: text("symbol"),
+  imageUrl: text("image_url"),
+  bannerImageUrl: text("banner_image_url"),
+  description: text("description"),
+  externalUrl: text("external_url"),
+  isVerified: text("is_verified").notNull().default("false"),
+  totalSupply: text("total_supply"),
+  floorPrice: text("floor_price"), // Store as string to avoid precision loss
+  openseaSlug: text("opensea_slug"),
+  contractStandard: text("contract_standard").notNull().default("ERC721"), // ERC721, ERC1155
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  contractChainIdx: index("nft_collections_contract_chain_idx").on(table.contractAddress, table.chainId),
+  contractLowerIdx: index("nft_collections_contract_lower_idx").on(sql`lower(${table.contractAddress})`),
+  chainIdx: index("nft_collections_chain_idx").on(table.chainId),
+  slugIdx: index("nft_collections_slug_idx").on(table.slug),
+  verifiedIdx: index("nft_collections_verified_idx").on(table.isVerified),
+  standardIdx: index("nft_collections_standard_idx").on(table.contractStandard),
+}));
+
+export const nfts = pgTable("nfts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  chainId: text("chain_id").notNull(),
+  contractAddress: text("contract_address").notNull(),
+  tokenId: text("token_id").notNull(), // Store as string to handle large numbers
+  standard: text("standard").notNull().default("ERC721"), // ERC721, ERC1155
+  name: text("name"),
+  description: text("description"),
+  imageUrl: text("image_url"),
+  imageThumbnailUrl: text("image_thumbnail_url"),
+  animationUrl: text("animation_url"),
+  externalUrl: text("external_url"),
+  attributes: jsonb("attributes"), // Array of trait objects
+  metadata: jsonb("metadata"), // Full metadata from tokenURI
+  tokenUri: text("token_uri"),
+  collectionId: varchar("collection_id").references(() => nftCollections.id),
+  rarity: text("rarity"), // Common, Uncommon, Rare, Epic, Legendary
+  rarityRank: text("rarity_rank"), // Numeric rank as string
+  lastRefreshed: timestamp("last_refreshed").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  contractTokenIdx: index("nfts_contract_token_idx").on(table.contractAddress, table.tokenId, table.chainId),
+  contractLowerIdx: index("nfts_contract_lower_idx").on(sql`lower(${table.contractAddress})`),
+  chainIdx: index("nfts_chain_idx").on(table.chainId),
+  collectionIdx: index("nfts_collection_idx").on(table.collectionId),
+  nameIdx: index("nfts_name_idx").on(table.name),
+  standardIdx: index("nfts_standard_idx").on(table.standard),
+  rarityIdx: index("nfts_rarity_idx").on(table.rarity),
+  lastRefreshedIdx: index("nfts_last_refreshed_idx").on(table.lastRefreshed),
+}));
+
+export const nftOwnerships = pgTable("nft_ownerships", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  walletAddress: text("wallet_address").notNull(),
+  nftId: varchar("nft_id").notNull().references(() => nfts.id),
+  balance: text("balance").notNull().default("1"), // For ERC1155 support, store as string
+  chainId: text("chain_id").notNull(),
+  contractAddress: text("contract_address").notNull(),
+  tokenId: text("token_id").notNull(),
+  isHidden: text("is_hidden").notNull().default("false"),
+  acquisitionDate: timestamp("acquisition_date"),
+  acquisitionPrice: text("acquisition_price"), // Store as wei string
+  acquisitionCurrency: text("acquisition_currency"), // ETH, MATIC, etc.
+  lastUpdated: timestamp("last_updated").defaultNow(),
+}, (table) => ({
+  walletNftIdx: index("nft_ownerships_wallet_nft_idx").on(table.walletAddress, table.nftId),
+  walletLowerIdx: index("nft_ownerships_wallet_lower_idx").on(sql`lower(${table.walletAddress})`),
+  chainIdx: index("nft_ownerships_chain_idx").on(table.chainId),
+  contractTokenIdx: index("nft_ownerships_contract_token_idx").on(table.contractAddress, table.tokenId),
+  lastUpdatedIdx: index("nft_ownerships_last_updated_idx").on(table.lastUpdated),
+  hiddenIdx: index("nft_ownerships_hidden_idx").on(table.isHidden),
+}));
+
+export const insertNftCollectionSchema = createInsertSchema(nftCollections).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertNftSchema = createInsertSchema(nfts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastRefreshed: true,
+});
+
+export const insertNftOwnershipSchema = createInsertSchema(nftOwnerships).omit({
+  id: true,
+  lastUpdated: true,
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -280,3 +379,9 @@ export type InsertContractEventSub = z.infer<typeof insertContractEventSubSchema
 export type ContractEventSub = typeof contractEventSubs.$inferSelect;
 export type InsertContractEvent = z.infer<typeof insertContractEventSchema>;
 export type ContractEvent = typeof contractEvents.$inferSelect;
+export type InsertNftCollection = z.infer<typeof insertNftCollectionSchema>;
+export type NftCollection = typeof nftCollections.$inferSelect;
+export type InsertNft = z.infer<typeof insertNftSchema>;
+export type Nft = typeof nfts.$inferSelect;
+export type InsertNftOwnership = z.infer<typeof insertNftOwnershipSchema>;
+export type NftOwnership = typeof nftOwnerships.$inferSelect;

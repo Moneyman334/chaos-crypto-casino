@@ -9,6 +9,7 @@ import HomePage from "@/pages/home";
 import GamesPage from "@/pages/games";
 import WalletPage from "@/pages/wallet";
 import ContractsPage from "@/pages/contracts";
+import NFTsPage from "@/pages/nfts";
 import NotFound from "@/pages/not-found";
 import ConnectionModal from "@/components/connection-modal";
 import { useWeb3 } from "@/hooks/use-web3";
@@ -20,6 +21,7 @@ function Router() {
       <Route path="/games" component={GamesPage} />
       <Route path="/wallet" component={WalletPage} />
       <Route path="/contracts" component={ContractsPage} />
+      <Route path="/nfts" component={NFTsPage} />
       <Route component={NotFound} />
     </Switch>
   );
