@@ -58,13 +58,13 @@ export default function Navigation({ onConnect, onDisconnect }: NavigationProps)
   };
 
   const formatBalance = (balance: string | null | undefined) => {
-    if (!balance) return "0.000";
+    if (!balance || balance === "0" || isNaN(parseFloat(balance))) return "0.000";
     const numBalance = parseFloat(balance);
-    return numBalance.toFixed(3);
+    return isNaN(numBalance) ? "0.000" : numBalance.toFixed(3);
   };
 
   const formatAddress = (address: string | null | undefined) => {
-    if (!address) return "";
+    if (!address || address.length < 10) return "";
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 

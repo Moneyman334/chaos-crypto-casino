@@ -1,13 +1,10 @@
-import { useState } from "react";
 import { useWeb3 } from "@/hooks/use-web3";
 import WalletConnection from "@/components/wallet-connection";
 import SendTransaction from "@/components/send-transaction";
 import NetworkInfo from "@/components/network-info";
 import RecentTransactions from "@/components/recent-transactions";
-import ConnectionModal from "@/components/connection-modal";
 
 export default function WalletPage() {
-  const [showConnectionModal, setShowConnectionModal] = useState(false);
   const { 
     isConnected, 
     account, 
@@ -20,16 +17,7 @@ export default function WalletPage() {
 
   const handleConnect = () => {
     if (!isConnected) {
-      setShowConnectionModal(true);
-    }
-  };
-
-  const handleConnectMetaMask = async () => {
-    try {
-      await connectWallet();
-      setShowConnectionModal(false);
-    } catch (error) {
-      console.error("Failed to connect wallet:", error);
+      connectWallet();
     }
   };
 
@@ -70,16 +58,6 @@ export default function WalletPage() {
         </div>
       </main>
 
-      {/* Connection Modal */}
-      <ConnectionModal
-        isOpen={showConnectionModal}
-        onClose={() => setShowConnectionModal(false)}
-        onConnectMetaMask={handleConnectMetaMask}
-        onConnectWalletConnect={() => {
-          console.log("WalletConnect not implemented yet");
-          // TODO: Implement WalletConnect
-        }}
-      />
     </>
   );
 }

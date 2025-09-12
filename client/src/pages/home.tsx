@@ -1,9 +1,19 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Coins, TrendingUp, Users, Star, ArrowRight } from "lucide-react";
+import { Coins, TrendingUp, Users, Star, ArrowRight, Shield, Zap, CheckCircle, Award, Lock, Clock } from "lucide-react";
+import { Link } from "wouter";
+import { useWeb3 } from "@/hooks/use-web3";
 
 export default function HomePage() {
+  const { isConnected, connectWallet } = useWeb3();
+
+  const handleConnectWallet = () => {
+    if (!isConnected) {
+      connectWallet();
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
       {/* Hero Section */}
@@ -14,19 +24,43 @@ export default function HomePage() {
           </Badge>
         </div>
         <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-          Welcome to Crypto Casino
+          The Future of Fair Gaming
         </h1>
-        <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-          Experience the future of gaming with cryptocurrency-powered casino games. 
-          Fair play, instant payouts, and transparent blockchain technology.
+        <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-4">
+          Experience provably fair cryptocurrency gaming with instant payouts, transparent odds, and blockchain-verified results. Where every bet is auditable and every win is guaranteed.
         </p>
+        <div className="flex items-center justify-center gap-6 mb-8 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="h-4 w-4 text-green-500" />
+            <span>Provably Fair</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Zap className="h-4 w-4 text-yellow-500" />
+            <span>Instant Payouts</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Shield className="h-4 w-4 text-blue-500" />
+            <span>Blockchain Verified</span>
+          </div>
+        </div>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button size="lg" data-testid="button-start-playing">
-            Start Playing <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="lg" data-testid="button-learn-more">
-            Learn More
-          </Button>
+          <Link href="/games">
+            <Button size="lg" className="w-full sm:w-auto" data-testid="button-start-playing">
+              Start Playing <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </Link>
+          {!isConnected && (
+            <Button variant="outline" size="lg" className="w-full sm:w-auto" onClick={handleConnectWallet} data-testid="button-connect-wallet">
+              <Coins className="mr-2 h-4 w-4" />
+              Connect Wallet
+            </Button>
+          )}
+          {isConnected && (
+            <Button variant="outline" size="lg" className="w-full sm:w-auto" data-testid="button-wallet-connected">
+              <CheckCircle className="mr-2 h-4 w-4" />
+              Wallet Connected
+            </Button>
+          )}
         </div>
       </div>
 
@@ -73,9 +107,11 @@ export default function HomePage() {
             <h2 className="text-3xl font-bold mb-2">Featured Games</h2>
             <p className="text-muted-foreground">Try our most popular cryptocurrency games</p>
           </div>
-          <Button variant="outline" data-testid="button-view-all-games">
-            View All Games <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
+          <Link href="/games">
+            <Button variant="outline" data-testid="button-view-all-games">
+              View All Games <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </Link>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -107,6 +143,93 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* Key Features */}
+      <div className="mb-16">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold mb-4">Why Choose Crypto Casino</h2>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            Built on blockchain technology for the most transparent and fair gaming experience
+          </p>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+          <Card className="gradient-border text-center">
+            <div className="gradient-border-inner p-6">
+              <div className="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto mb-4">
+                <Shield className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-3">Provably Fair</h3>
+              <p className="text-muted-foreground">
+                Every game result is cryptographically verifiable. Check the fairness of any bet using our transparent algorithms.
+              </p>
+            </div>
+          </Card>
+
+          <Card className="gradient-border text-center">
+            <div className="gradient-border-inner p-6">
+              <div className="w-16 h-16 rounded-full bg-accent/10 text-accent flex items-center justify-center mx-auto mb-4">
+                <Zap className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-3">Instant Payouts</h3>
+              <p className="text-muted-foreground">
+                Win and withdraw immediately. No waiting periods, no delays. Your crypto is transferred instantly to your wallet.
+              </p>
+            </div>
+          </Card>
+
+          <Card className="gradient-border text-center">
+            <div className="gradient-border-inner p-6">
+              <div className="w-16 h-16 rounded-full bg-green-500/10 text-green-500 flex items-center justify-center mx-auto mb-4">
+                <Lock className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-3">Secure & Private</h3>
+              <p className="text-muted-foreground">
+                Play anonymously with just your wallet. No personal information required. Your privacy is our priority.
+              </p>
+            </div>
+          </Card>
+        </div>
+
+        {/* Trust Indicators */}
+        <div className="bg-card/50 rounded-lg p-8 border">
+          <div className="text-center mb-6">
+            <h3 className="text-2xl font-semibold mb-2">Trusted by Crypto Gamers Worldwide</h3>
+            <p className="text-muted-foreground">Join thousands of players who trust our platform</p>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+            <div className="space-y-2">
+              <div className="flex items-center justify-center gap-2">
+                <Award className="h-5 w-5 text-yellow-500" />
+                <span className="text-sm font-medium">Licensed</span>
+              </div>
+              <p className="text-xs text-muted-foreground">Regulated Gaming</p>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-center gap-2">
+                <CheckCircle className="h-5 w-5 text-green-500" />
+                <span className="text-sm font-medium">Audited</span>
+              </div>
+              <p className="text-xs text-muted-foreground">Smart Contracts</p>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-center gap-2">
+                <Clock className="h-5 w-5 text-blue-500" />
+                <span className="text-sm font-medium">24/7</span>
+              </div>
+              <p className="text-xs text-muted-foreground">Live Support</p>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-center gap-2">
+                <Shield className="h-5 w-5 text-purple-500" />
+                <span className="text-sm font-medium">Encrypted</span>
+              </div>
+              <p className="text-xs text-muted-foreground">SSL Protected</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* How It Works */}
       <div className="text-center">
         <h2 className="text-3xl font-bold mb-8">How It Works</h2>
@@ -117,25 +240,25 @@ export default function HomePage() {
             </div>
             <h3 className="text-xl font-semibold">Connect Wallet</h3>
             <p className="text-muted-foreground">
-              Connect your MetaMask or other Web3 wallet to get started
+              Connect your MetaMask or other Web3 wallet. No registration required.
             </p>
           </div>
           <div className="space-y-4" data-testid="step-deposit">
             <div className="w-12 h-12 rounded-full bg-accent text-accent-foreground flex items-center justify-center mx-auto text-xl font-bold">
               2
             </div>
-            <h3 className="text-xl font-semibold">Fund Your Account</h3>
+            <h3 className="text-xl font-semibold">Fund & Play</h3>
             <p className="text-muted-foreground">
-              Deposit ETH, MATIC, or other supported cryptocurrencies
+              Use ETH, MATIC, or other supported cryptocurrencies to play our games.
             </p>
           </div>
           <div className="space-y-4" data-testid="step-play">
             <div className="w-12 h-12 rounded-full bg-green-500 text-white flex items-center justify-center mx-auto text-xl font-bold">
               3
             </div>
-            <h3 className="text-xl font-semibold">Start Playing</h3>
+            <h3 className="text-xl font-semibold">Win & Withdraw</h3>
             <p className="text-muted-foreground">
-              Choose from various games and start winning cryptocurrencies
+              Enjoy instant payouts directly to your wallet. No delays, no hassle.
             </p>
           </div>
         </div>
