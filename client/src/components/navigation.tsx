@@ -16,7 +16,8 @@ import {
   Network,
   AlertTriangle,
   CheckCircle2,
-  Palette
+  Palette,
+  ArrowDownToLine
 } from "lucide-react";
 
 interface NavigationProps {
@@ -28,6 +29,7 @@ const navigationItems = [
   { path: "/", label: "Home", icon: Home },
   { path: "/games", label: "Games", icon: Gamepad2 },
   { path: "/wallet", label: "Wallet", icon: Wallet },
+  { path: "/deposits", label: "Deposits", icon: ArrowDownToLine },
   { path: "/nfts", label: "NFT Gallery", icon: Palette }
 ];
 
