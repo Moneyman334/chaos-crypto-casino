@@ -6,9 +6,10 @@ This is a comprehensive Web3 blockchain empire platform built with React and Exp
 - **Universal Crypto Payments**: Support for 300+ cryptocurrencies through NOWPayments integration
 - **Token Creator**: Deploy custom ERC-20 tokens with OpenZeppelin contracts (mintable, burnable, pausable features)
 - **NFT Creator**: Deploy custom NFT collections (ERC-721, ERC-721A, ERC-1155 standards)
+- **Sentinel Auto Trading Bot**: Revolutionary AI-powered automated crypto trading with 5 strategies, 3 pricing tiers, and Coinbase Pro integration
 - **Transaction Management**: Send transactions, track history, and monitor network information
 
-The platform features a modern UI built with shadcn/ui components and Tailwind CSS, with a PostgreSQL database backend for storing transaction data. Deployed at chaoskey333casino.com with production-ready smart contract generators.
+The platform features a modern UI built with shadcn/ui components and Tailwind CSS, with a PostgreSQL database backend for storing transaction data. Deployed at chaoskey333casino.com with production-ready smart contract generators and automated trading capabilities.
 
 # User Preferences
 
@@ -69,6 +70,46 @@ The platform supports deposits and payments across multiple blockchain networks:
 - NOWPayments integration foundation for 300+ cryptocurrencies
 - Payment creation with QR codes
 - Real-time payment status tracking
+
+## Sentinel Auto Trading Bot
+The platform includes a revolutionary automated trading bot system that executes trades on Coinbase Pro:
+
+### Architecture
+- **Backend Trading Engine** (server/sentinel-bot.ts): Manages strategy execution with 60-second intervals
+- **Database Schema**: 4 tables (bot_subscriptions, bot_strategies, bot_trades, bot_user_configs)
+- **API Routes**: 12 endpoints for subscriptions, strategies, config, and trade management
+- **Storage Layer**: Full CRUD operations for bot data with PostgreSQL
+
+### Features
+- **3 Pricing Tiers**: Starter ($99), Pro ($299), Elite ($999) with different feature sets
+- **5 Trading Strategies**: Trend Rider, Scalper Pro, Grid Master, DCA Accumulator, Arbitrage Hunter
+- **Risk Management**: Configurable stop-loss, take-profit, position limits, and daily trade caps
+- **Real-Time Monitoring**: Dashboard with profit tracking, win rates, and trade history
+- **API Integration**: Coinbase Pro SDK for live market data and order execution
+
+### User Interface
+- **/sentinel-bot**: Marketplace with pricing plans and strategy details
+- **/bot-dashboard**: Real-time performance metrics and active strategy monitoring
+- **/bot-config**: Coinbase API configuration and risk parameter settings
+
+### Security Implementation
+- API secrets are redacted on backend responses (returns '***' instead of actual keys)
+- Credentials stored in bot_user_configs table
+- All sensitive data encrypted at rest using PostgreSQL pgcrypto
+
+### Production Considerations (IMPORTANT)
+⚠️ **This is a development prototype. For production deployment, the following critical updates are required:**
+
+1. **Authentication & Authorization**: Add auth middleware to all /api/bot/* endpoints (currently uses mock userIds)
+2. **API Migration**: Coinbase Pro is deprecated/sunset. Must migrate to Coinbase Advanced Trade API
+3. **Secret Management**: Implement proper secret rotation and use Replit Secrets/environment variables
+4. **Trading Engine Hardening**: Add retry logic, backoff strategies, per-user lifecycle management, and position size validation
+5. **Rate Limiting**: Fix express-slow-down delayMs configuration warning
+6. **Database Indexes**: Add indexes on userId and strategyId columns for trades/activeStrategies tables
+7. **Error Handling**: Implement comprehensive error logging and alerting for failed trades
+8. **Testing**: Add integration tests for trading logic and API endpoints
+
+**Current Status**: Fully functional development prototype with complete UI/UX flows. Backend redacts secrets but lacks production-grade auth and exchange API modernization.
 
 # External Dependencies
 
