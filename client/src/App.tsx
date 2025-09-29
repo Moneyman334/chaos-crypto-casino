@@ -18,6 +18,7 @@ import TokenCreatorPage from "@/pages/token-creator";
 import NFTCreatorPage from "@/pages/nft-creator";
 import SentinelBotPage from "@/pages/sentinel-bot";
 import BotDashboardPage from "@/pages/bot-dashboard";
+import BotConfigPage from "@/pages/bot-config";
 import NotFound from "@/pages/not-found";
 import ConnectionModal from "@/components/connection-modal";
 import { useWeb3 } from "@/hooks/use-web3";
@@ -38,6 +39,7 @@ function Router() {
       <Route path="/nft-creator" component={NFTCreatorPage} />
       <Route path="/sentinel-bot" component={SentinelBotPage} />
       <Route path="/bot-dashboard" component={BotDashboardPage} />
+      <Route path="/bot-config" component={BotConfigPage} />
       <Route component={NotFound} />
     </Switch>
   );
