@@ -1574,10 +1574,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/health", (req, res) => {
     res.json({ 
       status: "healthy", 
-      services: ["transactions", "wallets", "tokens", "networks", "contracts", "nfts"],
+      services: ["transactions", "wallets", "tokens", "networks", "contracts", "nfts", "payments"],
       database: "connected",
       timestamp: new Date().toISOString()
     });
+  });
+
+  // ===== CRYPTO PAYMENT GATEWAY ROUTES (NOWPayments) =====
+  
+  const NOWPAYMENTS_API_KEY = process.env.NOWPAYMENTS_API_KEY || '';
+  const NOWPAYMENTS_API_URL = 'https://api.nowpayments.io/v1';
+
+  // Get available cryptocurrencies
+  app.get("/api/payments/currencies", async (req, res) => {
+    try {
+      const popular = ['btc', 'eth', 'usdt', 'bnb', 'sol', 'xrp', 'ada', 'doge', 'matic', 'ltc', 'avax', 'dot', 'link', 'uni', 'atom'];
+      res.json(popular);
+    } catch (error) {
+      console.error("Failed to fetch currencies:", error);
+      res.status(500).json({ error: "Failed to fetch currencies" });
+    }
+  });
+
+  // Create payment
+  app.post("/api/payments/create", async (req, res) => {
+    try {
+      const paymentSchema = z.object({
+        amount: z.number().positive(),
+        currency: z.string(),
+        crypto: z.string()
+      });
+
+      const { amount, currency, crypto } = paymentSchema.parse(req.body);
+
+      // Mock payment creation (in production, call NOWPayments API)
+      const mockPayment = {
+        payment_id: `payment_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+        payment_status: 'waiting',
+        pay_address: crypto === 'btc' ? 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh' :
+                     crypto === 'eth' ? '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0' :
+                     crypto === 'sol' ? '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU' :
+                     `${crypto}_payment_address`,
+        pay_amount: crypto === 'btc' ? amount / 45000 :
+                   crypto === 'eth' ? amount / 2500 :
+                   crypto === 'sol' ? amount / 100 :
+                   amount / 50,
+        price_amount: amount,
+        price_currency: currency,
+        pay_currency: crypto,
+        created_at: new Date().toISOString(),
+        expiration_estimate_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      };
+
+      res.json(mockPayment);
+
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid payment data", 
+          details: error.errors 
+        });
+      }
+      console.error("Failed to create payment:", error);
+      res.status(500).json({ error: "Failed to create payment" });
+    }
+  });
+
+  // Get payment status
+  app.get("/api/payments/status/:paymentId", async (req, res) => {
+    try {
+      const { paymentId } = req.params;
+
+      // Mock payment status (in production, call NOWPayments API)
+      const mockStatus = {
+        payment_id: paymentId,
+        payment_status: Math.random() > 0.7 ? 'confirmed' : 'waiting',
+        pay_address: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
+        pay_amount: 0.00234567,
+        price_amount: 100,
+        price_currency: 'usd',
+        pay_currency: 'btc',
+        created_at: new Date().toISOString(),
+        expiration_estimate_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      };
+
+      res.json(mockStatus);
+
+    } catch (error) {
+      console.error("Failed to get payment status:", error);
+      res.status(500).json({ error: "Failed to get payment status" });
+    }
   });
 
   const httpServer = createServer(app);

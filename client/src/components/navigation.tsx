@@ -30,6 +30,7 @@ const navigationItems = [
   { path: "/games", label: "Games", icon: Gamepad2 },
   { path: "/wallet", label: "Wallet", icon: Wallet },
   { path: "/deposits", label: "Deposits", icon: ArrowDownToLine },
+  { path: "/crypto-payments", label: "All Crypto", icon: Coins },
   { path: "/nfts", label: "NFT Gallery", icon: Palette }
 ];
 
