@@ -50,9 +50,9 @@ export default function NFTCreatorPage() {
       return `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts@5.0.0/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts@5.0.0/token/ERC721/extensions/ERC721URIStorage.sol";
+import "@openzeppelin/contracts@5.0.0/access/Ownable.sol";
 
 contract ${nftConfig.symbol || 'MyNFT'} is ERC721, ERC721URIStorage, Ownable {
     uint256 private _nextTokenId;
@@ -76,6 +76,7 @@ contract ${nftConfig.symbol || 'MyNFT'} is ERC721, ERC721URIStorage, Ownable {
         _safeMint(to, tokenId);
     }
 
+    // WARNING: Large batch mints may hit gas limits. For >20 NFTs, use ERC-721A instead.
     function batchMint(address to, uint256 quantity) public onlyOwner {
         require(_nextTokenId + quantity <= maxSupply, "Exceeds max supply");
         for (uint256 i = 0; i < quantity; i++) {
@@ -100,15 +101,64 @@ contract ${nftConfig.symbol || 'MyNFT'} is ERC721, ERC721URIStorage, Ownable {
     {
         return super.supportsInterface(interfaceId);
     }
+
+    function _update(address to, uint256 tokenId, address auth)
+        internal
+        override(ERC721, ERC721URIStorage)
+        returns (address)
+    {
+        return super._update(to, tokenId, auth);
+    }
+}`;
+    } else if (nftConfig.standard === "erc721a") {
+      return `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+// For Remix: Use the github.com@version format below (not HTTPS blob URLs)
+// For Hardhat/Foundry: Install with 'npm install erc721a@4.2.3' and use 'import "erc721a/contracts/ERC721A.sol";'
+import "github.com/chiru-labs/ERC721A@v4.2.3/contracts/ERC721A.sol";
+import "@openzeppelin/contracts@5.0.0/access/Ownable.sol";
+
+contract ${nftConfig.symbol || 'MyNFT'} is ERC721A, Ownable {
+    uint256 public maxSupply = ${nftConfig.maxSupply || '10000'};
+    string private _baseTokenURI;
+
+    constructor(address initialOwner)
+        ERC721A("${nftConfig.name || 'My NFT Collection'}", "${nftConfig.symbol || 'MNFT'}")
+        Ownable(initialOwner)
+    {
+        _baseTokenURI = "${nftConfig.baseUri || 'ipfs://YOUR_CID/'}";
+    }
+
+    function _baseURI() internal view override returns (string memory) {
+        return _baseTokenURI;
+    }
+
+    function mint(address to, uint256 quantity) public onlyOwner {
+        require(totalSupply() + quantity <= maxSupply, "Exceeds max supply");
+        _mint(to, quantity);
+    }
+
+    // ERC-721A optimized batch minting - significantly lower gas for large batches
+    function batchMint(address to, uint256 quantity) public onlyOwner {
+        require(totalSupply() + quantity <= maxSupply, "Exceeds max supply");
+        _mint(to, quantity);
+    }
+
+    function setBaseURI(string memory baseURI) public onlyOwner {
+        _baseTokenURI = baseURI;
+    }
 }`;
     } else if (nftConfig.standard === "erc1155") {
       return `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts@5.0.0/token/ERC1155/ERC1155.sol";
+import "@openzeppelin/contracts@5.0.0/access/Ownable.sol";
 
 contract ${nftConfig.symbol || 'MyNFT'} is ERC1155, Ownable {
+    // Note: MAX_SUPPLY is the maximum allowed token ID value (IDs must be < MAX_SUPPLY)
+    // This limits the range of valid token IDs, not the total supply across all IDs
     uint256 public constant MAX_SUPPLY = ${nftConfig.maxSupply || '10000'};
     uint256 private _currentTokenId = 0;
 
@@ -117,13 +167,18 @@ contract ${nftConfig.symbol || 'MyNFT'} is ERC1155, Ownable {
         Ownable(initialOwner)
     {}
 
+    // Mint a new sequential token ID with specified amount
     function mint(address to, uint256 amount) public onlyOwner {
-        require(_currentTokenId < MAX_SUPPLY, "Max supply reached");
+        require(_currentTokenId < MAX_SUPPLY, "Max token ID reached");
         _mint(to, _currentTokenId, amount, "");
         _currentTokenId++;
     }
 
+    // Batch mint specific token IDs - all IDs must be < MAX_SUPPLY
     function mintBatch(address to, uint256[] memory ids, uint256[] memory amounts) public onlyOwner {
+        for (uint256 i = 0; i < ids.length; i++) {
+            require(ids[i] < MAX_SUPPLY, "Token ID exceeds max supply");
+        }
         _mintBatch(to, ids, amounts, "");
     }
 

@@ -54,24 +54,29 @@ export default function TokenCreatorPage() {
 
   const generateSmartContract = () => {
     const features = tokenConfig.features;
-    const hasFeatures = features.length > 0;
+    const decimalsValue = tokenConfig.decimals || '18';
+    const needsDecimalsOverride = decimalsValue !== '18';
     
     return `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-${features.includes('burnable') ? 'import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";' : ''}
-${features.includes('pausable') ? 'import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Pausable.sol";' : ''}
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts@5.0.0/token/ERC20/ERC20.sol";
+${features.includes('burnable') ? 'import "@openzeppelin/contracts@5.0.0/token/ERC20/extensions/ERC20Burnable.sol";' : ''}
+${features.includes('pausable') ? 'import "@openzeppelin/contracts@5.0.0/token/ERC20/extensions/ERC20Pausable.sol";' : ''}
+import "@openzeppelin/contracts@5.0.0/access/Ownable.sol";
 
 contract ${tokenConfig.symbol || 'MyToken'} is ERC20${features.includes('burnable') ? ', ERC20Burnable' : ''}${features.includes('pausable') ? ', ERC20Pausable' : ''}, Ownable {
     constructor(address initialOwner)
         ERC20("${tokenConfig.name || 'My Token'}", "${tokenConfig.symbol || 'MTK'}")
         Ownable(initialOwner)
     {
-        _mint(msg.sender, ${tokenConfig.initialSupply || '1000000'} * 10 ** decimals());
+        _mint(initialOwner, ${tokenConfig.initialSupply || '1000000'} * 10 ** decimals());
     }
-${features.includes('mintable') ? `
+${needsDecimalsOverride ? `
+    function decimals() public view override returns (uint8) {
+        return ${decimalsValue};
+    }
+` : ''}${features.includes('mintable') ? `
     function mint(address to, uint256 amount) public onlyOwner {
         _mint(to, amount);
     }` : ''}
