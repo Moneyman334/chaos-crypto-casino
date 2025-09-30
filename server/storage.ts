@@ -75,7 +75,19 @@ import {
   type ScheduledPost,
   type InsertScheduledPost,
   type PostHistory,
-  type InsertPostHistory
+  type InsertPostHistory,
+  products,
+  orders,
+  payments,
+  paymentWebhooks,
+  type Product,
+  type InsertProduct,
+  type Order,
+  type InsertOrder,
+  type Payment,
+  type InsertPayment,
+  type PaymentWebhook,
+  type InsertPaymentWebhook
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/neon-http";
@@ -299,6 +311,37 @@ export interface IStorage {
   getUserPostHistory(userId: string, limit?: number): Promise<any[]>;
   getAccountPostHistory(accountId: string, limit?: number): Promise<any[]>;
   createPostHistory(history: any): Promise<any>;
+  
+  // Product methods
+  getAllProducts(): Promise<Product[]>;
+  getActiveProducts(): Promise<Product[]>;
+  getProduct(id: string): Promise<Product | undefined>;
+  getProductsByCategory(category: string): Promise<Product[]>;
+  createProduct(product: InsertProduct): Promise<Product>;
+  updateProduct(id: string, updates: Partial<InsertProduct>): Promise<Product | undefined>;
+  deleteProduct(id: string): Promise<boolean>;
+  
+  // Order methods
+  getOrder(id: string): Promise<Order | undefined>;
+  getUserOrders(userId: string): Promise<Order[]>;
+  getOrdersByWallet(walletAddress: string): Promise<Order[]>;
+  getOrdersByStatus(status: string): Promise<Order[]>;
+  createOrder(order: InsertOrder): Promise<Order>;
+  updateOrder(id: string, updates: Partial<InsertOrder>): Promise<Order | undefined>;
+  
+  // Payment methods
+  getPayment(id: string): Promise<Payment | undefined>;
+  getPaymentsByOrder(orderId: string): Promise<Payment[]>;
+  getPaymentByTxHash(txHash: string): Promise<Payment | undefined>;
+  getPaymentByProviderPaymentId(providerPaymentId: string): Promise<Payment | undefined>;
+  createPayment(payment: InsertPayment): Promise<Payment>;
+  updatePayment(id: string, updates: Partial<InsertPayment>): Promise<Payment | undefined>;
+  
+  // Payment Webhook methods
+  getPaymentWebhook(id: string): Promise<PaymentWebhook | undefined>;
+  getUnprocessedWebhooks(provider: string): Promise<PaymentWebhook[]>;
+  createPaymentWebhook(webhook: InsertPaymentWebhook): Promise<PaymentWebhook>;
+  markWebhookProcessed(id: string, error?: string): Promise<PaymentWebhook | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -2156,6 +2199,160 @@ export class PostgreSQLStorage implements IStorage {
   async createPostHistory(history: InsertPostHistory) {
     const [created] = await db.insert(postHistory).values(history).returning();
     return created;
+  }
+  
+  // Product methods
+  async getAllProducts() {
+    return await db.select().from(products).orderBy(desc(products.createdAt));
+  }
+  
+  async getActiveProducts() {
+    return await db.select().from(products)
+      .where(eq(products.isActive, 'true'))
+      .orderBy(desc(products.createdAt));
+  }
+  
+  async getProduct(id: string) {
+    const [product] = await db.select().from(products)
+      .where(eq(products.id, id))
+      .limit(1);
+    return product;
+  }
+  
+  async getProductsByCategory(category: string) {
+    return await db.select().from(products)
+      .where(eq(products.category, category))
+      .orderBy(desc(products.createdAt));
+  }
+  
+  async createProduct(product: InsertProduct) {
+    const [created] = await db.insert(products).values(product).returning();
+    return created;
+  }
+  
+  async updateProduct(id: string, updates: Partial<InsertProduct>) {
+    const [updated] = await db.update(products)
+      .set({ ...updates, updatedAt: sql`now()` })
+      .where(eq(products.id, id))
+      .returning();
+    return updated;
+  }
+  
+  async deleteProduct(id: string) {
+    await db.delete(products).where(eq(products.id, id));
+    return true;
+  }
+  
+  // Order methods
+  async getOrder(id: string) {
+    const [order] = await db.select().from(orders)
+      .where(eq(orders.id, id))
+      .limit(1);
+    return order;
+  }
+  
+  async getUserOrders(userId: string) {
+    return await db.select().from(orders)
+      .where(eq(orders.userId, userId))
+      .orderBy(desc(orders.createdAt));
+  }
+  
+  async getOrdersByWallet(walletAddress: string) {
+    const normalized = normalizeAddress(walletAddress);
+    return await db.select().from(orders)
+      .where(sql`lower(${orders.customerWallet}) = ${normalized}`)
+      .orderBy(desc(orders.createdAt));
+  }
+  
+  async getOrdersByStatus(status: string) {
+    return await db.select().from(orders)
+      .where(eq(orders.status, status))
+      .orderBy(desc(orders.createdAt));
+  }
+  
+  async createOrder(order: InsertOrder) {
+    const [created] = await db.insert(orders).values(order).returning();
+    return created;
+  }
+  
+  async updateOrder(id: string, updates: Partial<InsertOrder>) {
+    const [updated] = await db.update(orders)
+      .set({ ...updates, updatedAt: sql`now()` })
+      .where(eq(orders.id, id))
+      .returning();
+    return updated;
+  }
+  
+  // Payment methods
+  async getPayment(id: string) {
+    const [payment] = await db.select().from(payments)
+      .where(eq(payments.id, id))
+      .limit(1);
+    return payment;
+  }
+  
+  async getPaymentsByOrder(orderId: string) {
+    return await db.select().from(payments)
+      .where(eq(payments.orderId, orderId))
+      .orderBy(desc(payments.createdAt));
+  }
+  
+  async getPaymentByTxHash(txHash: string) {
+    const [payment] = await db.select().from(payments)
+      .where(eq(payments.txHash, txHash))
+      .limit(1);
+    return payment;
+  }
+  
+  async getPaymentByProviderPaymentId(providerPaymentId: string) {
+    const [payment] = await db.select().from(payments)
+      .where(eq(payments.providerPaymentId, providerPaymentId))
+      .limit(1);
+    return payment;
+  }
+  
+  async createPayment(payment: InsertPayment) {
+    const [created] = await db.insert(payments).values(payment).returning();
+    return created;
+  }
+  
+  async updatePayment(id: string, updates: Partial<InsertPayment>) {
+    const [updated] = await db.update(payments)
+      .set({ ...updates, updatedAt: sql`now()` })
+      .where(eq(payments.id, id))
+      .returning();
+    return updated;
+  }
+  
+  // Payment Webhook methods
+  async getPaymentWebhook(id: string) {
+    const [webhook] = await db.select().from(paymentWebhooks)
+      .where(eq(paymentWebhooks.id, id))
+      .limit(1);
+    return webhook;
+  }
+  
+  async getUnprocessedWebhooks(provider: string) {
+    return await db.select().from(paymentWebhooks)
+      .where(sql`${paymentWebhooks.provider} = ${provider} AND ${paymentWebhooks.processed} = 'false'`)
+      .orderBy(paymentWebhooks.createdAt);
+  }
+  
+  async createPaymentWebhook(webhook: InsertPaymentWebhook) {
+    const [created] = await db.insert(paymentWebhooks).values(webhook).returning();
+    return created;
+  }
+  
+  async markWebhookProcessed(id: string, error?: string) {
+    const [updated] = await db.update(paymentWebhooks)
+      .set({ 
+        processed: 'true',
+        processedAt: sql`now()`,
+        ...(error && { error })
+      })
+      .where(eq(paymentWebhooks.id, id))
+      .returning();
+    return updated;
   }
 }
 
