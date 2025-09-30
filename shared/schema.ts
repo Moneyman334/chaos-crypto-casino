@@ -738,3 +738,84 @@ export type InsertAutoCompoundStake = z.infer<typeof insertAutoCompoundStakeSche
 export type AutoCompoundStake = typeof autoCompoundStakes.$inferSelect;
 export type InsertCompoundEvent = z.infer<typeof insertCompoundEventSchema>;
 export type CompoundEvent = typeof compoundEvents.$inferSelect;
+
+export const socialAccounts = pgTable("social_accounts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  platform: text("platform").notNull(),
+  accountName: text("account_name").notNull(),
+  apiKey: text("api_key"),
+  apiSecret: text("api_secret"),
+  accessToken: text("access_token"),
+  accessTokenSecret: text("access_token_secret"),
+  isActive: text("is_active").notNull().default("true"),
+  lastPostedAt: timestamp("last_posted_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  userIdx: index("social_accounts_user_idx").on(table.userId),
+  platformIdx: index("social_accounts_platform_idx").on(table.platform),
+  activeIdx: index("social_accounts_active_idx").on(table.isActive),
+}));
+
+export const scheduledPosts = pgTable("scheduled_posts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  accountId: varchar("account_id").references(() => socialAccounts.id),
+  content: text("content").notNull(),
+  mediaUrls: text("media_urls").array().default(sql`'{}'::text[]`),
+  scheduledFor: timestamp("scheduled_for").notNull(),
+  status: text("status").notNull().default("pending"),
+  postType: text("post_type").notNull().default("auto"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  userIdx: index("scheduled_posts_user_idx").on(table.userId),
+  accountIdx: index("scheduled_posts_account_idx").on(table.accountId),
+  statusIdx: index("scheduled_posts_status_idx").on(table.status),
+  scheduledForIdx: index("scheduled_posts_scheduled_for_idx").on(table.scheduledFor),
+}));
+
+export const postHistory = pgTable("post_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  accountId: varchar("account_id").references(() => socialAccounts.id),
+  scheduledPostId: varchar("scheduled_post_id").references(() => scheduledPosts.id),
+  content: text("content").notNull(),
+  platform: text("platform").notNull(),
+  postUrl: text("post_url"),
+  externalPostId: text("external_post_id"),
+  status: text("status").notNull().default("success"),
+  error: text("error"),
+  engagement: jsonb("engagement"),
+  postedAt: timestamp("posted_at").notNull().defaultNow(),
+}, (table) => ({
+  userIdx: index("post_history_user_idx").on(table.userId),
+  accountIdx: index("post_history_account_idx").on(table.accountId),
+  platformIdx: index("post_history_platform_idx").on(table.platform),
+  postedAtIdx: index("post_history_posted_at_idx").on(table.postedAt),
+}));
+
+export const insertSocialAccountSchema = createInsertSchema(socialAccounts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertScheduledPostSchema = createInsertSchema(scheduledPosts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPostHistorySchema = createInsertSchema(postHistory).omit({
+  id: true,
+  postedAt: true,
+});
+
+export type InsertSocialAccount = z.infer<typeof insertSocialAccountSchema>;
+export type SocialAccount = typeof socialAccounts.$inferSelect;
+export type InsertScheduledPost = z.infer<typeof insertScheduledPostSchema>;
+export type ScheduledPost = typeof scheduledPosts.$inferSelect;
+export type InsertPostHistory = z.infer<typeof insertPostHistorySchema>;
+export type PostHistory = typeof postHistory.$inferSelect;

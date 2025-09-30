@@ -66,7 +66,16 @@ import {
   type AutoCompoundStake,
   type InsertAutoCompoundStake,
   type CompoundEvent,
-  type InsertCompoundEvent
+  type InsertCompoundEvent,
+  socialAccounts,
+  scheduledPosts,
+  postHistory,
+  type SocialAccount,
+  type InsertSocialAccount,
+  type ScheduledPost,
+  type InsertScheduledPost,
+  type PostHistory,
+  type InsertPostHistory
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/neon-http";
@@ -267,6 +276,29 @@ export interface IStorage {
   getStakeCompoundEvents(stakeId: string, limit?: number): Promise<CompoundEvent[]>;
   getUserCompoundEvents(walletAddress: string, limit?: number): Promise<CompoundEvent[]>;
   createCompoundEvent(event: InsertCompoundEvent): Promise<CompoundEvent>;
+  
+  // Social Media Automation methods
+  getSocialAccount(id: string): Promise<any>;
+  getUserSocialAccounts(userId: string): Promise<any[]>;
+  getActiveSocialAccounts(userId: string): Promise<any[]>;
+  createSocialAccount(account: any): Promise<any>;
+  updateSocialAccount(id: string, updates: any): Promise<any>;
+  deleteSocialAccount(id: string): Promise<boolean>;
+  
+  // Scheduled Post methods
+  getScheduledPost(id: string): Promise<any>;
+  getUserScheduledPosts(userId: string): Promise<any[]>;
+  getPendingPosts(): Promise<any[]>;
+  getPostsDueForPublish(time: Date): Promise<any[]>;
+  createScheduledPost(post: any): Promise<any>;
+  updateScheduledPost(id: string, updates: any): Promise<any>;
+  deleteScheduledPost(id: string): Promise<boolean>;
+  
+  // Post History methods
+  getPostHistory(id: string): Promise<any>;
+  getUserPostHistory(userId: string, limit?: number): Promise<any[]>;
+  getAccountPostHistory(accountId: string, limit?: number): Promise<any[]>;
+  createPostHistory(history: any): Promise<any>;
 }
 
 export class MemStorage implements IStorage {
@@ -2007,6 +2039,122 @@ export class PostgreSQLStorage implements IStorage {
   
   async createCompoundEvent(event: InsertCompoundEvent) {
     const [created] = await db.insert(compoundEvents).values(event).returning();
+    return created;
+  }
+  
+  // Social Media Automation methods
+  async getSocialAccount(id: string) {
+    const [account] = await db.select().from(socialAccounts)
+      .where(eq(socialAccounts.id, id))
+      .limit(1);
+    return account;
+  }
+  
+  async getUserSocialAccounts(userId: string) {
+    const accounts = await db.select().from(socialAccounts)
+      .where(eq(socialAccounts.userId, userId))
+      .orderBy(desc(socialAccounts.createdAt));
+    return accounts;
+  }
+  
+  async getActiveSocialAccounts(userId: string) {
+    const accounts = await db.select().from(socialAccounts)
+      .where(sql`${socialAccounts.userId} = ${userId} AND ${socialAccounts.isActive} = 'true'`)
+      .orderBy(desc(socialAccounts.createdAt));
+    return accounts;
+  }
+  
+  async createSocialAccount(account: InsertSocialAccount) {
+    const [created] = await db.insert(socialAccounts).values(account).returning();
+    return created;
+  }
+  
+  async updateSocialAccount(id: string, updates: Partial<InsertSocialAccount>) {
+    const [updated] = await db.update(socialAccounts)
+      .set({ ...updates, updatedAt: sql`now()` })
+      .where(eq(socialAccounts.id, id))
+      .returning();
+    return updated;
+  }
+  
+  async deleteSocialAccount(id: string) {
+    await db.delete(socialAccounts).where(eq(socialAccounts.id, id));
+    return true;
+  }
+  
+  // Scheduled Post methods
+  async getScheduledPost(id: string) {
+    const [post] = await db.select().from(scheduledPosts)
+      .where(eq(scheduledPosts.id, id))
+      .limit(1);
+    return post;
+  }
+  
+  async getUserScheduledPosts(userId: string) {
+    const posts = await db.select().from(scheduledPosts)
+      .where(eq(scheduledPosts.userId, userId))
+      .orderBy(desc(scheduledPosts.scheduledFor));
+    return posts;
+  }
+  
+  async getPendingPosts() {
+    const posts = await db.select().from(scheduledPosts)
+      .where(eq(scheduledPosts.status, 'pending'))
+      .orderBy(scheduledPosts.scheduledFor);
+    return posts;
+  }
+  
+  async getPostsDueForPublish(time: Date) {
+    const posts = await db.select().from(scheduledPosts)
+      .where(sql`${scheduledPosts.status} = 'pending' AND ${scheduledPosts.scheduledFor} <= ${time}`)
+      .orderBy(scheduledPosts.scheduledFor);
+    return posts;
+  }
+  
+  async createScheduledPost(post: InsertScheduledPost) {
+    const [created] = await db.insert(scheduledPosts).values(post).returning();
+    return created;
+  }
+  
+  async updateScheduledPost(id: string, updates: Partial<InsertScheduledPost>) {
+    const [updated] = await db.update(scheduledPosts)
+      .set({ ...updates, updatedAt: sql`now()` })
+      .where(eq(scheduledPosts.id, id))
+      .returning();
+    return updated;
+  }
+  
+  async deleteScheduledPost(id: string) {
+    await db.delete(scheduledPosts).where(eq(scheduledPosts.id, id));
+    return true;
+  }
+  
+  // Post History methods
+  async getPostHistory(id: string) {
+    const [history] = await db.select().from(postHistory)
+      .where(eq(postHistory.id, id))
+      .limit(1);
+    return history;
+  }
+  
+  async getUserPostHistory(userId: string, limit: number = 50) {
+    const history = await db.select().from(postHistory)
+      .where(eq(postHistory.userId, userId))
+      .orderBy(desc(postHistory.postedAt))
+      .limit(limit);
+    return history;
+  }
+  
+  async getAccountPostHistory(accountId: string, limit: number = 50) {
+    const history = await db.select().from(postHistory)
+      .where(eq(postHistory.accountId, accountId))
+      .orderBy(desc(postHistory.postedAt))
+      .limit(limit);
+    return history;
+  }
+  
+  async createPostHistory(history: InsertPostHistory) {
+    const [created] = await db.insert(postHistory).values(history).returning();
     return created;
   }
 }
