@@ -1,0 +1,349 @@
+import { useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  Coins, 
+  TrendingUp, 
+  Users, 
+  Lock, 
+  Unlock,
+  ArrowUpCircle,
+  ArrowDownCircle,
+  Gift,
+  Trophy,
+  Shield,
+  Zap,
+  Crown,
+  Info
+} from "lucide-react";
+import { useWeb3 } from "@/hooks/use-web3";
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
+
+export default function HouseVaultsPage() {
+  const { account, balance, isConnected } = useWeb3();
+  const [stakeAmount, setStakeAmount] = useState("");
+  const [selectedVaultId, setSelectedVaultId] = useState<string | null>(null);
+
+  // Fetch all active vaults
+  const { data: vaults, isLoading: vaultsLoading } = useQuery({
+    queryKey: ["/api/vaults"],
+    enabled: true
+  });
+
+  // Fetch user positions (only if connected)
+  const { data: userPositions } = useQuery({
+    queryKey: ["/api/vaults/positions", account],
+    enabled: isConnected && !!account
+  });
+
+  const getTierColor = (tier: string) => {
+    switch (tier) {
+      case 'elite': return 'bg-gradient-to-r from-yellow-500 to-amber-500 text-black';
+      case 'premium': return 'bg-gradient-to-r from-purple-500 to-pink-500';
+      case 'standard': return 'bg-gradient-to-r from-blue-500 to-cyan-500';
+      default: return 'bg-primary';
+    }
+  };
+
+  const getRiskColor = (risk: string) => {
+    switch (risk) {
+      case 'low': return 'text-green-500';
+      case 'medium': return 'text-yellow-500';
+      case 'high': return 'text-red-500';
+      default: return 'text-gray-500';
+    }
+  };
+
+  if (vaultsLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="text-muted-foreground">Loading House Vaults...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background p-6 space-y-6">
+      {/* Hero Section */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-green-600 via-emerald-600 to-teal-600 p-8 text-white">
+        <div className="absolute inset-0 bg-black/20 backdrop-blur-sm"></div>
+        <div className="relative z-10 space-y-4">
+          <div className="flex items-center gap-3">
+            <Trophy className="h-12 w-12 text-yellow-400 animate-pulse" />
+            <div>
+              <h1 className="text-5xl font-bold">House Vaults</h1>
+              <p className="text-xl text-white/90">Become the House. Earn from Every Win.</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-4 flex-wrap">
+            <Badge className="bg-white/20 text-white text-lg px-4 py-2" data-testid="badge-vault-info">
+              <Shield className="mr-2 h-5 w-5" />
+              Player-Owned Liquidity
+            </Badge>
+            <Badge className="bg-white/20 text-white text-lg px-4 py-2" data-testid="badge-earn-info">
+              <TrendingUp className="mr-2 h-5 w-5" />
+              Up to 25% APY
+            </Badge>
+            <Badge className="bg-white/20 text-white text-lg px-4 py-2" data-testid="badge-instant-info">
+              <Zap className="mr-2 h-5 w-5" />
+              Instant Withdrawals
+            </Badge>
+          </div>
+
+          {!isConnected && (
+            <div className="mt-4 p-4 bg-white/10 rounded-lg border border-white/20">
+              <p className="text-white/90">Connect your wallet to stake in House Vaults and start earning!</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Stats Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Card className="border-green-500/50 bg-gradient-to-br from-green-500/10 to-background">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Locked</CardTitle>
+            <Coins className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-green-500" data-testid="stat-total-locked">
+              {vaults?.reduce((sum: number, v: any) => sum + parseFloat(v.totalStaked || '0'), 0).toFixed(2)} ETH
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Across all vaults</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-blue-500/50 bg-gradient-to-br from-blue-500/10 to-background">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Stakers</CardTitle>
+            <Users className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-blue-500" data-testid="stat-active-stakers">
+              {vaults?.reduce((sum: number, v: any) => sum + parseInt(v.activePositions || '0'), 0)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Total participants</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-purple-500/50 bg-gradient-to-br from-purple-500/10 to-background">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Earnings</CardTitle>
+            <TrendingUp className="h-4 w-4 text-purple-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-purple-500" data-testid="stat-total-earnings">
+              {vaults?.reduce((sum: number, v: any) => sum + parseFloat(v.totalEarnings || '0'), 0).toFixed(2)} ETH
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Distributed to stakers</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-yellow-500/50 bg-gradient-to-br from-yellow-500/10 to-background">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Your Position</CardTitle>
+            <Gift className="h-4 w-4 text-yellow-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-yellow-500" data-testid="stat-user-position">
+              {userPositions?.filter((p: any) => p.status === 'active').reduce((sum: number, p: any) => sum + parseFloat(p.stakedAmount || '0'), 0).toFixed(2) || '0.00'} ETH
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Your staked amount</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Main Content */}
+      <Tabs defaultValue="vaults" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="vaults" data-testid="tab-vaults">
+            <Trophy className="mr-2 h-4 w-4" />
+            Available Vaults
+          </TabsTrigger>
+          <TabsTrigger value="positions" data-testid="tab-positions" disabled={!isConnected}>
+            <Coins className="mr-2 h-4 w-4" />
+            My Positions
+          </TabsTrigger>
+          <TabsTrigger value="earnings" data-testid="tab-earnings" disabled={!isConnected}>
+            <Gift className="mr-2 h-4 w-4" />
+            Earnings
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Available Vaults */}
+        <TabsContent value="vaults" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {vaults?.map((vault: any) => (
+              <Card key={vault.id} className="border-2 hover:border-primary/50 transition-all" data-testid={`vault-${vault.tier}`}>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-3 rounded-full ${getTierColor(vault.tier)}`}>
+                        <Crown className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-2xl">{vault.name}</CardTitle>
+                        <CardDescription>{vault.description}</CardDescription>
+                      </div>
+                    </div>
+                    <Badge className={getTierColor(vault.tier)} variant="outline">
+                      {vault.tier.toUpperCase()}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Vault Stats */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="text-center p-3 border rounded-lg">
+                      <div className="text-3xl font-bold text-green-500">{vault.apy}%</div>
+                      <div className="text-xs text-muted-foreground">APY</div>
+                    </div>
+                    <div className="text-center p-3 border rounded-lg">
+                      <div className="text-2xl font-bold">{vault.totalStaked} ETH</div>
+                      <div className="text-xs text-muted-foreground">Total Staked</div>
+                    </div>
+                  </div>
+
+                  {/* Vault Details */}
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Min Stake:</span>
+                      <span className="font-semibold">{vault.minStake} ETH</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Active Stakers:</span>
+                      <span className="font-semibold">{vault.activePositions}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Risk Level:</span>
+                      <span className={`font-semibold ${getRiskColor(vault.riskLevel)}`}>
+                        {vault.riskLevel.toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Lock Period:</span>
+                      <span className="font-semibold">
+                        {vault.lockPeriod === '0' ? 'No Lock' : `${vault.lockPeriod} days`}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Performance Fee:</span>
+                      <span className="font-semibold">{vault.performanceFee}%</span>
+                    </div>
+                  </div>
+
+                  {/* Stake Button */}
+                  {isConnected ? (
+                    <Button 
+                      className="w-full" 
+                      size="lg"
+                      onClick={() => setSelectedVaultId(vault.id)}
+                      data-testid={`button-stake-${vault.tier}`}
+                    >
+                      <ArrowUpCircle className="mr-2 h-5 w-5" />
+                      Stake in This Vault
+                    </Button>
+                  ) : (
+                    <Button className="w-full" size="lg" variant="outline" disabled>
+                      <Lock className="mr-2 h-5 w-5" />
+                      Connect Wallet to Stake
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {!vaults || vaults.length === 0 && (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <Trophy className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-xl text-muted-foreground">No vaults available at the moment</p>
+                <p className="text-sm text-muted-foreground mt-2">Check back soon for new investment opportunities!</p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* My Positions */}
+        <TabsContent value="positions" className="space-y-4">
+          {userPositions && userPositions.length > 0 ? (
+            <div className="space-y-4">
+              {userPositions.filter((p: any) => p.status === 'active').map((position: any) => (
+                <Card key={position.id} data-testid={`position-${position.id}`}>
+                  <CardHeader>
+                    <CardTitle>Position #{position.id.slice(0, 8)}</CardTitle>
+                    <CardDescription>Staked on {new Date(position.stakedAt).toLocaleDateString()}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="text-center p-3 border rounded-lg">
+                        <div className="text-2xl font-bold text-green-500">{position.stakedAmount}</div>
+                        <div className="text-xs text-muted-foreground">Staked (ETH)</div>
+                      </div>
+                      <div className="text-center p-3 border rounded-lg">
+                        <div className="text-2xl font-bold text-blue-500">{position.currentValue}</div>
+                        <div className="text-xs text-muted-foreground">Current Value</div>
+                      </div>
+                      <div className="text-center p-3 border rounded-lg">
+                        <div className="text-2xl font-bold text-purple-500">{position.totalEarnings}</div>
+                        <div className="text-xs text-muted-foreground">Total Earned</div>
+                      </div>
+                      <div className="text-center p-3 border rounded-lg">
+                        <div className="text-2xl font-bold text-yellow-500">{position.pendingEarnings}</div>
+                        <div className="text-xs text-muted-foreground">Pending</div>
+                      </div>
+                    </div>
+
+                    {position.unlocksAt && new Date() < new Date(position.unlocksAt) ? (
+                      <div className="p-3 bg-yellow-500/10 border border-yellow-500/50 rounded-lg flex items-center gap-2">
+                        <Lock className="h-5 w-5 text-yellow-500" />
+                        <span>Unlocks on {new Date(position.unlocksAt).toLocaleDateString()}</span>
+                      </div>
+                    ) : (
+                      <Button className="w-full" variant="destructive" data-testid={`button-unstake-${position.id}`}>
+                        <ArrowDownCircle className="mr-2 h-5 w-5" />
+                        Unstake Position
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <Coins className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-xl text-muted-foreground">No active positions</p>
+                <p className="text-sm text-muted-foreground mt-2">Stake in a vault to start earning!</p>
+                <Link href="#vaults">
+                  <Button className="mt-4">Browse Vaults</Button>
+                </Link>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Earnings */}
+        <TabsContent value="earnings" className="space-y-4">
+          <Card>
+            <CardContent className="p-12 text-center">
+              <Gift className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+              <p className="text-xl text-muted-foreground">Earnings tracking coming soon!</p>
+              <p className="text-sm text-muted-foreground mt-2">You'll be able to view and claim your earnings here</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}

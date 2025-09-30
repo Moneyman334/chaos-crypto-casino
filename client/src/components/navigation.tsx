@@ -21,7 +21,8 @@ import {
   Sparkles,
   Image,
   Bot,
-  Crown
+  Crown,
+  Trophy
 } from "lucide-react";
 
 interface NavigationProps {
@@ -32,6 +33,7 @@ interface NavigationProps {
 const navigationItems = [
   { path: "/", label: "Home", icon: Home },
   { path: "/empire", label: "Empire", icon: Crown, featured: true },
+  { path: "/vaults", label: "House Vaults", icon: Trophy },
   { path: "/sentinel-bot", label: "Sentinel Bot", icon: Bot },
   { path: "/games", label: "Games", icon: Gamepad2 },
   { path: "/wallet", label: "Wallet", icon: Wallet },

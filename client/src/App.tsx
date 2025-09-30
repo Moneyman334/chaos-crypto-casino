@@ -21,6 +21,7 @@ import BotDashboardPage from "@/pages/bot-dashboard";
 import BotConfigPage from "@/pages/bot-config";
 import GamePlayPage from "@/pages/game-play";
 import EmpireDashboard from "@/pages/empire-dashboard";
+import HouseVaultsPage from "@/pages/house-vaults";
 import NotFound from "@/pages/not-found";
 import ConnectionModal from "@/components/connection-modal";
 import { useWeb3 } from "@/hooks/use-web3";
@@ -30,6 +31,7 @@ function Router() {
     <Switch>
       <Route path="/" component={HomePage} />
       <Route path="/empire" component={EmpireDashboard} />
+      <Route path="/vaults" component={HouseVaultsPage} />
       <Route path="/games" component={GamesPage} />
       <Route path="/wallet" component={WalletPage} />
       <Route path="/tokens" component={TokensPage} />
