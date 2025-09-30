@@ -121,52 +121,103 @@ app.use((req, res, next) => {
     log(`serving on port ${port}`);
   });
 
-  // Graceful shutdown handler
+  // Graceful shutdown handler with idempotency guard
+  let isShuttingDown = false;
+  let shutdownPromise: Promise<void> | null = null;
+
   const gracefulShutdown = async (signal: string) => {
+    // Prevent concurrent shutdowns
+    if (isShuttingDown) {
+      log(`Shutdown already in progress, ignoring ${signal}`);
+      return shutdownPromise;
+    }
+
+    isShuttingDown = true;
     log(`Received ${signal}, starting graceful shutdown...`);
-    
-    // Stop accepting new connections
-    server.close(() => {
-      log('HTTP server closed');
-    });
 
-    try {
-      // Stop auto-compound engine
-      const { autoCompoundEngine } = await import("./auto-compound-engine");
-      await autoCompoundEngine.stop();
-      log('Auto-compound engine stopped');
-    } catch (error) {
-      console.error('Error stopping auto-compound engine:', error);
-    }
+    shutdownPromise = (async () => {
+      let cleanupComplete = false;
+      let hasErrors = false;
 
-    try {
-      // Stop social scheduler
-      const { socialScheduler } = await import("./social-scheduler");
-      socialScheduler.stop();
-      log('Social scheduler stopped');
-    } catch (error) {
-      console.error('Error stopping social scheduler:', error);
-    }
+      // Note: We don't force exit on timeout anymore - let cleanup complete
+      // The timeout is just to log a warning
+      const forceTimeout = setTimeout(() => {
+        if (!cleanupComplete) {
+          log('Warning: cleanup taking longer than 10 seconds...');
+        }
+      }, 10000);
 
-    // Give ongoing requests time to finish
-    setTimeout(() => {
-      log('Forcing shutdown after timeout');
-      process.exit(0);
-    }, 10000); // 10 second timeout
+      try {
+        // Stop accepting new connections
+        try {
+          await new Promise<void>((resolve, reject) => {
+            server.close((err) => {
+              if (err) reject(err);
+              else {
+                log('HTTP server closed');
+                resolve();
+              }
+            });
+          });
+        } catch (error) {
+          hasErrors = true;
+          console.error('Error closing HTTP server:', error);
+          // Continue with other cleanup steps
+        }
+
+        // Stop auto-compound engine
+        try {
+          const { autoCompoundEngine } = await import("./auto-compound-engine");
+          await autoCompoundEngine.stop();
+          log('Auto-compound engine stopped');
+        } catch (error) {
+          hasErrors = true;
+          console.error('Error stopping auto-compound engine:', error);
+          // Continue with other cleanup steps
+        }
+
+        // Stop social scheduler
+        try {
+          const { socialScheduler } = await import("./social-scheduler");
+          socialScheduler.stop();
+          log('Social scheduler stopped');
+        } catch (error) {
+          hasErrors = true;
+          console.error('Error stopping social scheduler:', error);
+        }
+
+        cleanupComplete = true;
+        clearTimeout(forceTimeout);
+        
+        if (hasErrors) {
+          log('Graceful shutdown complete with errors');
+          process.exit(1);
+        } else {
+          log('Graceful shutdown complete');
+          process.exit(0);
+        }
+      } catch (error) {
+        console.error('Unexpected error during graceful shutdown:', error);
+        clearTimeout(forceTimeout);
+        process.exit(1);
+      }
+    })();
+
+    return shutdownPromise;
   };
 
   // Handle graceful shutdown signals
-  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+  process.on('SIGTERM', () => void gracefulShutdown('SIGTERM'));
+  process.on('SIGINT', () => void gracefulShutdown('SIGINT'));
 
-  // Handle uncaught errors
+  // Handle uncaught errors - must not use async handlers or await
   process.on('uncaughtException', (error) => {
     console.error('Uncaught Exception:', error);
-    gracefulShutdown('UNCAUGHT_EXCEPTION');
+    void gracefulShutdown('UNCAUGHT_EXCEPTION');
   });
 
   process.on('unhandledRejection', (reason, promise) => {
     console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-    // Don't exit on unhandled rejection, just log it
+    void gracefulShutdown('UNHANDLED_REJECTION');
   });
 })();
