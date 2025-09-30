@@ -42,13 +42,13 @@ interface RecentActivity {
 export default function SupremeCommandPage() {
   const { account, balance } = useWeb3();
 
-  const { data: empireStats } = useQuery<EmpireStats>({
-    queryKey: ['/api/supreme/stats', account],
+  const { data: empireStats, isLoading: statsLoading } = useQuery<EmpireStats>({
+    queryKey: [`/api/supreme/stats?account=${account}`],
     enabled: !!account,
   });
 
-  const { data: recentActivity } = useQuery<RecentActivity[]>({
-    queryKey: ['/api/supreme/activity', account],
+  const { data: recentActivity, isLoading: activityLoading } = useQuery<RecentActivity[]>({
+    queryKey: [`/api/supreme/activity?account=${account}`],
     enabled: !!account,
   });
 
@@ -198,7 +198,11 @@ export default function SupremeCommandPage() {
                       )}
                     </div>
                     <p className="text-sm text-muted-foreground mb-1">{stat.label}</p>
-                    <p className="text-3xl font-bold">{stat.value}</p>
+                    {statsLoading ? (
+                      <div className="h-9 bg-muted animate-pulse rounded" />
+                    ) : (
+                      <p className="text-3xl font-bold">{stat.value}</p>
+                    )}
                   </CardContent>
                 </Card>
               ))}
@@ -307,7 +311,15 @@ export default function SupremeCommandPage() {
               </TabsContent>
 
               <TabsContent value="activity" className="space-y-4">
-                {!recentActivity || recentActivity.length === 0 ? (
+                {activityLoading ? (
+                  <Card>
+                    <CardContent className="py-12 text-center">
+                      <Activity className="h-16 w-16 mx-auto mb-4 text-muted-foreground animate-pulse" />
+                      <h3 className="text-xl font-semibold mb-2">Loading Activity...</h3>
+                      <p className="text-muted-foreground">Fetching your recent actions</p>
+                    </CardContent>
+                  </Card>
+                ) : !recentActivity || recentActivity.length === 0 ? (
                   <Card>
                     <CardContent className="py-12 text-center">
                       <Activity className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-20" />

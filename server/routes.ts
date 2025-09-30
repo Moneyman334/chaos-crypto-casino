@@ -4343,6 +4343,128 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to fetch recently viewed" });
     }
   });
+
+  // ==================== SUPREME COMMAND CENTER ====================
+  
+  // Get aggregated empire stats
+  app.get("/api/supreme/stats", async (req, res) => {
+    try {
+      const walletAddress = req.query.account as string;
+      
+      if (!walletAddress) {
+        return res.json({
+          totalPortfolioValue: "0.00",
+          totalInvested: "0.00",
+          totalEarned: "0.00",
+          activePositions: 0,
+          totalPnL: "0.00",
+          pnlPercent: "0.00%"
+        });
+      }
+
+      let totalInvested = 0;
+      let totalEarned = 0;
+      let totalValue = 0;
+      let activePositions = 0;
+
+      // Aggregate staking positions
+      const stakingPositions = await storage.getUserStakingPositions(walletAddress);
+      for (const pos of stakingPositions) {
+        totalInvested += parseFloat(pos.amount);
+        totalValue += parseFloat(pos.amount) + parseFloat(pos.rewards);
+        totalEarned += parseFloat(pos.rewards);
+        if (pos.status === 'active') activePositions++;
+      }
+
+      // Aggregate from wallet balance if available
+      try {
+        const wallets = await storage.getWalletsByAddress(walletAddress);
+        for (const wallet of wallets) {
+          if (wallet.balance) {
+            totalValue += parseFloat(wallet.balance);
+          }
+        }
+      } catch (e) {
+        // Wallet data may not be available
+      }
+
+      const totalPnL = totalEarned;
+      const pnlPercent = totalInvested > 0 ? ((totalPnL / totalInvested) * 100).toFixed(2) : "0.00";
+
+      res.json({
+        totalPortfolioValue: totalValue.toFixed(2),
+        totalInvested: totalInvested.toFixed(2),
+        totalEarned: totalEarned.toFixed(2),
+        activePositions,
+        totalPnL: totalPnL.toFixed(2),
+        pnlPercent: `${pnlPercent}%`
+      });
+    } catch (error) {
+      console.error("Failed to fetch empire stats:", error);
+      res.status(500).json({ error: "Failed to fetch empire stats" });
+    }
+  });
+
+  // Get recent activity across all features
+  app.get("/api/supreme/activity", async (req, res) => {
+    try {
+      const walletAddress = req.query.account as string;
+      
+      if (!walletAddress) {
+        return res.json([]);
+      }
+
+      const activities: any[] = [];
+
+      // Get recent transactions
+      try {
+        const transactions = await storage.getTransactionsByAddress(walletAddress);
+        for (const tx of transactions.slice(0, 5)) {
+          activities.push({
+            id: tx.hash,
+            type: 'Transaction',
+            description: `${tx.type} transaction on ${tx.chain}`,
+            amount: tx.value ? `$${parseFloat(tx.value).toFixed(2)}` : undefined,
+            timestamp: tx.timestamp,
+            category: 'Blockchain'
+          });
+        }
+      } catch (e) {
+        // Transactions may not be available
+      }
+
+      // Get recent orders
+      try {
+        const orders = await storage.getOrders();
+        const userOrders = orders
+          .filter(o => o.customerWallet?.toLowerCase() === walletAddress.toLowerCase())
+          .slice(0, 3);
+        
+        for (const order of userOrders) {
+          activities.push({
+            id: order.id,
+            type: 'Order',
+            description: `Order ${order.id.substring(0, 8)} - ${order.status}`,
+            amount: `$${order.totalAmount}`,
+            timestamp: order.createdAt,
+            category: 'E-commerce'
+          });
+        }
+      } catch (e) {
+        // Orders may not be available
+      }
+
+      // Sort by timestamp descending and limit to 10
+      activities.sort((a, b) => 
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+
+      res.json(activities.slice(0, 10));
+    } catch (error) {
+      console.error("Failed to fetch recent activity:", error);
+      res.status(500).json({ error: "Failed to fetch recent activity" });
+    }
+  });
   
   const httpServer = createServer(app);
   return httpServer;
