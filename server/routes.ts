@@ -2232,8 +2232,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { poolId } = req.params;
       const stakeSchema = z.object({
-        walletAddress: z.string(),
-        initialStake: z.string(),
+        walletAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Invalid Ethereum address"),
+        initialStake: z.string().regex(/^\d+\.?\d*$/, "Invalid stake amount"),
         userId: z.string().optional()
       });
       

@@ -48,6 +48,14 @@ app.use((req, res, next) => {
   }
 
   const server = await registerRoutes(app);
+  
+  // Start auto-compound engine
+  const { autoCompoundEngine } = await import("./auto-compound-engine");
+  try {
+    await autoCompoundEngine.start();
+  } catch (error) {
+    console.error("Failed to start auto-compound engine:", error);
+  }
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
