@@ -539,3 +539,116 @@ export type InsertBotActiveStrategy = z.infer<typeof insertBotActiveStrategySche
 export type BotActiveStrategy = typeof botActiveStrategies.$inferSelect;
 export type InsertBotTrade = z.infer<typeof insertBotTradeSchema>;
 export type BotTrade = typeof botTrades.$inferSelect;
+
+// House Vaults - Player-Owned Liquidity System
+export const houseVaults = pgTable("house_vaults", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  tier: text("tier").notNull().default("standard"), // standard, premium, elite
+  minStake: text("min_stake").notNull().default("0.1"), // Minimum ETH to stake
+  apy: text("apy").notNull().default("15"), // Expected annual percentage yield
+  totalStaked: text("total_staked").notNull().default("0"), // Total ETH staked
+  totalEarnings: text("total_earnings").notNull().default("0"), // Total profit earned
+  activePositions: text("active_positions").notNull().default("0"), // Number of active stakers
+  status: text("status").notNull().default("active"), // active, paused, closed
+  riskLevel: text("risk_level").notNull().default("low"), // low, medium, high
+  lockPeriod: text("lock_period").default("0"), // Days before withdrawal allowed (0 = no lock)
+  performanceFee: text("performance_fee").notNull().default("10"), // Percentage of profits taken as fee
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  tierIdx: index("house_vaults_tier_idx").on(table.tier),
+  statusIdx: index("house_vaults_status_idx").on(table.status),
+}));
+
+export const housePositions = pgTable("house_positions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vaultId: varchar("vault_id").notNull().references(() => houseVaults.id),
+  walletAddress: text("wallet_address").notNull(),
+  userId: varchar("user_id").references(() => users.id),
+  stakedAmount: text("staked_amount").notNull(), // ETH amount staked
+  shares: text("shares").notNull(), // Vault shares owned
+  entryPrice: text("entry_price").notNull(), // Share price at entry
+  currentValue: text("current_value").notNull().default("0"), // Current position value
+  totalEarnings: text("total_earnings").notNull().default("0"), // Total earned
+  claimedEarnings: text("claimed_earnings").notNull().default("0"), // Already claimed
+  pendingEarnings: text("pending_earnings").notNull().default("0"), // Ready to claim
+  status: text("status").notNull().default("active"), // active, withdrawn, locked
+  stakedAt: timestamp("staked_at").notNull().defaultNow(),
+  unlocksAt: timestamp("unlocks_at"), // When position can be withdrawn
+  lastClaimAt: timestamp("last_claim_at"),
+  withdrawnAt: timestamp("withdrawn_at"),
+}, (table) => ({
+  vaultIdx: index("house_positions_vault_idx").on(table.vaultId),
+  walletIdx: index("house_positions_wallet_idx").on(sql`lower(${table.walletAddress})`),
+  userIdx: index("house_positions_user_idx").on(table.userId),
+  statusIdx: index("house_positions_status_idx").on(table.status),
+  stakedAtIdx: index("house_positions_staked_at_idx").on(table.stakedAt),
+}));
+
+export const houseDistributions = pgTable("house_distributions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vaultId: varchar("vault_id").notNull().references(() => houseVaults.id),
+  profitAmount: text("profit_amount").notNull(), // Total profit to distribute
+  performanceFee: text("performance_fee").notNull(), // Fee amount taken
+  netProfit: text("net_profit").notNull(), // Profit after fees
+  totalShares: text("total_shares").notNull(), // Total shares at distribution time
+  pricePerShare: text("price_per_share").notNull(), // Profit per share
+  source: text("source").notNull(), // casino_wins, trading_profits, etc
+  positionsAffected: text("positions_affected").notNull().default("0"),
+  distributedAt: timestamp("distributed_at").notNull().defaultNow(),
+  metadata: jsonb("metadata"), // Additional distribution details
+}, (table) => ({
+  vaultIdx: index("house_distributions_vault_idx").on(table.vaultId),
+  distributedAtIdx: index("house_distributions_distributed_at_idx").on(table.distributedAt),
+  sourceIdx: index("house_distributions_source_idx").on(table.source),
+}));
+
+export const houseEarnings = pgTable("house_earnings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  positionId: varchar("position_id").notNull().references(() => housePositions.id),
+  distributionId: varchar("distribution_id").notNull().references(() => houseDistributions.id),
+  walletAddress: text("wallet_address").notNull(),
+  earningAmount: text("earning_amount").notNull(), // Amount earned from this distribution
+  shares: text("shares").notNull(), // Shares owned at distribution time
+  status: text("status").notNull().default("pending"), // pending, claimed
+  claimedAt: timestamp("claimed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  positionIdx: index("house_earnings_position_idx").on(table.positionId),
+  distributionIdx: index("house_earnings_distribution_idx").on(table.distributionId),
+  walletIdx: index("house_earnings_wallet_idx").on(sql`lower(${table.walletAddress})`),
+  statusIdx: index("house_earnings_status_idx").on(table.status),
+  createdAtIdx: index("house_earnings_created_at_idx").on(table.createdAt),
+}));
+
+export const insertHouseVaultSchema = createInsertSchema(houseVaults).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertHousePositionSchema = createInsertSchema(housePositions).omit({
+  id: true,
+  stakedAt: true,
+});
+
+export const insertHouseDistributionSchema = createInsertSchema(houseDistributions).omit({
+  id: true,
+  distributedAt: true,
+});
+
+export const insertHouseEarningSchema = createInsertSchema(houseEarnings).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertHouseVault = z.infer<typeof insertHouseVaultSchema>;
+export type HouseVault = typeof houseVaults.$inferSelect;
+export type InsertHousePosition = z.infer<typeof insertHousePositionSchema>;
+export type HousePosition = typeof housePositions.$inferSelect;
+export type InsertHouseDistribution = z.infer<typeof insertHouseDistributionSchema>;
+export type HouseDistribution = typeof houseDistributions.$inferSelect;
+export type InsertHouseEarning = z.infer<typeof insertHouseEarningSchema>;
+export type HouseEarning = typeof houseEarnings.$inferSelect;
