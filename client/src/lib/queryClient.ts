@@ -1,4 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { fetchWithRetry } from "./api-retry";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -12,11 +13,15 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const res = await fetch(url, {
+  const res = await fetchWithRetry(url, {
     method,
     headers: data ? { "Content-Type": "application/json" } : {},
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
+  }, {
+    maxRetries: 2,
+    initialDelay: 1000,
+    retryableStatuses: [408, 429, 500, 502, 503, 504]
   });
 
   await throwIfResNotOk(res);
@@ -29,8 +34,12 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey.join("/") as string, {
+    const res = await fetchWithRetry(queryKey.join("/") as string, {
       credentials: "include",
+    }, {
+      maxRetries: 3,
+      initialDelay: 1000,
+      retryableStatuses: [408, 429, 500, 502, 503, 504]
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
@@ -47,11 +56,14 @@ export const queryClient = new QueryClient({
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
+      refetchOnReconnect: true,
       staleTime: Infinity,
-      retry: false,
+      retry: 3,
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
     },
     mutations: {
-      retry: false,
+      retry: 2,
+      retryDelay: 1000,
     },
   },
 });

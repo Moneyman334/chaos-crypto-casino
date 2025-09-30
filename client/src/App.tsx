@@ -62,6 +62,9 @@ import EmpireOracle from "@/components/empire-oracle";
 import WalletHealthMonitor from "@/components/wallet-health-monitor";
 import WalletActivityIndicator from "@/components/wallet-activity-indicator";
 import { useWalletSession } from "@/hooks/use-wallet-session";
+import { ErrorBoundary } from "@/components/error-boundary";
+import LoadingOverlay from "@/components/loading-overlay";
+import NetworkStatus from "@/components/network-status";
 
 function Router() {
   return (
@@ -145,24 +148,27 @@ function AppContent() {
   };
 
   return (
-    <TooltipProvider>
-      <div className="bg-background text-foreground min-h-screen">
-        <CosmicCursor />
-        <Toaster />
-        <Navigation 
-          onConnect={handleConnect}
-          onDisconnect={handleDisconnect}
-        />
-        
-        {/* Wallet Health Monitor */}
-        <div className="fixed top-20 right-4 z-40 hidden md:block">
-          <WalletHealthMonitor />
-        </div>
-        
-        {/* Wallet Activity Indicator */}
-        <WalletActivityIndicator />
-        
-        <Router />
+    <ErrorBoundary>
+      <TooltipProvider>
+        <LoadingOverlay />
+        <div className="bg-background text-foreground min-h-screen">
+          <CosmicCursor />
+          <Toaster />
+          <Navigation 
+            onConnect={handleConnect}
+            onDisconnect={handleDisconnect}
+          />
+          
+          {/* Wallet Health Monitor & Network Status */}
+          <div className="fixed top-20 right-4 z-40 hidden md:flex flex-col gap-2">
+            <WalletHealthMonitor />
+            <NetworkStatus />
+          </div>
+          
+          {/* Wallet Activity Indicator */}
+          <WalletActivityIndicator />
+          
+          <Router />
         
         {/* Enhanced Connection Modal */}
         <EnhancedConnectionModal
@@ -174,8 +180,9 @@ function AppContent() {
 
         {/* Empire Oracle - Available on all pages */}
         <EmpireOracle />
-      </div>
-    </TooltipProvider>
+        </div>
+      </TooltipProvider>
+    </ErrorBoundary>
   );
 }
 

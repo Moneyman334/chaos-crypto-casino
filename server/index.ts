@@ -120,4 +120,53 @@ app.use((req, res, next) => {
   }, () => {
     log(`serving on port ${port}`);
   });
+
+  // Graceful shutdown handler
+  const gracefulShutdown = async (signal: string) => {
+    log(`Received ${signal}, starting graceful shutdown...`);
+    
+    // Stop accepting new connections
+    server.close(() => {
+      log('HTTP server closed');
+    });
+
+    try {
+      // Stop auto-compound engine
+      const { autoCompoundEngine } = await import("./auto-compound-engine");
+      await autoCompoundEngine.stop();
+      log('Auto-compound engine stopped');
+    } catch (error) {
+      console.error('Error stopping auto-compound engine:', error);
+    }
+
+    try {
+      // Stop social scheduler
+      const { socialScheduler } = await import("./social-scheduler");
+      socialScheduler.stop();
+      log('Social scheduler stopped');
+    } catch (error) {
+      console.error('Error stopping social scheduler:', error);
+    }
+
+    // Give ongoing requests time to finish
+    setTimeout(() => {
+      log('Forcing shutdown after timeout');
+      process.exit(0);
+    }, 10000); // 10 second timeout
+  };
+
+  // Handle graceful shutdown signals
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+  // Handle uncaught errors
+  process.on('uncaughtException', (error) => {
+    console.error('Uncaught Exception:', error);
+    gracefulShutdown('UNCAUGHT_EXCEPTION');
+  });
+
+  process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    // Don't exit on unhandled rejection, just log it
+  });
 })();
