@@ -23,7 +23,8 @@ import {
   Bot,
   Crown,
   Trophy,
-  Zap
+  Zap,
+  Twitter
 } from "lucide-react";
 
 interface NavigationProps {
@@ -37,6 +38,7 @@ const navigationItems = [
   { path: "/auto-compound", label: "Auto-Compound", icon: Zap },
   { path: "/vaults", label: "House Vaults", icon: Trophy },
   { path: "/sentinel-bot", label: "Sentinel Bot", icon: Bot },
+  { path: "/social-automation", label: "Social Automation", icon: Twitter },
   { path: "/games", label: "Games", icon: Gamepad2 },
   { path: "/wallet", label: "Wallet", icon: Wallet },
   { path: "/deposits", label: "Deposits", icon: ArrowDownToLine },
