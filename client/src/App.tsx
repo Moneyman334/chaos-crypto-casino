@@ -55,7 +55,7 @@ import SocialTradingPage from "@/pages/social-trading";
 import TokenLaunchpadPage from "@/pages/token-launchpad";
 import SupremeCommandPage from "@/pages/supreme-command";
 import NotFound from "@/pages/not-found";
-import ConnectionModal from "@/components/connection-modal";
+import EnhancedConnectionModal from "@/components/enhanced-connection-modal";
 import { useWeb3 } from "@/hooks/use-web3";
 import CosmicCursor from "@/components/cosmic-cursor";
 import EmpireOracle from "@/components/empire-oracle";
@@ -119,7 +119,7 @@ function Router() {
 
 function AppContent() {
   const [showConnectionModal, setShowConnectionModal] = useState(false);
-  const { connectWallet, disconnectWallet } = useWeb3();
+  const { connectWallet, disconnectWallet, chainId } = useWeb3();
 
   const handleConnect = () => {
     setShowConnectionModal(true);
@@ -149,15 +149,12 @@ function AppContent() {
         />
         <Router />
         
-        {/* Global Connection Modal */}
-        <ConnectionModal
+        {/* Enhanced Connection Modal */}
+        <EnhancedConnectionModal
           isOpen={showConnectionModal}
           onClose={() => setShowConnectionModal(false)}
           onConnectMetaMask={handleConnectMetaMask}
-          onConnectWalletConnect={() => {
-            console.log("WalletConnect not implemented yet");
-            // TODO: Implement WalletConnect
-          }}
+          selectedNetwork={chainId}
         />
 
         {/* Empire Oracle - Available on all pages */}
