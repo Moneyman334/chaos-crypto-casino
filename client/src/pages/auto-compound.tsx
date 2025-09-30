@@ -143,7 +143,7 @@ export default function AutoCompoundPage() {
         {/* Stats Overview */}
         {account && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <Card className="premium-card border-purple-500/30 hover:border-purple-500/60 transition-all duration-300 glow-primary">
+            <Card className="premium-card cosmic-dust border-purple-500/30 hover:border-purple-500/60 transition-all duration-300 glow-primary">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Your Stakes</CardTitle>
                 <TrendingUp className="h-4 w-4 text-purple-500" />
@@ -156,7 +156,7 @@ export default function AutoCompoundPage() {
               </CardContent>
             </Card>
 
-            <Card className="premium-card border-green-500/30 hover:border-green-500/60 transition-all duration-300 glow-secondary">
+            <Card className="premium-card cosmic-dust border-green-500/30 hover:border-green-500/60 transition-all duration-300 glow-secondary">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Total Earned</CardTitle>
                 <DollarSign className="h-4 w-4 text-green-500" />
@@ -169,7 +169,7 @@ export default function AutoCompoundPage() {
               </CardContent>
             </Card>
 
-            <Card className="premium-card border-blue-500/30 hover:border-blue-500/60 transition-all duration-300">
+            <Card className="premium-card cosmic-dust border-blue-500/30 hover:border-blue-500/60 transition-all duration-300">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Active Pools</CardTitle>
                 <Activity className="h-4 w-4 text-blue-500" />
@@ -182,7 +182,7 @@ export default function AutoCompoundPage() {
               </CardContent>
             </Card>
 
-            <Card className="premium-card border-yellow-500/30 hover:border-yellow-500/60 transition-all duration-300 glow-accent">
+            <Card className="premium-card cosmic-dust border-yellow-500/30 hover:border-yellow-500/60 transition-all duration-300 glow-accent">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Compounds</CardTitle>
                 <Zap className="h-4 w-4 text-yellow-500" />
@@ -214,7 +214,7 @@ export default function AutoCompoundPage() {
                 </div>
               ) : pools && pools.length > 0 ? (
                 pools.map((pool: any) => (
-                  <Card key={pool.id} className="glass-strong border-2 border-purple-500/30 hover:border-purple-500/60 transition-all duration-300 glow-primary" data-testid={`pool-card-${pool.id}`}>
+                  <Card key={pool.id} className="glass-strong aurora-border cosmic-dust border-2 border-purple-500/30 hover:border-purple-500/60 transition-all duration-300 glow-primary" data-testid={`pool-card-${pool.id}`}>
                     <CardHeader>
                       <div className="flex items-center justify-between mb-2">
                         <CardTitle className="text-xl">{pool.name}</CardTitle>

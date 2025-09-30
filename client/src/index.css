@@ -84,24 +84,67 @@
   body {
     @apply font-sans antialiased bg-background text-foreground relative overflow-x-hidden;
     background-image: 
-      radial-gradient(circle at 20% 20%, hsla(280, 100%, 65%, 0.15) 0%, transparent 50%),
-      radial-gradient(circle at 80% 80%, hsla(190, 100%, 50%, 0.15) 0%, transparent 50%),
-      radial-gradient(circle at 50% 50%, hsla(330, 100%, 60%, 0.1) 0%, transparent 50%);
+      radial-gradient(circle at 20% 20%, hsla(280, 100%, 65%, 0.2) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, hsla(190, 100%, 50%, 0.2) 0%, transparent 50%),
+      radial-gradient(circle at 50% 50%, hsla(330, 100%, 60%, 0.15) 0%, transparent 50%),
+      radial-gradient(2px 2px at 20% 30%, white, transparent),
+      radial-gradient(2px 2px at 60% 70%, white, transparent),
+      radial-gradient(1px 1px at 50% 50%, white, transparent),
+      radial-gradient(1px 1px at 80% 10%, white, transparent),
+      radial-gradient(2px 2px at 90% 60%, white, transparent),
+      radial-gradient(1px 1px at 33% 50%, white, transparent),
+      radial-gradient(2px 2px at 79% 53%, white, transparent);
+    background-size: 
+      100% 100%,
+      100% 100%,
+      100% 100%,
+      200% 200%,
+      80% 80%,
+      90% 90%,
+      110% 110%,
+      80% 80%,
+      90% 90%,
+      100% 100%;
     background-attachment: fixed;
+    animation: cosmic-drift 60s ease-in-out infinite;
   }
   
   body::before {
+    content: '';
+    position: fixed;
+    top: -50%;
+    left: -50%;
+    right: -50%;
+    bottom: -50%;
+    background: 
+      radial-gradient(ellipse at 50% 0%, hsla(280, 100%, 65%, 0.15) 0%, transparent 40%),
+      radial-gradient(ellipse at 0% 50%, hsla(190, 100%, 50%, 0.15) 0%, transparent 40%),
+      radial-gradient(ellipse at 100% 50%, hsla(330, 100%, 60%, 0.15) 0%, transparent 40%),
+      linear-gradient(135deg, transparent 0%, hsla(280, 100%, 65%, 0.05) 50%, transparent 100%),
+      linear-gradient(225deg, transparent 0%, hsla(190, 100%, 50%, 0.05) 50%, transparent 100%);
+    pointer-events: none;
+    z-index: 0;
+    animation: aurora-shift 20s ease-in-out infinite alternate;
+  }
+  
+  body::after {
     content: '';
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background: 
-      linear-gradient(135deg, transparent 0%, hsla(280, 100%, 65%, 0.03) 50%, transparent 100%),
-      linear-gradient(225deg, transparent 0%, hsla(190, 100%, 50%, 0.03) 50%, transparent 100%);
+    background-image: 
+      radial-gradient(2px 2px at 10% 10%, hsla(280, 100%, 65%, 0.8), transparent),
+      radial-gradient(1px 1px at 90% 20%, hsla(190, 100%, 50%, 0.8), transparent),
+      radial-gradient(2px 2px at 30% 80%, hsla(330, 100%, 60%, 0.8), transparent),
+      radial-gradient(1px 1px at 70% 50%, hsla(280, 100%, 65%, 0.6), transparent),
+      radial-gradient(1px 1px at 50% 90%, hsla(190, 100%, 50%, 0.6), transparent);
+    background-size: 200% 200%;
+    animation: particle-float 40s linear infinite;
     pointer-events: none;
     z-index: 0;
+    opacity: 0.6;
   }
   
   #root {
@@ -196,7 +239,7 @@
   box-shadow: var(--glow-accent);
 }
 
-/* Animations */
+/* Cosmic & Divine Animations */
 @keyframes pulse {
   0%, 100% {
     opacity: 1;
@@ -224,6 +267,75 @@
   }
 }
 
+@keyframes cosmic-drift {
+  0%, 100% {
+    background-position: 0% 0%, 100% 100%, 50% 50%, 0% 0%, 20% 80%, 50% 50%, 80% 10%, 90% 60%, 33% 50%, 79% 53%;
+  }
+  50% {
+    background-position: 100% 100%, 0% 0%, 50% 50%, 100% 100%, 80% 20%, 50% 50%, 10% 80%, 60% 90%, 50% 33%, 53% 79%;
+  }
+}
+
+@keyframes aurora-shift {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  100% {
+    transform: rotate(180deg) scale(1.2);
+  }
+}
+
+@keyframes particle-float {
+  0% {
+    transform: translateY(0) translateX(0);
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(-100vh) translateX(100vw);
+    opacity: 0.4;
+  }
+}
+
+@keyframes holographic {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes divine-glow {
+  0%, 100% {
+    box-shadow: 
+      0 0 20px hsla(280, 100%, 65%, 0.4),
+      0 0 40px hsla(190, 100%, 50%, 0.3),
+      0 0 60px hsla(330, 100%, 60%, 0.2),
+      inset 0 0 20px hsla(280, 100%, 65%, 0.1);
+  }
+  50% {
+    box-shadow: 
+      0 0 40px hsla(280, 100%, 65%, 0.6),
+      0 0 60px hsla(190, 100%, 50%, 0.5),
+      0 0 80px hsla(330, 100%, 60%, 0.4),
+      inset 0 0 30px hsla(280, 100%, 65%, 0.2);
+  }
+}
+
+@keyframes celestial-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.9;
+  }
+}
+
 .animate-float {
   animation: float 3s ease-in-out infinite;
 }
@@ -239,17 +351,267 @@
   animation: shimmer 3s infinite;
 }
 
-/* Premium Card Styles */
+.animate-celestial {
+  animation: celestial-pulse 4s ease-in-out infinite;
+}
+
+/* Premium Card Styles - Divine Edition */
 .premium-card {
   background: hsla(220, 25%, 10%, 0.5);
   backdrop-filter: blur(20px);
   border: 1px solid hsla(255, 255%, 255%, 0.1);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.premium-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  right: -50%;
+  bottom: -50%;
+  background: linear-gradient(
+    45deg,
+    transparent 30%,
+    hsla(280, 100%, 65%, 0.1) 50%,
+    transparent 70%
+  );
+  background-size: 200% 200%;
+  animation: holographic 8s linear infinite;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+
+.premium-card:hover::before {
+  opacity: 1;
 }
 
 .premium-card:hover {
   background: hsla(220, 25%, 12%, 0.6);
-  border-color: hsla(280, 100%, 65%, 0.4);
-  box-shadow: var(--shadow-xl), 0 0 40px hsla(280, 100%, 65%, 0.2);
-  transform: translateY(-2px);
+  border-color: hsla(280, 100%, 65%, 0.5);
+  box-shadow: 
+    0 0 40px hsla(280, 100%, 65%, 0.3),
+    0 0 60px hsla(190, 100%, 50%, 0.2),
+    0 0 80px hsla(330, 100%, 60%, 0.1),
+    var(--shadow-xl);
+  transform: translateY(-4px) scale(1.01);
+}
+
+/* Holographic Effect */
+.holographic {
+  position: relative;
+  background: linear-gradient(
+    135deg,
+    hsla(280, 100%, 65%, 0.2),
+    hsla(190, 100%, 50%, 0.2),
+    hsla(330, 100%, 60%, 0.2)
+  );
+  background-size: 200% 200%;
+  animation: holographic 6s ease infinite;
+}
+
+/* Divine Glow Effect */
+.divine-glow {
+  animation: divine-glow 3s ease-in-out infinite;
+}
+
+/* Aurora Border */
+.aurora-border {
+  position: relative;
+  border: 2px solid transparent;
+  background: linear-gradient(hsla(220, 25%, 10%, 0.8), hsla(220, 25%, 10%, 0.8)) padding-box,
+              linear-gradient(135deg, hsl(280, 100%, 65%), hsl(190, 100%, 50%), hsl(330, 100%, 60%)) border-box;
+  background-size: 100% 100%, 200% 200%;
+  animation: holographic 8s linear infinite;
+}
+
+/* Cosmic Dust Effect */
+.cosmic-dust {
+  position: relative;
+}
+
+.cosmic-dust::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(2px 2px at 20% 30%, hsla(280, 100%, 65%, 0.4), transparent),
+    radial-gradient(1px 1px at 80% 70%, hsla(190, 100%, 50%, 0.4), transparent),
+    radial-gradient(2px 2px at 50% 50%, hsla(330, 100%, 60%, 0.4), transparent);
+  background-size: 100% 100%;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.5s;
+}
+
+.cosmic-dust:hover::after {
+  opacity: 1;
+  animation: particle-float 20s linear infinite;
+}
+
+/* Enhanced Button Styles - Divine Edition */
+button {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+button:hover {
+  transform: translateY(-1px);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+/* Celestial Interactions */
+.celestial-hover {
+  position: relative;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.celestial-hover:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 
+    0 10px 40px hsla(280, 100%, 65%, 0.3),
+    0 0 60px hsla(190, 100%, 50%, 0.2);
+}
+
+.celestial-hover::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: linear-gradient(45deg, transparent, hsla(280, 100%, 65%, 0.3), transparent);
+  opacity: 0;
+  transition: opacity 0.4s;
+  pointer-events: none;
+}
+
+.celestial-hover:hover::before {
+  opacity: 1;
+  animation: holographic 3s linear infinite;
+}
+
+/* Divine Focus States */
+*:focus-visible {
+  outline: 2px solid hsl(280, 100%, 65%);
+  outline-offset: 3px;
+  box-shadow: 0 0 20px hsla(280, 100%, 65%, 0.4);
+}
+
+/* Smooth Scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Enhanced Transitions */
+* {
+  transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Nebula Gradient Animation */
+@keyframes nebula {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.nebula-gradient {
+  background: linear-gradient(
+    270deg,
+    hsla(280, 100%, 65%, 0.3),
+    hsla(190, 100%, 50%, 0.3),
+    hsla(330, 100%, 60%, 0.3),
+    hsla(280, 100%, 65%, 0.3)
+  );
+  background-size: 400% 400%;
+  animation: nebula 15s ease infinite;
+}
+
+/* Sacred Geometry Effects */
+.sacred-geometry {
+  position: relative;
+}
+
+.sacred-geometry::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: 
+    repeating-linear-gradient(0deg, transparent, transparent 2px, hsla(280, 100%, 65%, 0.03) 2px, hsla(280, 100%, 65%, 0.03) 4px),
+    repeating-linear-gradient(90deg, transparent, transparent 2px, hsla(190, 100%, 50%, 0.03) 2px, hsla(190, 100%, 50%, 0.03) 4px);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.5s;
+}
+
+.sacred-geometry:hover::after {
+  opacity: 1;
+}
+
+/* Motion & Mobile Safeguards */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  body::before,
+  body::after {
+    animation: none !important;
+  }
+  
+  .divine-glow,
+  .cosmic-dust::after,
+  .holographic,
+  .animate-float,
+  .animate-shimmer,
+  .animate-celestial {
+    animation: none !important;
+  }
+}
+
+/* Mobile/iOS Safari optimizations */
+@media (max-width: 768px) {
+  body {
+    background-attachment: scroll !important;
+    background-size: 100% 100%, 100% 100%, 100% 100%, 150% 150%, 80% 80%, 90% 90%, 110% 110%, 80% 80%, 90% 90%, 100% 100% !important;
+  }
+  
+  body::before,
+  body::after {
+    display: none;
+  }
+  
+  .divine-glow {
+    animation: none;
+    box-shadow: 0 0 20px hsla(280, 100%, 65%, 0.3), 0 0 40px hsla(190, 100%, 50%, 0.2);
+  }
+  
+  .premium-card {
+    backdrop-filter: blur(10px);
+  }
+  
+  .glass-strong {
+    backdrop-filter: blur(15px);
+  }
+}
+
+/* iOS-specific fix for background-attachment */
+@supports (-webkit-touch-callout: none) {
+  body {
+    background-attachment: scroll;
+  }
 }

@@ -86,7 +86,7 @@ export default function EmpireDashboard() {
   return (
     <div className="min-h-screen bg-background p-6 space-y-6">
       {/* Hero Section */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary via-purple-600 to-accent p-8 text-white animate-float">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary via-purple-600 to-accent p-8 text-white animate-float divine-glow">
         <div className="absolute inset-0 bg-black/30 backdrop-blur-sm"></div>
         <div className="absolute inset-0 animate-shimmer"></div>
         <div className="relative z-10 space-y-4">
@@ -121,7 +121,7 @@ export default function EmpireDashboard() {
 
       {/* Empire Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="premium-card border-primary/30 hover:border-primary/60 transition-all duration-300 glow-primary">
+        <Card className="premium-card cosmic-dust border-primary/30 hover:border-primary/60 transition-all duration-300 glow-primary">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Volume</CardTitle>
             <TrendingUp className="h-4 w-4 text-primary" />
@@ -132,7 +132,7 @@ export default function EmpireDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="premium-card border-accent/30 hover:border-accent/60 transition-all duration-300 glow-accent">
+        <Card className="premium-card cosmic-dust border-accent/30 hover:border-accent/60 transition-all duration-300 glow-accent">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active Players</CardTitle>
             <Users className="h-4 w-4 text-accent" />
@@ -143,7 +143,7 @@ export default function EmpireDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="premium-card border-green-500/30 hover:border-green-500/60 transition-all duration-300 glow-secondary">
+        <Card className="premium-card cosmic-dust border-green-500/30 hover:border-green-500/60 transition-all duration-300 glow-secondary">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">House Profit</CardTitle>
             <Coins className="h-4 w-4 text-green-500" />
@@ -154,7 +154,7 @@ export default function EmpireDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="premium-card border-yellow-500/30 hover:border-yellow-500/60 transition-all duration-300">
+        <Card className="premium-card cosmic-dust border-yellow-500/30 hover:border-yellow-500/60 transition-all duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Games Played</CardTitle>
             <Trophy className="h-4 w-4 text-yellow-500" />
@@ -169,7 +169,7 @@ export default function EmpireDashboard() {
       {isConnected && (
         <div className="grid md:grid-cols-3 gap-6">
           {/* User Progress */}
-          <Card className="md:col-span-2 glass-strong">
+          <Card className="md:col-span-2 glass-strong aurora-border">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-primary" />
@@ -225,7 +225,7 @@ export default function EmpireDashboard() {
           </Card>
 
           {/* Quick Stats */}
-          <Card className="glass-strong">
+          <Card className="glass-strong holographic">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Shield className="h-5 w-5 text-primary" />
@@ -264,7 +264,7 @@ export default function EmpireDashboard() {
       )}
 
       {/* House Vaults Showcase */}
-      <Card className="glass-strong border-green-500/30 hover:border-green-500/60 bg-gradient-to-br from-green-500/10 via-emerald-500/10 to-teal-500/10 overflow-hidden transition-all duration-300 glow-secondary">
+      <Card className="glass-strong cosmic-dust border-green-500/30 hover:border-green-500/60 bg-gradient-to-br from-green-500/10 via-emerald-500/10 to-teal-500/10 overflow-hidden transition-all duration-300 glow-secondary divine-glow">
         <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-teal-500/5 pointer-events-none" />
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -317,7 +317,7 @@ export default function EmpireDashboard() {
           {/* Featured Vaults */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {(vaults || []).slice(0, 3).map((vault: any) => (
-              <div key={vault.id} className="border rounded-lg p-4 bg-background/50 hover:border-green-500/50 transition-all" data-testid={`vault-preview-${vault.tier}`}>
+              <div key={vault.id} className="border rounded-lg p-4 bg-background/50 hover:border-green-500/50 transition-all premium-card" data-testid={`vault-preview-${vault.tier}`}>
                 <div className="flex items-center justify-between mb-2">
                   <Badge className={vault.tier === 'elite' ? 'bg-gradient-to-r from-yellow-500 to-amber-500 text-black' : vault.tier === 'premium' ? 'bg-gradient-to-r from-purple-500 to-pink-500' : 'bg-gradient-to-r from-blue-500 to-cyan-500'}>
                     {vault.tier.toUpperCase()}
