@@ -26,6 +26,11 @@ import EmpireDashboard from "@/pages/empire-dashboard";
 import HouseVaultsPage from "@/pages/house-vaults";
 import AutoCompoundPage from "@/pages/auto-compound";
 import SocialAutomationPage from "@/pages/social-automation";
+import AdminDiscountsPage from "@/pages/admin-discounts";
+import SubscriptionsPage from "@/pages/subscriptions";
+import AffiliateDashboardPage from "@/pages/affiliate-dashboard";
+import GiftCardsPage from "@/pages/gift-cards";
+import LoyaltyPage from "@/pages/loyalty";
 import NotFound from "@/pages/not-found";
 import ConnectionModal from "@/components/connection-modal";
 import { useWeb3 } from "@/hooks/use-web3";
@@ -55,6 +60,11 @@ function Router() {
       <Route path="/bot-config" component={BotConfigPage} />
       <Route path="/play" component={GamePlayPage} />
       <Route path="/social-automation" component={SocialAutomationPage} />
+      <Route path="/admin/discounts" component={AdminDiscountsPage} />
+      <Route path="/subscriptions" component={SubscriptionsPage} />
+      <Route path="/affiliate" component={AffiliateDashboardPage} />
+      <Route path="/gift-cards" component={GiftCardsPage} />
+      <Route path="/loyalty" component={LoyaltyPage} />
       <Route component={NotFound} />
     </Switch>
   );
