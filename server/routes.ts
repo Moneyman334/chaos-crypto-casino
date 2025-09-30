@@ -1666,6 +1666,279 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== PAYMENT SYSTEM ROUTES =====
+  
+  // Product Routes
+  app.get("/api/products", async (req, res) => {
+    try {
+      const products = await storage.getAllProducts();
+      res.json(products);
+    } catch (error) {
+      console.error("Failed to fetch products:", error);
+      res.status(500).json({ error: "Failed to fetch products" });
+    }
+  });
+  
+  app.get("/api/products/active", async (req, res) => {
+    try {
+      const products = await storage.getActiveProducts();
+      res.json(products);
+    } catch (error) {
+      console.error("Failed to fetch active products:", error);
+      res.status(500).json({ error: "Failed to fetch active products" });
+    }
+  });
+  
+  app.get("/api/products/:id", async (req, res) => {
+    try {
+      const product = await storage.getProduct(req.params.id);
+      if (!product) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+      res.json(product);
+    } catch (error) {
+      console.error("Failed to fetch product:", error);
+      res.status(500).json({ error: "Failed to fetch product" });
+    }
+  });
+  
+  // Order Routes
+  app.post("/api/orders/create", async (req, res) => {
+    try {
+      const orderSchema = z.object({
+        customerEmail: z.string().email().optional(),
+        customerWallet: z.string().optional(),
+        paymentMethod: z.enum(['metamask', 'nowpayments', 'stripe']),
+        items: z.array(z.object({
+          productId: z.string(),
+          quantity: z.number().int().positive(),
+          price: z.string()
+        })),
+        totalAmount: z.string(),
+        currency: z.string().default('USD'),
+        metadata: z.any().optional()
+      });
+
+      const orderData = orderSchema.parse(req.body);
+      const order = await storage.createOrder({
+        ...orderData,
+        status: 'pending',
+        userId: (req.user as any)?.id,
+        items: orderData.items as any,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
+      });
+
+      res.json(order);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid order data", 
+          details: error.errors 
+        });
+      }
+      console.error("Failed to create order:", error);
+      res.status(500).json({ error: "Failed to create order" });
+    }
+  });
+  
+  app.get("/api/orders/:id", async (req, res) => {
+    try {
+      const order = await storage.getOrder(req.params.id);
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+      res.json(order);
+    } catch (error) {
+      console.error("Failed to fetch order:", error);
+      res.status(500).json({ error: "Failed to fetch order" });
+    }
+  });
+  
+  app.get("/api/orders/user/:userId", async (req, res) => {
+    try {
+      const orders = await storage.getUserOrders(req.params.userId);
+      res.json(orders);
+    } catch (error) {
+      console.error("Failed to fetch user orders:", error);
+      res.status(500).json({ error: "Failed to fetch user orders" });
+    }
+  });
+  
+  app.get("/api/orders/wallet/:walletAddress", async (req, res) => {
+    try {
+      const orders = await storage.getOrdersByWallet(req.params.walletAddress);
+      res.json(orders);
+    } catch (error) {
+      console.error("Failed to fetch wallet orders:", error);
+      res.status(500).json({ error: "Failed to fetch wallet orders" });
+    }
+  });
+  
+  // Payment Processing Routes
+  app.post("/api/payments/metamask", async (req, res) => {
+    try {
+      const paymentSchema = z.object({
+        orderId: z.string(),
+        txHash: z.string(),
+        fromAddress: z.string(),
+        amount: z.string(),
+        currency: z.string()
+      });
+
+      const data = paymentSchema.parse(req.body);
+      
+      const payment = await storage.createPayment({
+        orderId: data.orderId,
+        paymentMethod: 'metamask',
+        provider: 'metamask',
+        amount: data.amount,
+        currency: data.currency,
+        status: 'pending',
+        txHash: data.txHash,
+        fromAddress: data.fromAddress,
+        confirmations: '0'
+      });
+
+      await storage.updateOrder(data.orderId, {
+        status: 'processing'
+      });
+
+      res.json(payment);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid payment data", 
+          details: error.errors 
+        });
+      }
+      console.error("Failed to process MetaMask payment:", error);
+      res.status(500).json({ error: "Failed to process payment" });
+    }
+  });
+  
+  app.post("/api/payments/nowpayments", async (req, res) => {
+    try {
+      const paymentSchema = z.object({
+        orderId: z.string(),
+        crypto: z.string(),
+        amount: z.string(),
+        currency: z.string()
+      });
+
+      const data = paymentSchema.parse(req.body);
+      
+      const payment = await storage.createPayment({
+        orderId: data.orderId,
+        paymentMethod: 'nowpayments',
+        provider: 'nowpayments',
+        amount: data.amount,
+        currency: data.currency,
+        status: 'waiting',
+        providerResponse: {
+          pay_currency: data.crypto,
+          created_at: new Date().toISOString()
+        } as any
+      });
+
+      await storage.updateOrder(data.orderId, {
+        status: 'awaiting_payment'
+      });
+
+      res.json(payment);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid payment data", 
+          details: error.errors 
+        });
+      }
+      console.error("Failed to process NOWPayments payment:", error);
+      res.status(500).json({ error: "Failed to process payment" });
+    }
+  });
+  
+  app.get("/api/payments/order/:orderId", async (req, res) => {
+    try {
+      const payments = await storage.getPaymentsByOrder(req.params.orderId);
+      res.json(payments);
+    } catch (error) {
+      console.error("Failed to fetch order payments:", error);
+      res.status(500).json({ error: "Failed to fetch payments" });
+    }
+  });
+  
+  app.get("/api/payments/:id/status", async (req, res) => {
+    try {
+      const payment = await storage.getPayment(req.params.id);
+      if (!payment) {
+        return res.status(404).json({ error: "Payment not found" });
+      }
+      res.json({ status: payment.status, payment });
+    } catch (error) {
+      console.error("Failed to fetch payment status:", error);
+      res.status(500).json({ error: "Failed to fetch payment status" });
+    }
+  });
+  
+  app.post("/api/payments/:id/confirm", async (req, res) => {
+    try {
+      const confirmSchema = z.object({
+        confirmations: z.string().optional(),
+        providerResponse: z.any().optional()
+      });
+
+      const data = confirmSchema.parse(req.body);
+      const payment = await storage.updatePayment(req.params.id, {
+        status: 'confirmed',
+        confirmedAt: new Date(),
+        confirmations: data.confirmations,
+        providerResponse: data.providerResponse as any
+      });
+
+      if (payment) {
+        await storage.updateOrder(payment.orderId, {
+          status: 'completed'
+        });
+      }
+
+      res.json(payment);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid confirmation data", 
+          details: error.errors 
+        });
+      }
+      console.error("Failed to confirm payment:", error);
+      res.status(500).json({ error: "Failed to confirm payment" });
+    }
+  });
+  
+  // Webhook Route (for payment provider callbacks)
+  app.post("/api/webhooks/payment", async (req, res) => {
+    try {
+      const webhookSchema = z.object({
+        provider: z.string(),
+        eventType: z.string(),
+        payload: z.any()
+      });
+
+      const data = webhookSchema.parse(req.body);
+      
+      await storage.createPaymentWebhook({
+        provider: data.provider,
+        eventType: data.eventType,
+        payload: data.payload as any,
+        processed: 'false'
+      });
+
+      res.json({ received: true });
+    } catch (error) {
+      console.error("Failed to process webhook:", error);
+      res.status(500).json({ error: "Failed to process webhook" });
+    }
+  });
+
   // ===== SENTINEL BOT ROUTES =====
   
   // Get all available bot strategies

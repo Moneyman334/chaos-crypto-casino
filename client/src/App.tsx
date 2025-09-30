@@ -14,6 +14,8 @@ import ContractsPage from "@/pages/contracts";
 import NFTsPage from "@/pages/nfts";
 import DepositsPage from "@/pages/deposits";
 import CryptoPaymentsPage from "@/pages/crypto-payments";
+import CheckoutPage from "@/pages/checkout";
+import OrdersPage from "@/pages/orders";
 import TokenCreatorPage from "@/pages/token-creator";
 import NFTCreatorPage from "@/pages/nft-creator";
 import SentinelBotPage from "@/pages/sentinel-bot";
@@ -44,6 +46,8 @@ function Router() {
       <Route path="/nfts" component={NFTsPage} />
       <Route path="/deposits" component={DepositsPage} />
       <Route path="/crypto-payments" component={CryptoPaymentsPage} />
+      <Route path="/checkout" component={CheckoutPage} />
+      <Route path="/orders" component={OrdersPage} />
       <Route path="/token-creator" component={TokenCreatorPage} />
       <Route path="/nft-creator" component={NFTCreatorPage} />
       <Route path="/sentinel-bot" component={SentinelBotPage} />
