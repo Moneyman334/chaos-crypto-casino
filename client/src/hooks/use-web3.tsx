@@ -461,6 +461,49 @@ export function useWeb3() {
     }
   }, [checkConnection, disconnectWallet]);
 
+  // Mobile resume handler - reconnect wallet when app returns to foreground
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      // When page becomes visible again (user unlocks phone or returns to tab)
+      if (document.visibilityState === 'visible') {
+        const wasConnected = localStorage.getItem('web3_connected') === 'true';
+        
+        if (wasConnected && window.ethereum && state.account) {
+          console.log('App resumed - reconnecting wallet...');
+          // Re-check connection and refresh state
+          checkConnection();
+          refreshBalance();
+          refreshNetworkInfo();
+        }
+      }
+    };
+
+    const handlePageShow = (event: PageTransitionEvent) => {
+      // iOS Safari uses back/forward cache, handle page restoration
+      if (event.persisted) {
+        const wasConnected = localStorage.getItem('web3_connected') === 'true';
+        
+        if (wasConnected && window.ethereum && state.account) {
+          console.log('Page restored from cache - reconnecting wallet...');
+          checkConnection();
+          refreshBalance();
+          refreshNetworkInfo();
+        }
+      }
+    };
+
+    // Listen for visibility changes (screen lock/unlock, tab switch)
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Listen for page show events (iOS back/forward cache)
+    window.addEventListener('pageshow', handlePageShow);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pageshow', handlePageShow);
+    };
+  }, [state.account, checkConnection, refreshBalance, refreshNetworkInfo]);
+
   // New utility functions for multi-chain support
   const getAvailableNetworks = useCallback(() => {
     return getAllNetworks();
