@@ -42,6 +42,8 @@ import AnalyticsPage from "@/pages/analytics";
 import PortfolioPage from "@/pages/portfolio";
 import NotificationsPage from "@/pages/notifications";
 import AchievementsPage from "@/pages/achievements";
+import MarketplacePage from "@/pages/marketplace";
+import StakingPage from "@/pages/staking";
 import NotFound from "@/pages/not-found";
 import ConnectionModal from "@/components/connection-modal";
 import { useWeb3 } from "@/hooks/use-web3";
@@ -87,6 +89,8 @@ function Router() {
       <Route path="/portfolio" component={PortfolioPage} />
       <Route path="/notifications" component={NotificationsPage} />
       <Route path="/achievements" component={AchievementsPage} />
+      <Route path="/marketplace" component={MarketplacePage} />
+      <Route path="/staking" component={StakingPage} />
       <Route component={NotFound} />
     </Switch>
   );
