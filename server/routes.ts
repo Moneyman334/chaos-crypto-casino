@@ -3045,6 +3045,749 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== MASTERPIECE FEATURES ====================
+  
+  // Import price service and create db connection for new features
+  const { getCryptoPrice, convertUsdToCrypto, getAllPrices, formatCryptoAmount } = await import("./price-service");
+  const { drizzle: drizzleORM } = await import("drizzle-orm/neon-http");
+  const { neon: neonClient } = await import("@neondatabase/serverless");
+  const { 
+    supportedCurrencies, discountCodes, giftCards, giftCardUsage,
+    loyaltyAccounts, loyaltyTransactions, productReviews, wishlists,
+    invoices, nftReceipts, refunds
+  } = await import("@shared/schema");
+  
+  const sqlClient = neonClient(process.env.DATABASE_URL!);
+  const dbClient = drizzleORM(sqlClient);
+  
+  // Get supported currencies
+  app.get("/api/currencies", async (req, res) => {
+    try {
+      const { chainId, isActive } = req.query;
+      
+      let query = dbClient.select().from(supportedCurrencies);
+      const conditions = [];
+      
+      if (chainId) {
+        conditions.push(eq(supportedCurrencies.chainId, chainId as string));
+      }
+      if (isActive !== undefined) {
+        conditions.push(eq(supportedCurrencies.isActive, isActive as string));
+      }
+      
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions)) as any;
+      }
+      
+      const currencies = await query;
+      res.json(currencies);
+    } catch (error) {
+      console.error("Failed to fetch currencies:", error);
+      res.status(500).json({ error: "Failed to fetch currencies" });
+    }
+  });
+  
+  // Get crypto prices
+  app.get("/api/prices", async (req, res) => {
+    try {
+      const prices = getAllPrices();
+      res.json(prices);
+    } catch (error) {
+      console.error("Failed to fetch prices:", error);
+      res.status(500).json({ error: "Failed to fetch prices" });
+    }
+  });
+  
+  // Get single crypto price
+  app.get("/api/prices/:symbol", async (req, res) => {
+    try {
+      const { symbol } = req.params;
+      const price = getCryptoPrice(symbol);
+      
+      if (!price) {
+        return res.status(404).json({ error: "Price not found" });
+      }
+      
+      res.json(price);
+    } catch (error) {
+      console.error("Failed to fetch price:", error);
+      res.status(500).json({ error: "Failed to fetch price" });
+    }
+  });
+  
+  // Convert USD to crypto
+  app.post("/api/prices/convert", async (req, res) => {
+    try {
+      const schema = z.object({
+        amount: z.number(),
+        from: z.string(), // USD
+        to: z.string(), // crypto symbol
+      });
+      
+      const { amount, from, to } = schema.parse(req.body);
+      
+      if (from !== "USD") {
+        return res.status(400).json({ error: "Only USD conversion supported" });
+      }
+      
+      const cryptoAmount = convertUsdToCrypto(amount, to);
+      const formatted = formatCryptoAmount(cryptoAmount, to);
+      
+      res.json({ 
+        amount: cryptoAmount,
+        formatted,
+        symbol: to,
+        usdAmount: amount
+      });
+    } catch (error) {
+      console.error("Conversion failed:", error);
+      res.status(400).json({ error: "Conversion failed" });
+    }
+  });
+  
+  // Get discount codes
+  app.get("/api/discounts", async (req, res) => {
+    try {
+      const codes = await dbClient.select().from(discountCodes)
+        .where(eq(discountCodes.isActive, "true"));
+      res.json(codes);
+    } catch (error) {
+      console.error("Failed to fetch discount codes:", error);
+      res.status(500).json({ error: "Failed to fetch discount codes" });
+    }
+  });
+  
+  // Validate discount code
+  app.post("/api/discounts/validate", async (req, res) => {
+    try {
+      const schema = z.object({
+        code: z.string(),
+        cartTotal: z.number(),
+      });
+      
+      const { code, cartTotal } = schema.parse(req.body);
+      
+      const discount = await dbClient.select().from(discountCodes)
+        .where(and(
+          eq(discountCodes.code, code),
+          eq(discountCodes.isActive, "true")
+        ))
+        .limit(1);
+      
+      if (discount.length === 0) {
+        return res.status(404).json({ error: "Discount code not found or inactive" });
+      }
+      
+      const discountData = discount[0];
+      
+      // Check validity period
+      const now = new Date();
+      if (discountData.validUntil && new Date(discountData.validUntil) < now) {
+        return res.status(400).json({ error: "Discount code has expired" });
+      }
+      
+      // Check minimum purchase
+      if (discountData.minPurchase && parseFloat(discountData.minPurchase) > cartTotal) {
+        return res.status(400).json({ 
+          error: `Minimum purchase of $${discountData.minPurchase} required` 
+        });
+      }
+      
+      // Check usage limit
+      if (discountData.usageLimit && parseInt(discountData.usageCount) >= parseInt(discountData.usageLimit)) {
+        return res.status(400).json({ error: "Discount code usage limit reached" });
+      }
+      
+      // Calculate discount amount
+      let discountAmount = 0;
+      if (discountData.type === "percentage") {
+        discountAmount = (cartTotal * parseFloat(discountData.value)) / 100;
+        if (discountData.maxDiscount) {
+          discountAmount = Math.min(discountAmount, parseFloat(discountData.maxDiscount));
+        }
+      } else {
+        discountAmount = parseFloat(discountData.value);
+      }
+      
+      res.json({
+        valid: true,
+        discount: discountData,
+        discountAmount,
+        finalTotal: Math.max(0, cartTotal - discountAmount)
+      });
+    } catch (error) {
+      console.error("Discount validation failed:", error);
+      res.status(400).json({ error: "Discount validation failed" });
+    }
+  });
+  
+  // Create discount code (admin)
+  app.post("/api/discounts", async (req, res) => {
+    try {
+      const schema = z.object({
+        code: z.string().min(3),
+        type: z.enum(["percentage", "fixed"]),
+        value: z.string(),
+        minPurchase: z.string().optional(),
+        maxDiscount: z.string().optional(),
+        usageLimit: z.string().optional(),
+        validUntil: z.string().optional(),
+        applicableProducts: z.array(z.string()).optional(),
+      });
+      
+      const data = schema.parse(req.body);
+      
+      const newDiscount = await dbClient.insert(discountCodes).values(data).returning();
+      res.json(newDiscount[0]);
+    } catch (error) {
+      console.error("Failed to create discount code:", error);
+      res.status(500).json({ error: "Failed to create discount code" });
+    }
+  });
+  
+  // Get gift card by code
+  app.get("/api/giftcards/:code", async (req, res) => {
+    try {
+      const { code } = req.params;
+      
+      const card = await dbClient.select().from(giftCards)
+        .where(eq(giftCards.code, code))
+        .limit(1);
+      
+      if (card.length === 0) {
+        return res.status(404).json({ error: "Gift card not found" });
+      }
+      
+      res.json(card[0]);
+    } catch (error) {
+      console.error("Failed to fetch gift card:", error);
+      res.status(500).json({ error: "Failed to fetch gift card" });
+    }
+  });
+  
+  // Create gift card
+  app.post("/api/giftcards", async (req, res) => {
+    try {
+      const schema = z.object({
+        initialValue: z.string(),
+        currency: z.string().default("USD"),
+        purchasedBy: z.string().optional(),
+        purchaseTxHash: z.string().optional(),
+        recipientEmail: z.string().optional(),
+        recipientWallet: z.string().optional(),
+        message: z.string().optional(),
+        expiresAt: z.string().optional(),
+      });
+      
+      const data = schema.parse(req.body);
+      
+      // Generate unique code
+      const code = `GC-${Date.now()}-${Math.random().toString(36).substring(7).toUpperCase()}`;
+      
+      const card = await dbClient.insert(giftCards).values({
+        ...data,
+        code,
+        currentBalance: data.initialValue,
+      }).returning();
+      
+      res.json(card[0]);
+    } catch (error) {
+      console.error("Failed to create gift card:", error);
+      res.status(500).json({ error: "Failed to create gift card" });
+    }
+  });
+  
+  // Redeem gift card
+  app.post("/api/giftcards/:code/redeem", async (req, res) => {
+    try {
+      const { code } = req.params;
+      const schema = z.object({
+        orderId: z.string(),
+        amountUsed: z.string(),
+      });
+      
+      const { orderId, amountUsed } = schema.parse(req.body);
+      
+      // Get gift card
+      const card = await dbClient.select().from(giftCards)
+        .where(eq(giftCards.code, code))
+        .limit(1);
+      
+      if (card.length === 0) {
+        return res.status(404).json({ error: "Gift card not found" });
+      }
+      
+      const giftCard = card[0];
+      
+      if (giftCard.status !== "active") {
+        return res.status(400).json({ error: "Gift card is not active" });
+      }
+      
+      const currentBalance = parseFloat(giftCard.currentBalance);
+      const amountToUse = parseFloat(amountUsed);
+      
+      if (amountToUse > currentBalance) {
+        return res.status(400).json({ error: "Insufficient gift card balance" });
+      }
+      
+      const newBalance = currentBalance - amountToUse;
+      
+      // Update gift card balance
+      await dbClient.update(giftCards)
+        .set({ 
+          currentBalance: newBalance.toString(),
+          status: newBalance === 0 ? "redeemed" : "active",
+          redeemedAt: newBalance === 0 ? new Date() : undefined,
+        })
+        .where(eq(giftCards.id, giftCard.id));
+      
+      // Record usage
+      await dbClient.insert(giftCardUsage).values({
+        giftCardId: giftCard.id,
+        orderId,
+        amountUsed,
+        balanceAfter: newBalance.toString(),
+      });
+      
+      res.json({
+        success: true,
+        balanceRemaining: newBalance.toString(),
+        amountUsed,
+      });
+    } catch (error) {
+      console.error("Failed to redeem gift card:", error);
+      res.status(500).json({ error: "Failed to redeem gift card" });
+    }
+  });
+  
+  // Get loyalty account
+  app.get("/api/loyalty/:walletAddress", async (req, res) => {
+    try {
+      const { walletAddress } = req.params;
+      
+      const account = await dbClient.select().from(loyaltyAccounts)
+        .where(sql`lower(${loyaltyAccounts.walletAddress}) = lower(${walletAddress})`)
+        .limit(1);
+      
+      if (account.length === 0) {
+        // Create new account
+        const newAccount = await dbClient.insert(loyaltyAccounts).values({
+          walletAddress: walletAddress.toLowerCase(),
+        }).returning();
+        return res.json(newAccount[0]);
+      }
+      
+      res.json(account[0]);
+    } catch (error) {
+      console.error("Failed to fetch loyalty account:", error);
+      res.status(500).json({ error: "Failed to fetch loyalty account" });
+    }
+  });
+  
+  // Get loyalty transactions
+  app.get("/api/loyalty/:walletAddress/transactions", async (req, res) => {
+    try {
+      const { walletAddress } = req.params;
+      
+      // Get account
+      const account = await dbClient.select().from(loyaltyAccounts)
+        .where(sql`lower(${loyaltyAccounts.walletAddress}) = lower(${walletAddress})`)
+        .limit(1);
+      
+      if (account.length === 0) {
+        return res.json([]);
+      }
+      
+      const transactions = await dbClient.select().from(loyaltyTransactions)
+        .where(eq(loyaltyTransactions.accountId, account[0].id))
+        .orderBy(desc(loyaltyTransactions.createdAt))
+        .limit(100);
+      
+      res.json(transactions);
+    } catch (error) {
+      console.error("Failed to fetch loyalty transactions:", error);
+      res.status(500).json({ error: "Failed to fetch loyalty transactions" });
+    }
+  });
+  
+  // Award loyalty points
+  app.post("/api/loyalty/award", async (req, res) => {
+    try {
+      const schema = z.object({
+        walletAddress: z.string(),
+        points: z.string(),
+        orderId: z.string().optional(),
+        description: z.string(),
+      });
+      
+      const { walletAddress, points, orderId, description } = schema.parse(req.body);
+      
+      // Get or create account
+      let account = await dbClient.select().from(loyaltyAccounts)
+        .where(sql`lower(${loyaltyAccounts.walletAddress}) = lower(${walletAddress})`)
+        .limit(1);
+      
+      if (account.length === 0) {
+        const newAccount = await dbClient.insert(loyaltyAccounts).values({
+          walletAddress: walletAddress.toLowerCase(),
+        }).returning();
+        account = newAccount;
+      }
+      
+      const accountData = account[0];
+      const currentPoints = parseInt(accountData.availablePoints);
+      const newPoints = currentPoints + parseInt(points);
+      
+      // Update account
+      await dbClient.update(loyaltyAccounts)
+        .set({
+          totalPoints: (parseInt(accountData.totalPoints) + parseInt(points)).toString(),
+          availablePoints: newPoints.toString(),
+          lifetimePoints: (parseInt(accountData.lifetimePoints) + parseInt(points)).toString(),
+        })
+        .where(eq(loyaltyAccounts.id, accountData.id));
+      
+      // Record transaction
+      const transaction = await dbClient.insert(loyaltyTransactions).values({
+        accountId: accountData.id,
+        type: "earned",
+        points,
+        balanceAfter: newPoints.toString(),
+        orderId,
+        description,
+      }).returning();
+      
+      res.json(transaction[0]);
+    } catch (error) {
+      console.error("Failed to award loyalty points:", error);
+      res.status(500).json({ error: "Failed to award loyalty points" });
+    }
+  });
+  
+  // Redeem loyalty points
+  app.post("/api/loyalty/redeem", async (req, res) => {
+    try {
+      const schema = z.object({
+        walletAddress: z.string(),
+        points: z.string(),
+        orderId: z.string().optional(),
+        description: z.string(),
+      });
+      
+      const { walletAddress, points, orderId, description } = schema.parse(req.body);
+      
+      // Get account
+      const account = await dbClient.select().from(loyaltyAccounts)
+        .where(sql`lower(${loyaltyAccounts.walletAddress}) = lower(${walletAddress})`)
+        .limit(1);
+      
+      if (account.length === 0) {
+        return res.status(404).json({ error: "Loyalty account not found" });
+      }
+      
+      const accountData = account[0];
+      const currentPoints = parseInt(accountData.availablePoints);
+      const pointsToRedeem = parseInt(points);
+      
+      if (pointsToRedeem > currentPoints) {
+        return res.status(400).json({ error: "Insufficient loyalty points" });
+      }
+      
+      const newPoints = currentPoints - pointsToRedeem;
+      
+      // Update account
+      await dbClient.update(loyaltyAccounts)
+        .set({ availablePoints: newPoints.toString() })
+        .where(eq(loyaltyAccounts.id, accountData.id));
+      
+      // Record transaction
+      const transaction = await dbClient.insert(loyaltyTransactions).values({
+        accountId: accountData.id,
+        type: "redeemed",
+        points: `-${points}`,
+        balanceAfter: newPoints.toString(),
+        orderId,
+        description,
+      }).returning();
+      
+      res.json(transaction[0]);
+    } catch (error) {
+      console.error("Failed to redeem loyalty points:", error);
+      res.status(500).json({ error: "Failed to redeem loyalty points" });
+    }
+  });
+  
+  // Get product reviews
+  app.get("/api/reviews/product/:productId", async (req, res) => {
+    try {
+      const { productId } = req.params;
+      
+      const reviews = await dbClient.select().from(productReviews)
+        .where(and(
+          eq(productReviews.productId, productId),
+          eq(productReviews.isApproved, "true")
+        ))
+        .orderBy(desc(productReviews.createdAt));
+      
+      res.json(reviews);
+    } catch (error) {
+      console.error("Failed to fetch reviews:", error);
+      res.status(500).json({ error: "Failed to fetch reviews" });
+    }
+  });
+  
+  // Create product review
+  app.post("/api/reviews", async (req, res) => {
+    try {
+      const schema = z.object({
+        productId: z.string(),
+        orderId: z.string(),
+        walletAddress: z.string(),
+        rating: z.string(),
+        title: z.string().optional(),
+        content: z.string().optional(),
+        purchaseTxHash: z.string().optional(),
+      });
+      
+      const data = schema.parse(req.body);
+      
+      // Check if user already reviewed this product
+      const existing = await dbClient.select().from(productReviews)
+        .where(and(
+          eq(productReviews.productId, data.productId),
+          sql`lower(${productReviews.walletAddress}) = lower(${data.walletAddress})`
+        ))
+        .limit(1);
+      
+      if (existing.length > 0) {
+        return res.status(400).json({ error: "You have already reviewed this product" });
+      }
+      
+      const review = await dbClient.insert(productReviews).values(data).returning();
+      res.json(review[0]);
+    } catch (error) {
+      console.error("Failed to create review:", error);
+      res.status(500).json({ error: "Failed to create review" });
+    }
+  });
+  
+  // Get wishlist
+  app.get("/api/wishlist/:walletAddress", async (req, res) => {
+    try {
+      const { walletAddress } = req.params;
+      
+      const items = await dbClient.select().from(wishlists)
+        .where(sql`lower(${wishlists.walletAddress}) = lower(${walletAddress})`)
+        .orderBy(desc(wishlists.addedAt));
+      
+      res.json(items);
+    } catch (error) {
+      console.error("Failed to fetch wishlist:", error);
+      res.status(500).json({ error: "Failed to fetch wishlist" });
+    }
+  });
+  
+  // Add to wishlist
+  app.post("/api/wishlist", async (req, res) => {
+    try {
+      const schema = z.object({
+        walletAddress: z.string(),
+        productId: z.string(),
+      });
+      
+      const { walletAddress, productId } = schema.parse(req.body);
+      
+      // Check if already in wishlist
+      const existing = await dbClient.select().from(wishlists)
+        .where(and(
+          sql`lower(${wishlists.walletAddress}) = lower(${walletAddress})`,
+          eq(wishlists.productId, productId)
+        ))
+        .limit(1);
+      
+      if (existing.length > 0) {
+        return res.status(400).json({ error: "Product already in wishlist" });
+      }
+      
+      const item = await dbClient.insert(wishlists).values({
+        walletAddress: walletAddress.toLowerCase(),
+        productId,
+      }).returning();
+      
+      res.json(item[0]);
+    } catch (error) {
+      console.error("Failed to add to wishlist:", error);
+      res.status(500).json({ error: "Failed to add to wishlist" });
+    }
+  });
+  
+  // Remove from wishlist
+  app.delete("/api/wishlist/:walletAddress/:productId", async (req, res) => {
+    try {
+      const { walletAddress, productId } = req.params;
+      
+      await dbClient.delete(wishlists)
+        .where(and(
+          sql`lower(${wishlists.walletAddress}) = lower(${walletAddress})`,
+          eq(wishlists.productId, productId)
+        ));
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to remove from wishlist:", error);
+      res.status(500).json({ error: "Failed to remove from wishlist" });
+    }
+  });
+  
+  // Create invoice
+  app.post("/api/invoices", async (req, res) => {
+    try {
+      const schema = z.object({
+        merchantWallet: z.string(),
+        customerEmail: z.string().optional(),
+        customerWallet: z.string().optional(),
+        items: z.any(),
+        subtotal: z.string(),
+        tax: z.string().optional(),
+        total: z.string(),
+        currency: z.string().default("USD"),
+        acceptedCurrencies: z.array(z.string()).optional(),
+        dueDate: z.string().optional(),
+        notes: z.string().optional(),
+      });
+      
+      const data = schema.parse(req.body);
+      
+      // Generate invoice number
+      const invoiceNumber = `INV-${Date.now()}`;
+      
+      const invoice = await dbClient.insert(invoices).values({
+        ...data,
+        invoiceNumber,
+      }).returning();
+      
+      res.json(invoice[0]);
+    } catch (error) {
+      console.error("Failed to create invoice:", error);
+      res.status(500).json({ error: "Failed to create invoice" });
+    }
+  });
+  
+  // Get invoice by number
+  app.get("/api/invoices/:invoiceNumber", async (req, res) => {
+    try {
+      const { invoiceNumber } = req.params;
+      
+      const invoice = await dbClient.select().from(invoices)
+        .where(eq(invoices.invoiceNumber, invoiceNumber))
+        .limit(1);
+      
+      if (invoice.length === 0) {
+        return res.status(404).json({ error: "Invoice not found" });
+      }
+      
+      res.json(invoice[0]);
+    } catch (error) {
+      console.error("Failed to fetch invoice:", error);
+      res.status(500).json({ error: "Failed to fetch invoice" });
+    }
+  });
+  
+  // Get invoices for merchant
+  app.get("/api/invoices/merchant/:walletAddress", async (req, res) => {
+    try {
+      const { walletAddress } = req.params;
+      
+      const merchantInvoices = await dbClient.select().from(invoices)
+        .where(sql`lower(${invoices.merchantWallet}) = lower(${walletAddress})`)
+        .orderBy(desc(invoices.createdAt));
+      
+      res.json(merchantInvoices);
+    } catch (error) {
+      console.error("Failed to fetch merchant invoices:", error);
+      res.status(500).json({ error: "Failed to fetch merchant invoices" });
+    }
+  });
+  
+  // Create NFT receipt
+  app.post("/api/receipts", async (req, res) => {
+    try {
+      const schema = z.object({
+        orderId: z.string(),
+        walletAddress: z.string(),
+        chainId: z.string(),
+        contractAddress: z.string(),
+        tokenId: z.string(),
+        tokenUri: z.string().optional(),
+        mintTxHash: z.string(),
+        receiptData: z.any(),
+      });
+      
+      const data = schema.parse(req.body);
+      
+      const receipt = await dbClient.insert(nftReceipts).values(data).returning();
+      res.json(receipt[0]);
+    } catch (error) {
+      console.error("Failed to create NFT receipt:", error);
+      res.status(500).json({ error: "Failed to create NFT receipt" });
+    }
+  });
+  
+  // Get NFT receipts for wallet
+  app.get("/api/receipts/:walletAddress", async (req, res) => {
+    try {
+      const { walletAddress } = req.params;
+      
+      const receipts = await dbClient.select().from(nftReceipts)
+        .where(sql`lower(${nftReceipts.walletAddress}) = lower(${walletAddress})`)
+        .orderBy(desc(nftReceipts.createdAt));
+      
+      res.json(receipts);
+    } catch (error) {
+      console.error("Failed to fetch NFT receipts:", error);
+      res.status(500).json({ error: "Failed to fetch NFT receipts" });
+    }
+  });
+  
+  // Create refund
+  app.post("/api/refunds", async (req, res) => {
+    try {
+      const schema = z.object({
+        orderId: z.string(),
+        paymentId: z.string(),
+        amount: z.string(),
+        currency: z.string(),
+        reason: z.string().optional(),
+        refundedTo: z.string(),
+        processedBy: z.string().optional(),
+        notes: z.string().optional(),
+      });
+      
+      const data = schema.parse(req.body);
+      
+      const refund = await dbClient.insert(refunds).values(data).returning();
+      res.json(refund[0]);
+    } catch (error) {
+      console.error("Failed to create refund:", error);
+      res.status(500).json({ error: "Failed to create refund" });
+    }
+  });
+  
+  // Get refunds for order
+  app.get("/api/refunds/order/:orderId", async (req, res) => {
+    try {
+      const { orderId } = req.params;
+      
+      const orderRefunds = await dbClient.select().from(refunds)
+        .where(eq(refunds.orderId, orderId));
+      
+      res.json(orderRefunds);
+    } catch (error) {
+      console.error("Failed to fetch refunds:", error);
+      res.status(500).json({ error: "Failed to fetch refunds" });
+    }
+  });
+  
   const httpServer = createServer(app);
   return httpServer;
 }

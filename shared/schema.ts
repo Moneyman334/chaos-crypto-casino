@@ -921,6 +921,216 @@ export const paymentWebhooks = pgTable("payment_webhooks", {
   createdAtIdx: index("payment_webhooks_created_at_idx").on(table.createdAt),
 }));
 
+// Supported Cryptocurrencies per Chain
+export const supportedCurrencies = pgTable("supported_currencies", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  symbol: text("symbol").notNull(), // USDC, DAI, ETH, USDT
+  name: text("name").notNull(),
+  chainId: text("chain_id").notNull(),
+  contractAddress: text("contract_address"), // null for native tokens
+  decimals: text("decimals").notNull().default("18"),
+  isStablecoin: text("is_stablecoin").notNull().default("false"),
+  isActive: text("is_active").notNull().default("true"),
+  icon: text("icon"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  symbolChainIdx: index("supported_currencies_symbol_chain_idx").on(table.symbol, table.chainId),
+  activeIdx: index("supported_currencies_active_idx").on(table.isActive),
+}));
+
+// Discount Codes
+export const discountCodes = pgTable("discount_codes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  code: text("code").notNull().unique(),
+  type: text("type").notNull(), // percentage, fixed
+  value: decimal("value", { precision: 20, scale: 8 }).notNull(),
+  minPurchase: decimal("min_purchase", { precision: 20, scale: 8 }),
+  maxDiscount: decimal("max_discount", { precision: 20, scale: 8 }),
+  usageLimit: text("usage_limit"), // null for unlimited
+  usageCount: text("usage_count").notNull().default("0"),
+  validFrom: timestamp("valid_from").notNull().defaultNow(),
+  validUntil: timestamp("valid_until"),
+  isActive: text("is_active").notNull().default("true"),
+  applicableProducts: text("applicable_products").array(), // null for all products
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  codeIdx: index("discount_codes_code_idx").on(table.code),
+  activeIdx: index("discount_codes_active_idx").on(table.isActive),
+}));
+
+// Gift Cards
+export const giftCards = pgTable("gift_cards", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  code: text("code").notNull().unique(),
+  initialValue: decimal("initial_value", { precision: 20, scale: 8 }).notNull(),
+  currentBalance: decimal("current_balance", { precision: 20, scale: 8 }).notNull(),
+  currency: text("currency").notNull().default("USD"),
+  purchasedBy: text("purchased_by"), // wallet address
+  purchaseTxHash: text("purchase_tx_hash"),
+  recipientEmail: text("recipient_email"),
+  recipientWallet: text("recipient_wallet"),
+  message: text("message"),
+  status: text("status").notNull().default("active"), // active, redeemed, expired, cancelled
+  expiresAt: timestamp("expires_at"),
+  redeemedAt: timestamp("redeemed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  codeIdx: index("gift_cards_code_idx").on(table.code),
+  purchasedByLowerIdx: index("gift_cards_purchased_by_lower_idx").on(sql`lower(${table.purchasedBy})`),
+  statusIdx: index("gift_cards_status_idx").on(table.status),
+}));
+
+// Gift Card Usage History
+export const giftCardUsage = pgTable("gift_card_usage", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  giftCardId: varchar("gift_card_id").notNull().references(() => giftCards.id),
+  orderId: varchar("order_id").notNull().references(() => orders.id),
+  amountUsed: decimal("amount_used", { precision: 20, scale: 8 }).notNull(),
+  balanceAfter: decimal("balance_after", { precision: 20, scale: 8 }).notNull(),
+  usedAt: timestamp("used_at").notNull().defaultNow(),
+}, (table) => ({
+  giftCardIdx: index("gift_card_usage_gift_card_idx").on(table.giftCardId),
+  orderIdx: index("gift_card_usage_order_idx").on(table.orderId),
+}));
+
+// Loyalty Points System
+export const loyaltyAccounts = pgTable("loyalty_accounts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  walletAddress: text("wallet_address").notNull().unique(),
+  userId: varchar("user_id").references(() => users.id),
+  totalPoints: text("total_points").notNull().default("0"),
+  availablePoints: text("available_points").notNull().default("0"),
+  lifetimePoints: text("lifetime_points").notNull().default("0"),
+  tier: text("tier").notNull().default("bronze"), // bronze, silver, gold, platinum, diamond
+  tierNftMinted: text("tier_nft_minted").notNull().default("false"),
+  tierNftTokenId: text("tier_nft_token_id"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  walletLowerIdx: index("loyalty_accounts_wallet_lower_idx").on(sql`lower(${table.walletAddress})`),
+  tierIdx: index("loyalty_accounts_tier_idx").on(table.tier),
+}));
+
+// Loyalty Transactions
+export const loyaltyTransactions = pgTable("loyalty_transactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  accountId: varchar("account_id").notNull().references(() => loyaltyAccounts.id),
+  type: text("type").notNull(), // earned, redeemed, expired, bonus
+  points: text("points").notNull(),
+  balanceAfter: text("balance_after").notNull(),
+  orderId: varchar("order_id").references(() => orders.id),
+  description: text("description").notNull(),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  accountIdx: index("loyalty_transactions_account_idx").on(table.accountId),
+  orderIdx: index("loyalty_transactions_order_idx").on(table.orderId),
+  typeIdx: index("loyalty_transactions_type_idx").on(table.type),
+}));
+
+// Customer Reviews (Blockchain-Verified Purchases)
+export const productReviews = pgTable("product_reviews", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  productId: varchar("product_id").notNull().references(() => products.id),
+  orderId: varchar("order_id").notNull().references(() => orders.id),
+  walletAddress: text("wallet_address").notNull(),
+  rating: text("rating").notNull(), // 1-5
+  title: text("title"),
+  content: text("content"),
+  verifiedPurchase: text("verified_purchase").notNull().default("true"),
+  purchaseTxHash: text("purchase_tx_hash"),
+  helpfulCount: text("helpful_count").notNull().default("0"),
+  isApproved: text("is_approved").notNull().default("true"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  productIdx: index("product_reviews_product_idx").on(table.productId),
+  orderIdx: index("product_reviews_order_idx").on(table.orderId),
+  walletLowerIdx: index("product_reviews_wallet_lower_idx").on(sql`lower(${table.walletAddress})`),
+  ratingIdx: index("product_reviews_rating_idx").on(table.rating),
+}));
+
+// Wishlists
+export const wishlists = pgTable("wishlists", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  walletAddress: text("wallet_address").notNull(),
+  userId: varchar("user_id").references(() => users.id),
+  productId: varchar("product_id").notNull().references(() => products.id),
+  addedAt: timestamp("added_at").notNull().defaultNow(),
+}, (table) => ({
+  walletProductIdx: index("wishlists_wallet_product_idx").on(table.walletAddress, table.productId),
+  walletLowerIdx: index("wishlists_wallet_lower_idx").on(sql`lower(${table.walletAddress})`),
+  productIdx: index("wishlists_product_idx").on(table.productId),
+}));
+
+// Invoices / Payment Links
+export const invoices = pgTable("invoices", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  invoiceNumber: text("invoice_number").notNull().unique(),
+  merchantWallet: text("merchant_wallet").notNull(),
+  customerEmail: text("customer_email"),
+  customerWallet: text("customer_wallet"),
+  items: jsonb("items").notNull(),
+  subtotal: decimal("subtotal", { precision: 20, scale: 8 }).notNull(),
+  tax: decimal("tax", { precision: 20, scale: 8 }).default("0"),
+  total: decimal("total", { precision: 20, scale: 8 }).notNull(),
+  currency: text("currency").notNull().default("USD"),
+  acceptedCurrencies: text("accepted_currencies").array(), // null for all
+  status: text("status").notNull().default("unpaid"), // unpaid, paid, cancelled, expired
+  orderId: varchar("order_id").references(() => orders.id),
+  dueDate: timestamp("due_date"),
+  paidAt: timestamp("paid_at"),
+  notes: text("notes"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  invoiceNumberIdx: index("invoices_invoice_number_idx").on(table.invoiceNumber),
+  merchantWalletLowerIdx: index("invoices_merchant_wallet_lower_idx").on(sql`lower(${table.merchantWallet})`),
+  customerWalletLowerIdx: index("invoices_customer_wallet_lower_idx").on(sql`lower(${table.customerWallet})`),
+  statusIdx: index("invoices_status_idx").on(table.status),
+}));
+
+// On-Chain NFT Receipts
+export const nftReceipts = pgTable("nft_receipts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orderId: varchar("order_id").notNull().references(() => orders.id),
+  walletAddress: text("wallet_address").notNull(),
+  chainId: text("chain_id").notNull(),
+  contractAddress: text("contract_address").notNull(),
+  tokenId: text("token_id").notNull(),
+  tokenUri: text("token_uri"),
+  mintTxHash: text("mint_tx_hash").notNull(),
+  receiptData: jsonb("receipt_data").notNull(), // order details stored on-chain
+  status: text("status").notNull().default("minting"), // minting, minted, failed
+  mintedAt: timestamp("minted_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  orderIdx: index("nft_receipts_order_idx").on(table.orderId),
+  walletLowerIdx: index("nft_receipts_wallet_lower_idx").on(sql`lower(${table.walletAddress})`),
+  mintTxHashIdx: index("nft_receipts_mint_tx_hash_idx").on(table.mintTxHash),
+}));
+
+// Refunds
+export const refunds = pgTable("refunds", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orderId: varchar("order_id").notNull().references(() => orders.id),
+  paymentId: varchar("payment_id").notNull().references(() => payments.id),
+  amount: decimal("amount", { precision: 20, scale: 8 }).notNull(),
+  currency: text("currency").notNull(),
+  reason: text("reason"),
+  status: text("status").notNull().default("pending"), // pending, processing, completed, failed
+  refundTxHash: text("refund_tx_hash"),
+  refundedTo: text("refunded_to"),
+  processedBy: text("processed_by"), // admin wallet
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  processedAt: timestamp("processed_at"),
+}, (table) => ({
+  orderIdx: index("refunds_order_idx").on(table.orderId),
+  paymentIdx: index("refunds_payment_idx").on(table.paymentId),
+  statusIdx: index("refunds_status_idx").on(table.status),
+}));
+
 export const insertProductSchema = createInsertSchema(products).omit({
   id: true,
   createdAt: true,
@@ -944,6 +1154,62 @@ export const insertPaymentWebhookSchema = createInsertSchema(paymentWebhooks).om
   createdAt: true,
 });
 
+export const insertSupportedCurrencySchema = createInsertSchema(supportedCurrencies).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertDiscountCodeSchema = createInsertSchema(discountCodes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertGiftCardSchema = createInsertSchema(giftCards).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertGiftCardUsageSchema = createInsertSchema(giftCardUsage).omit({
+  id: true,
+  usedAt: true,
+});
+
+export const insertLoyaltyAccountSchema = createInsertSchema(loyaltyAccounts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertLoyaltyTransactionSchema = createInsertSchema(loyaltyTransactions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertProductReviewSchema = createInsertSchema(productReviews).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertWishlistSchema = createInsertSchema(wishlists).omit({
+  id: true,
+  addedAt: true,
+});
+
+export const insertInvoiceSchema = createInsertSchema(invoices).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertNftReceiptSchema = createInsertSchema(nftReceipts).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertRefundSchema = createInsertSchema(refunds).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type Product = typeof products.$inferSelect;
 export type InsertOrder = z.infer<typeof insertOrderSchema>;
@@ -952,3 +1218,26 @@ export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 export type Payment = typeof payments.$inferSelect;
 export type InsertPaymentWebhook = z.infer<typeof insertPaymentWebhookSchema>;
 export type PaymentWebhook = typeof paymentWebhooks.$inferSelect;
+
+export type InsertSupportedCurrency = z.infer<typeof insertSupportedCurrencySchema>;
+export type SupportedCurrency = typeof supportedCurrencies.$inferSelect;
+export type InsertDiscountCode = z.infer<typeof insertDiscountCodeSchema>;
+export type DiscountCode = typeof discountCodes.$inferSelect;
+export type InsertGiftCard = z.infer<typeof insertGiftCardSchema>;
+export type GiftCard = typeof giftCards.$inferSelect;
+export type InsertGiftCardUsage = z.infer<typeof insertGiftCardUsageSchema>;
+export type GiftCardUsage = typeof giftCardUsage.$inferSelect;
+export type InsertLoyaltyAccount = z.infer<typeof insertLoyaltyAccountSchema>;
+export type LoyaltyAccount = typeof loyaltyAccounts.$inferSelect;
+export type InsertLoyaltyTransaction = z.infer<typeof insertLoyaltyTransactionSchema>;
+export type LoyaltyTransaction = typeof loyaltyTransactions.$inferSelect;
+export type InsertProductReview = z.infer<typeof insertProductReviewSchema>;
+export type ProductReview = typeof productReviews.$inferSelect;
+export type InsertWishlist = z.infer<typeof insertWishlistSchema>;
+export type Wishlist = typeof wishlists.$inferSelect;
+export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
+export type Invoice = typeof invoices.$inferSelect;
+export type InsertNftReceipt = z.infer<typeof insertNftReceiptSchema>;
+export type NftReceipt = typeof nftReceipts.$inferSelect;
+export type InsertRefund = z.infer<typeof insertRefundSchema>;
+export type Refund = typeof refunds.$inferSelect;
