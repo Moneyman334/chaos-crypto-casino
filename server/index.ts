@@ -56,6 +56,14 @@ app.use((req, res, next) => {
   } catch (error) {
     console.error("Failed to start auto-compound engine:", error);
   }
+  
+  // Start social media scheduler
+  const { socialScheduler } = await import("./social-scheduler");
+  try {
+    socialScheduler.start();
+  } catch (error) {
+    console.error("Failed to start social media scheduler:", error);
+  }
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
