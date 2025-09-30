@@ -2379,6 +2379,223 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to fetch compound events" });
     }
   });
+  
+  // ===== SOCIAL MEDIA AUTOMATION ROUTES =====
+  
+  // Get user's social accounts
+  app.get("/api/social/accounts/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const accounts = await storage.getUserSocialAccounts(userId);
+      
+      // Redact sensitive credentials before sending
+      const safeAccounts = accounts.map(acc => ({
+        ...acc,
+        apiKey: acc.apiKey ? '***' : null,
+        apiSecret: acc.apiSecret ? '***' : null,
+        accessToken: acc.accessToken ? '***' : null,
+        accessTokenSecret: acc.accessTokenSecret ? '***' : null
+      }));
+      
+      res.json(safeAccounts);
+    } catch (error) {
+      console.error("Failed to fetch social accounts:", error);
+      res.status(500).json({ error: "Failed to fetch social accounts" });
+    }
+  });
+  
+  // Get active social accounts
+  app.get("/api/social/accounts/:userId/active", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const accounts = await storage.getActiveSocialAccounts(userId);
+      
+      const safeAccounts = accounts.map(acc => ({
+        ...acc,
+        apiKey: acc.apiKey ? '***' : null,
+        apiSecret: acc.apiSecret ? '***' : null,
+        accessToken: acc.accessToken ? '***' : null,
+        accessTokenSecret: acc.accessTokenSecret ? '***' : null
+      }));
+      
+      res.json(safeAccounts);
+    } catch (error) {
+      console.error("Failed to fetch active social accounts:", error);
+      res.status(500).json({ error: "Failed to fetch active social accounts" });
+    }
+  });
+  
+  // Create social account
+  app.post("/api/social/accounts", async (req, res) => {
+    try {
+      const accountSchema = z.object({
+        userId: z.string().optional(),
+        platform: z.string(),
+        accountName: z.string(),
+        apiKey: z.string().optional(),
+        apiSecret: z.string().optional(),
+        accessToken: z.string().optional(),
+        accessTokenSecret: z.string().optional(),
+        isActive: z.string().optional()
+      });
+      
+      const accountData = accountSchema.parse(req.body);
+      const account = await storage.createSocialAccount(accountData);
+      
+      // Redact credentials
+      const safeAccount = {
+        ...account,
+        apiKey: account.apiKey ? '***' : null,
+        apiSecret: account.apiSecret ? '***' : null,
+        accessToken: account.accessToken ? '***' : null,
+        accessTokenSecret: account.accessTokenSecret ? '***' : null
+      };
+      
+      res.json(safeAccount);
+    } catch (error) {
+      console.error("Failed to create social account:", error);
+      res.status(500).json({ error: "Failed to create social account" });
+    }
+  });
+  
+  // Update social account
+  app.patch("/api/social/accounts/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      const account = await storage.updateSocialAccount(id, updates);
+      
+      if (!account) {
+        return res.status(404).json({ error: "Social account not found" });
+      }
+      
+      const safeAccount = {
+        ...account,
+        apiKey: account.apiKey ? '***' : null,
+        apiSecret: account.apiSecret ? '***' : null,
+        accessToken: account.accessToken ? '***' : null,
+        accessTokenSecret: account.accessTokenSecret ? '***' : null
+      };
+      
+      res.json(safeAccount);
+    } catch (error) {
+      console.error("Failed to update social account:", error);
+      res.status(500).json({ error: "Failed to update social account" });
+    }
+  });
+  
+  // Delete social account
+  app.delete("/api/social/accounts/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteSocialAccount(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to delete social account:", error);
+      res.status(500).json({ error: "Failed to delete social account" });
+    }
+  });
+  
+  // Get user's scheduled posts
+  app.get("/api/social/posts/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const posts = await storage.getUserScheduledPosts(userId);
+      res.json(posts);
+    } catch (error) {
+      console.error("Failed to fetch scheduled posts:", error);
+      res.status(500).json({ error: "Failed to fetch scheduled posts" });
+    }
+  });
+  
+  // Get pending posts
+  app.get("/api/social/posts/pending/all", async (req, res) => {
+    try {
+      const posts = await storage.getPendingPosts();
+      res.json(posts);
+    } catch (error) {
+      console.error("Failed to fetch pending posts:", error);
+      res.status(500).json({ error: "Failed to fetch pending posts" });
+    }
+  });
+  
+  // Create scheduled post
+  app.post("/api/social/posts", async (req, res) => {
+    try {
+      const postSchema = z.object({
+        userId: z.string().optional(),
+        accountId: z.string(),
+        content: z.string(),
+        mediaUrls: z.array(z.string()).optional(),
+        scheduledFor: z.string().transform(str => new Date(str)),
+        status: z.string().optional(),
+        postType: z.string().optional()
+      });
+      
+      const postData = postSchema.parse(req.body);
+      const post = await storage.createScheduledPost(postData);
+      res.json(post);
+    } catch (error) {
+      console.error("Failed to create scheduled post:", error);
+      res.status(500).json({ error: "Failed to create scheduled post" });
+    }
+  });
+  
+  // Update scheduled post
+  app.patch("/api/social/posts/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      const post = await storage.updateScheduledPost(id, updates);
+      
+      if (!post) {
+        return res.status(404).json({ error: "Scheduled post not found" });
+      }
+      
+      res.json(post);
+    } catch (error) {
+      console.error("Failed to update scheduled post:", error);
+      res.status(500).json({ error: "Failed to update scheduled post" });
+    }
+  });
+  
+  // Delete scheduled post
+  app.delete("/api/social/posts/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteScheduledPost(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to delete scheduled post:", error);
+      res.status(500).json({ error: "Failed to delete scheduled post" });
+    }
+  });
+  
+  // Get user's post history
+  app.get("/api/social/history/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const limit = parseInt(req.query.limit as string) || 50;
+      const history = await storage.getUserPostHistory(userId, limit);
+      res.json(history);
+    } catch (error) {
+      console.error("Failed to fetch post history:", error);
+      res.status(500).json({ error: "Failed to fetch post history" });
+    }
+  });
+  
+  // Get account's post history
+  app.get("/api/social/history/account/:accountId", async (req, res) => {
+    try {
+      const { accountId } = req.params;
+      const limit = parseInt(req.query.limit as string) || 50;
+      const history = await storage.getAccountPostHistory(accountId, limit);
+      res.json(history);
+    } catch (error) {
+      console.error("Failed to fetch account post history:", error);
+      res.status(500).json({ error: "Failed to fetch account post history" });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;
