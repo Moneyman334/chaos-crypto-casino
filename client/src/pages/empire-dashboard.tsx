@@ -86,13 +86,14 @@ export default function EmpireDashboard() {
   return (
     <div className="min-h-screen bg-background p-6 space-y-6">
       {/* Hero Section */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary via-purple-600 to-accent p-8 text-white">
-        <div className="absolute inset-0 bg-black/20 backdrop-blur-sm"></div>
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary via-purple-600 to-accent p-8 text-white animate-float">
+        <div className="absolute inset-0 bg-black/30 backdrop-blur-sm"></div>
+        <div className="absolute inset-0 animate-shimmer"></div>
         <div className="relative z-10 space-y-4">
           <div className="flex items-center gap-3">
-            <Crown className="h-12 w-12 text-yellow-400 animate-pulse" />
+            <Crown className="h-12 w-12 text-yellow-400 drop-shadow-[0_0_15px_rgba(250,204,21,0.8)]" style={{animation: "float 3s ease-in-out infinite"}} />
             <div>
-              <h1 className="text-5xl font-bold">Chaos Empire</h1>
+              <h1 className="text-5xl font-bold drop-shadow-[0_0_20px_rgba(255,255,255,0.5)]">Chaos Empire</h1>
               <p className="text-xl text-white/90">Evolution of the Future</p>
             </div>
           </div>
@@ -120,7 +121,7 @@ export default function EmpireDashboard() {
 
       {/* Empire Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="border-primary/50 bg-gradient-to-br from-primary/10 to-background">
+        <Card className="premium-card border-primary/30 hover:border-primary/60 transition-all duration-300 glow-primary">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Volume</CardTitle>
             <TrendingUp className="h-4 w-4 text-primary" />
@@ -131,7 +132,7 @@ export default function EmpireDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="border-accent/50 bg-gradient-to-br from-accent/10 to-background">
+        <Card className="premium-card border-accent/30 hover:border-accent/60 transition-all duration-300 glow-accent">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active Players</CardTitle>
             <Users className="h-4 w-4 text-accent" />
@@ -142,7 +143,7 @@ export default function EmpireDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="border-green-500/50 bg-gradient-to-br from-green-500/10 to-background">
+        <Card className="premium-card border-green-500/30 hover:border-green-500/60 transition-all duration-300 glow-secondary">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">House Profit</CardTitle>
             <Coins className="h-4 w-4 text-green-500" />
@@ -153,7 +154,7 @@ export default function EmpireDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="border-yellow-500/50 bg-gradient-to-br from-yellow-500/10 to-background">
+        <Card className="premium-card border-yellow-500/30 hover:border-yellow-500/60 transition-all duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Games Played</CardTitle>
             <Trophy className="h-4 w-4 text-yellow-500" />
@@ -168,7 +169,7 @@ export default function EmpireDashboard() {
       {isConnected && (
         <div className="grid md:grid-cols-3 gap-6">
           {/* User Progress */}
-          <Card className="md:col-span-2">
+          <Card className="md:col-span-2 glass-strong">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-primary" />
@@ -224,7 +225,7 @@ export default function EmpireDashboard() {
           </Card>
 
           {/* Quick Stats */}
-          <Card>
+          <Card className="glass-strong">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Shield className="h-5 w-5 text-primary" />
@@ -263,7 +264,7 @@ export default function EmpireDashboard() {
       )}
 
       {/* House Vaults Showcase */}
-      <Card className="border-green-500/50 bg-gradient-to-br from-green-500/10 via-emerald-500/10 to-teal-500/10 overflow-hidden">
+      <Card className="glass-strong border-green-500/30 hover:border-green-500/60 bg-gradient-to-br from-green-500/10 via-emerald-500/10 to-teal-500/10 overflow-hidden transition-all duration-300 glow-secondary">
         <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-teal-500/5 pointer-events-none" />
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -358,7 +359,7 @@ export default function EmpireDashboard() {
 
         {/* Daily Quests */}
         <TabsContent value="quests" className="space-y-4">
-          <Card>
+          <Card className="glass-strong">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <span className="flex items-center gap-2">
@@ -370,7 +371,7 @@ export default function EmpireDashboard() {
             </CardHeader>
             <CardContent className="space-y-4">
               {dailyQuests.map((quest) => (
-                <div key={quest.id} className="border rounded-lg p-4 space-y-3" data-testid={`quest-${quest.id}`}>
+                <div key={quest.id} className="premium-card rounded-lg p-4 space-y-3 hover:border-primary/40" data-testid={`quest-${quest.id}`}>
                   <div className="flex justify-between items-start">
                     <div>
                       <h4 className="font-semibold">{quest.title}</h4>
@@ -395,7 +396,7 @@ export default function EmpireDashboard() {
 
         {/* Leaderboard */}
         <TabsContent value="leaderboard" className="space-y-4">
-          <Card>
+          <Card className="glass-strong">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Crown className="h-5 w-5 text-yellow-500" />
@@ -407,8 +408,8 @@ export default function EmpireDashboard() {
                 {leaderboard.map((player) => (
                   <div 
                     key={player.rank} 
-                    className={`flex items-center justify-between p-4 rounded-lg border ${
-                      player.rank <= 3 ? 'bg-primary/5 border-primary/50' : 'border-border'
+                    className={`flex items-center justify-between p-4 rounded-lg transition-all duration-300 ${
+                      player.rank <= 3 ? 'premium-card border-primary/50 glow-primary' : 'premium-card'
                     }`}
                     data-testid={`leaderboard-${player.rank}`}
                   >
@@ -434,7 +435,7 @@ export default function EmpireDashboard() {
 
         {/* Live Activity */}
         <TabsContent value="activity" className="space-y-4">
-          <Card>
+          <Card className="glass-strong">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Zap className="h-5 w-5 text-primary animate-pulse" />
@@ -446,7 +447,7 @@ export default function EmpireDashboard() {
                 {recentActivity.map((activity, idx) => (
                   <div 
                     key={idx} 
-                    className="flex items-center justify-between p-3 rounded-lg border"
+                    className="flex items-center justify-between p-3 rounded-lg premium-card hover:border-primary/30"
                     data-testid={`activity-${idx}`}
                   >
                     <div className="flex items-center gap-3">
