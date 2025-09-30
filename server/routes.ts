@@ -2043,10 +2043,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { vaultId } = req.params;
       const stakeSchema = z.object({
-        walletAddress: z.string(),
+        walletAddress: ethereumAddressSchema,
         stakedAmount: z.string(),
-        shares: z.string(),
-        entryPrice: z.string(),
+        stakeTxHash: transactionHashSchema.optional(),
         userId: z.string().optional()
       });
       
@@ -2058,23 +2057,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Vault not found" });
       }
       
+      // Check minimum stake requirement
+      if (parseFloat(data.stakedAmount) < parseFloat(vault.minStake)) {
+        return res.status(400).json({ 
+          error: "Stake amount below minimum", 
+          minStake: vault.minStake 
+        });
+      }
+      
       // Calculate unlock date if there's a lock period
       const unlocksAt = vault.lockPeriod && vault.lockPeriod !== '0' 
         ? new Date(Date.now() + parseInt(vault.lockPeriod) * 24 * 60 * 60 * 1000)
         : undefined;
+      
+      // Simple share calculation: 1:1 for now
+      const shares = data.stakedAmount;
+      const entryPrice = '1';
       
       const position = await storage.createPosition({
         vaultId,
         walletAddress: data.walletAddress,
         userId: data.userId,
         stakedAmount: data.stakedAmount,
-        shares: data.shares,
-        entryPrice: data.entryPrice,
+        shares,
+        entryPrice,
         currentValue: data.stakedAmount,
         totalEarnings: '0',
         claimedEarnings: '0',
         pendingEarnings: '0',
         status: 'active',
+        stakeTxHash: data.stakeTxHash,
         unlocksAt
       });
       
@@ -2105,6 +2117,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { positionId } = req.params;
       
+      const unstakeSchema = z.object({
+        unstakeTxHash: transactionHashSchema.optional()
+      });
+      
+      const data = unstakeSchema.parse(req.body);
+      
       const position = await storage.getPosition(positionId);
       if (!position) {
         return res.status(404).json({ error: "Position not found" });
@@ -2121,7 +2139,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update position status
       await storage.updatePosition(positionId, {
         status: 'withdrawn',
-        withdrawnAt: new Date()
+        withdrawnAt: new Date(),
+        unstakeTxHash: data.unstakeTxHash
       });
       
       // Update vault stats
