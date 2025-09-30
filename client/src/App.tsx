@@ -48,6 +48,11 @@ import ReferralsPage from "@/pages/referrals";
 import SwapPage from "@/pages/swap";
 import NFTGalleryPage from "@/pages/nft-gallery";
 import DAOGovernancePage from "@/pages/dao-governance";
+import P2PLendingPage from "@/pages/p2p-lending";
+import PredictionMarketsPage from "@/pages/prediction-markets";
+import YieldFarmingPage from "@/pages/yield-farming";
+import SocialTradingPage from "@/pages/social-trading";
+import TokenLaunchpadPage from "@/pages/token-launchpad";
 import NotFound from "@/pages/not-found";
 import ConnectionModal from "@/components/connection-modal";
 import { useWeb3 } from "@/hooks/use-web3";
@@ -99,6 +104,11 @@ function Router() {
       <Route path="/swap" component={SwapPage} />
       <Route path="/nft-gallery" component={NFTGalleryPage} />
       <Route path="/dao" component={DAOGovernancePage} />
+      <Route path="/lending" component={P2PLendingPage} />
+      <Route path="/prediction-markets" component={PredictionMarketsPage} />
+      <Route path="/yield-farming" component={YieldFarmingPage} />
+      <Route path="/social-trading" component={SocialTradingPage} />
+      <Route path="/token-launchpad" component={TokenLaunchpadPage} />
       <Route component={NotFound} />
     </Switch>
   );
