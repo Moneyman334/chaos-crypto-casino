@@ -825,3 +825,127 @@ export type InsertScheduledPost = z.infer<typeof insertScheduledPostSchema>;
 export type ScheduledPost = typeof scheduledPosts.$inferSelect;
 export type InsertPostHistory = z.infer<typeof insertPostHistorySchema>;
 export type PostHistory = typeof postHistory.$inferSelect;
+
+export const products = pgTable("products", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description"),
+  type: text("type").notNull().default("digital"),
+  category: text("category"),
+  imageUrl: text("image_url"),
+  price: decimal("price", { precision: 20, scale: 8 }).notNull(),
+  currency: text("currency").notNull().default("USD"),
+  cryptoPrices: jsonb("crypto_prices"),
+  isActive: text("is_active").notNull().default("true"),
+  stock: text("stock"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  categoryIdx: index("products_category_idx").on(table.category),
+  activeIdx: index("products_active_idx").on(table.isActive),
+  typeIdx: index("products_type_idx").on(table.type),
+}));
+
+export const orders = pgTable("orders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  customerEmail: text("customer_email"),
+  customerWallet: text("customer_wallet"),
+  status: text("status").notNull().default("pending"),
+  totalAmount: decimal("total_amount", { precision: 20, scale: 8 }).notNull(),
+  currency: text("currency").notNull().default("USD"),
+  paymentMethod: text("payment_method").notNull(),
+  items: jsonb("items").notNull(),
+  shippingInfo: jsonb("shipping_info"),
+  metadata: jsonb("metadata"),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  userIdx: index("orders_user_idx").on(table.userId),
+  statusIdx: index("orders_status_idx").on(table.status),
+  customerEmailIdx: index("orders_customer_email_idx").on(table.customerEmail),
+  customerWalletLowerIdx: index("orders_customer_wallet_lower_idx").on(sql`lower(${table.customerWallet})`),
+  createdAtIdx: index("orders_created_at_idx").on(table.createdAt),
+  paymentMethodIdx: index("orders_payment_method_idx").on(table.paymentMethod),
+}));
+
+export const payments = pgTable("payments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orderId: varchar("order_id").notNull().references(() => orders.id),
+  paymentMethod: text("payment_method").notNull(),
+  provider: text("provider").notNull(),
+  amount: decimal("amount", { precision: 20, scale: 8 }).notNull(),
+  currency: text("currency").notNull(),
+  status: text("status").notNull().default("pending"),
+  txHash: text("tx_hash"),
+  providerPaymentId: text("provider_payment_id"),
+  providerResponse: jsonb("provider_response"),
+  fromAddress: text("from_address"),
+  toAddress: text("to_address"),
+  confirmations: text("confirmations").default("0"),
+  errorMessage: text("error_message"),
+  paidAt: timestamp("paid_at"),
+  confirmedAt: timestamp("confirmed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  orderIdx: index("payments_order_idx").on(table.orderId),
+  statusIdx: index("payments_status_idx").on(table.status),
+  txHashIdx: index("payments_tx_hash_idx").on(table.txHash),
+  providerPaymentIdIdx: index("payments_provider_payment_id_idx").on(table.providerPaymentId),
+  methodIdx: index("payments_method_idx").on(table.paymentMethod),
+  providerIdx: index("payments_provider_idx").on(table.provider),
+  createdAtIdx: index("payments_created_at_idx").on(table.createdAt),
+}));
+
+export const paymentWebhooks = pgTable("payment_webhooks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  provider: text("provider").notNull(),
+  eventType: text("event_type").notNull(),
+  paymentId: varchar("payment_id").references(() => payments.id),
+  payload: jsonb("payload").notNull(),
+  signature: text("signature"),
+  processed: text("processed").notNull().default("false"),
+  processedAt: timestamp("processed_at"),
+  error: text("error"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  providerIdx: index("payment_webhooks_provider_idx").on(table.provider),
+  processedIdx: index("payment_webhooks_processed_idx").on(table.processed),
+  paymentIdx: index("payment_webhooks_payment_idx").on(table.paymentId),
+  createdAtIdx: index("payment_webhooks_created_at_idx").on(table.createdAt),
+}));
+
+export const insertProductSchema = createInsertSchema(products).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertOrderSchema = createInsertSchema(orders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPaymentSchema = createInsertSchema(payments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPaymentWebhookSchema = createInsertSchema(paymentWebhooks).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertProduct = z.infer<typeof insertProductSchema>;
+export type Product = typeof products.$inferSelect;
+export type InsertOrder = z.infer<typeof insertOrderSchema>;
+export type Order = typeof orders.$inferSelect;
+export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+export type Payment = typeof payments.$inferSelect;
+export type InsertPaymentWebhook = z.infer<typeof insertPaymentWebhookSchema>;
+export type PaymentWebhook = typeof paymentWebhooks.$inferSelect;
