@@ -44,6 +44,9 @@ import NotificationsPage from "@/pages/notifications";
 import AchievementsPage from "@/pages/achievements";
 import MarketplacePage from "@/pages/marketplace";
 import StakingPage from "@/pages/staking";
+import ReferralsPage from "@/pages/referrals";
+import SwapPage from "@/pages/swap";
+import NFTGalleryPage from "@/pages/nft-gallery";
 import NotFound from "@/pages/not-found";
 import ConnectionModal from "@/components/connection-modal";
 import { useWeb3 } from "@/hooks/use-web3";
@@ -91,6 +94,9 @@ function Router() {
       <Route path="/achievements" component={AchievementsPage} />
       <Route path="/marketplace" component={MarketplacePage} />
       <Route path="/staking" component={StakingPage} />
+      <Route path="/referrals" component={ReferralsPage} />
+      <Route path="/swap" component={SwapPage} />
+      <Route path="/nft-gallery" component={NFTGalleryPage} />
       <Route component={NotFound} />
     </Switch>
   );
