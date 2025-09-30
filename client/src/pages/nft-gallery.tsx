@@ -58,7 +58,7 @@ export default function NFTGalleryPage() {
     return sum + (nft.lastSale ? parseFloat(nft.lastSale.price) : 0);
   }, 0) || 0;
 
-  const collections = [...new Set(nfts?.map(nft => nft.collectionName))];
+  const collections = Array.from(new Set(nfts?.map(nft => nft.collectionName) || []));
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -113,7 +113,7 @@ export default function NFTGalleryPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Chains</p>
                 <p className="text-3xl font-bold">
-                  {[...new Set(nfts?.map(n => n.chain))].length}
+                  {Array.from(new Set(nfts?.map(n => n.chain) || [])).length}
                 </p>
               </div>
               <Share2 className="h-8 w-8 text-yellow-500" />

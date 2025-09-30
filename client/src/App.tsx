@@ -47,6 +47,7 @@ import StakingPage from "@/pages/staking";
 import ReferralsPage from "@/pages/referrals";
 import SwapPage from "@/pages/swap";
 import NFTGalleryPage from "@/pages/nft-gallery";
+import DAOGovernancePage from "@/pages/dao-governance";
 import NotFound from "@/pages/not-found";
 import ConnectionModal from "@/components/connection-modal";
 import { useWeb3 } from "@/hooks/use-web3";
@@ -97,6 +98,7 @@ function Router() {
       <Route path="/referrals" component={ReferralsPage} />
       <Route path="/swap" component={SwapPage} />
       <Route path="/nft-gallery" component={NFTGalleryPage} />
+      <Route path="/dao" component={DAOGovernancePage} />
       <Route component={NotFound} />
     </Switch>
   );

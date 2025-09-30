@@ -185,7 +185,7 @@ export default function ReferralsPage() {
           <CardHeader>
             <CardTitle className="text-2xl">Join Our Affiliate Program</CardTitle>
             <CardDescription>
-              Earn {affiliate?.commissionRate || '5'}% commission on every sale you refer
+              Earn 5% commission on every sale you refer
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">

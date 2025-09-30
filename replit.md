@@ -42,7 +42,7 @@ The platform features a "Divine Visual System" with a cosmic theme (purple/blue 
 - **Blockchain-Native Payment System**: Instant settlement, no chargebacks, lower fees, multi-chain support (Ethereum, Base, Polygon, Sepolia). Includes product management, shopping cart, multi-payment options, blockchain verification, and order management.
 - **Advanced E-commerce Features**: Multi-currency & stablecoin support, discount codes, gift cards, invoice/payment links, refund system, wallet-based loyalty points, customer tier system, blockchain-verified product reviews, wishlist, recently viewed products, subscription/recurring payments, affiliate/referral system, flash sales, pre-order system, product variants, AI-powered product recommendations, abandoned cart recovery, and on-chain NFT receipts.
 
-### Comprehensive Frontend Pages (17 Total)
+### Comprehensive Frontend Pages (18 Total)
 1. **Products Catalog** (/products) - Advanced filtering, search, grid/list view, price range filtering, category selection, featured products, stock indicators
 2. **Wishlist** (/wishlist) - Save products, remove items, wallet-based persistence, quick add to cart, stock monitoring
 3. **Customer Dashboard** (/dashboard) - Unified view of loyalty points, tier status, subscriptions, recent orders, account stats, spending analytics
@@ -60,6 +60,7 @@ The platform features a "Divine Visual System" with a cosmic theme (purple/blue 
 15. **Referral/Affiliate System** (/referrals) - Complete affiliate program with referral code generation, commission tracking (total earned, pending, referrals count), referral link sharing with copy/share, withdrawal functionality, detailed referral history with status tracking, transaction verification
 16. **Token Swap/DEX** (/swap) - Built-in decentralized exchange for swapping cryptocurrencies (ETH, USDC, USDT, DAI, WBTC), rate calculations, slippage tolerance settings, fee estimates, price impact display, popular trading pairs, wallet-integrated swap execution
 17. **NFT Gallery** (/nft-gallery) - Multi-chain NFT collection showcase with grid/list views, search and chain filtering, collection grouping, stats dashboard (total NFTs, collections, value, chains), detailed NFT modal with attributes, rarity, sale history, OpenSea integration
+18. **DAO Governance** (/dao) - Decentralized autonomous organization with proposal creation, voting system (for/against/abstain), quorum tracking, voting power management, treasury balance display, proposal execution, time-limited voting periods, vote percentage calculations, active/passed/all proposal tabs
 
 # External Dependencies
 
