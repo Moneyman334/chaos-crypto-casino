@@ -5,12 +5,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useWeb3 } from "@/hooks/use-web3";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
+import { useState } from "react";
+import CosmicVisualizer from "@/components/cosmic-visualizer";
 import { 
   Rocket, TrendingUp, DollarSign, Activity, Zap, Crown,
   ShoppingCart, Wallet, Trophy, Users, Target, Sprout,
   PiggyBank, BarChart3, Bell, Star, Package, Gift,
   Coins, Image, Vote, HandshakeIcon, ArrowLeftRight,
-  ChevronRight, Sparkles, Gauge
+  ChevronRight, Sparkles, Gauge, Eye
 } from "lucide-react";
 
 interface EmpireStats {
@@ -41,6 +43,7 @@ interface RecentActivity {
 
 export default function SupremeCommandPage() {
   const { account, balance } = useWeb3();
+  const [showVisualizer, setShowVisualizer] = useState(false);
 
   const { data: empireStats, isLoading: statsLoading } = useQuery<EmpireStats>({
     queryKey: [`/api/supreme/stats?account=${account}`],
@@ -153,21 +156,42 @@ export default function SupremeCommandPage() {
   const totalPnL = parseFloat(empireStats?.totalPnL || "0");
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-purple-950/20 via-background to-blue-950/20">
-      <div className="container mx-auto px-4 py-8">
-        {/* Supreme Header */}
-        <div className="mb-8 text-center">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <Crown className="h-12 w-12 text-yellow-500 animate-pulse" />
-            <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent">
-              Supreme Command Center
-            </h1>
-            <Crown className="h-12 w-12 text-yellow-500 animate-pulse" />
+    <>
+      {showVisualizer && empireStats && (
+        <CosmicVisualizer 
+          empireStats={empireStats}
+          onClose={() => setShowVisualizer(false)}
+        />
+      )}
+      
+      <div className="min-h-screen bg-gradient-to-b from-purple-950/20 via-background to-blue-950/20">
+        <div className="container mx-auto px-4 py-8">
+          {/* Supreme Header */}
+          <div className="mb-8 text-center">
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <Crown className="h-12 w-12 text-yellow-500 animate-pulse" />
+              <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent">
+                Supreme Command Center
+              </h1>
+              <Crown className="h-12 w-12 text-yellow-500 animate-pulse" />
+            </div>
+            <p className="text-xl text-muted-foreground mb-4">
+              Master Control Hub for Your Blockchain Empire
+            </p>
+            
+            {account && (
+              <Button
+                onClick={() => setShowVisualizer(true)}
+                size="lg"
+                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold shadow-lg hover:shadow-purple-500/50 transition-all"
+                data-testid="button-open-visualizer"
+              >
+                <Eye className="mr-2 h-5 w-5" />
+                Launch 3D Cosmic Visualizer
+                <Sparkles className="ml-2 h-5 w-5 animate-pulse" />
+              </Button>
+            )}
           </div>
-          <p className="text-xl text-muted-foreground">
-            Master Control Hub for Your Blockchain Empire
-          </p>
-        </div>
 
         {!account ? (
           <Card className="border-2 border-purple-500/50">
@@ -383,5 +407,6 @@ export default function SupremeCommandPage() {
         )}
       </div>
     </div>
+    </>
   );
 }
