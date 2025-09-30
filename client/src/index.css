@@ -620,29 +620,6 @@ html {
    ONE-OF-A-KIND SIGNATURE EFFECTS
    ======================================== */
 
-/* Custom Cursor Enhancement */
-* {
-  cursor: none;
-}
-
-.custom-cursor {
-  position: fixed;
-  width: 20px;
-  height: 20px;
-  border: 2px solid hsl(280, 100%, 65%);
-  border-radius: 50%;
-  pointer-events: none;
-  z-index: 10000;
-  transition: transform 0.1s ease-out, width 0.2s, height 0.2s;
-  mix-blend-mode: difference;
-}
-
-.custom-cursor.hover {
-  width: 40px;
-  height: 40px;
-  background: hsla(280, 100%, 65%, 0.1);
-}
-
 /* 3D Card Tilt Effect */
 .card-3d {
   transform-style: preserve-3d;
