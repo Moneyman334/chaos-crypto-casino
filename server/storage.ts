@@ -57,7 +57,16 @@ import {
   type HouseDistribution,
   type InsertHouseDistribution,
   type HouseEarning,
-  type InsertHouseEarning
+  type InsertHouseEarning,
+  autoCompoundPools,
+  autoCompoundStakes,
+  compoundEvents,
+  type AutoCompoundPool,
+  type InsertAutoCompoundPool,
+  type AutoCompoundStake,
+  type InsertAutoCompoundStake,
+  type CompoundEvent,
+  type InsertCompoundEvent
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/neon-http";
@@ -239,6 +248,25 @@ export interface IStorage {
   getUserEarnings(walletAddress: string): Promise<HouseEarning[]>;
   createEarning(earning: InsertHouseEarning): Promise<HouseEarning>;
   claimEarning(id: string): Promise<HouseEarning | undefined>;
+  
+  // Auto-Compound Pool methods
+  getAllAutoCompoundPools(): Promise<AutoCompoundPool[]>;
+  getActiveAutoCompoundPools(): Promise<AutoCompoundPool[]>;
+  getAutoCompoundPool(id: string): Promise<AutoCompoundPool | undefined>;
+  createAutoCompoundPool(pool: InsertAutoCompoundPool): Promise<AutoCompoundPool>;
+  updateAutoCompoundPool(id: string, updates: Partial<InsertAutoCompoundPool>): Promise<AutoCompoundPool | undefined>;
+  
+  // Auto-Compound Stake methods
+  getUserStakes(walletAddress: string): Promise<AutoCompoundStake[]>;
+  getPoolStakes(poolId: string): Promise<AutoCompoundStake[]>;
+  getStake(id: string): Promise<AutoCompoundStake | undefined>;
+  createStake(stake: InsertAutoCompoundStake): Promise<AutoCompoundStake>;
+  updateStake(id: string, updates: Partial<InsertAutoCompoundStake>): Promise<AutoCompoundStake | undefined>;
+  
+  // Compound Event methods
+  getStakeCompoundEvents(stakeId: string, limit?: number): Promise<CompoundEvent[]>;
+  getUserCompoundEvents(walletAddress: string, limit?: number): Promise<CompoundEvent[]>;
+  createCompoundEvent(event: InsertCompoundEvent): Promise<CompoundEvent>;
 }
 
 export class MemStorage implements IStorage {
@@ -1889,6 +1917,97 @@ export class PostgreSQLStorage implements IStorage {
       .where(eq(houseEarnings.id, id))
       .returning();
     return updated;
+  }
+  
+  // Auto-Compound Pool methods
+  async getAllAutoCompoundPools() {
+    const pools = await db.select().from(autoCompoundPools)
+      .orderBy(desc(autoCompoundPools.createdAt));
+    return pools;
+  }
+  
+  async getActiveAutoCompoundPools() {
+    const pools = await db.select().from(autoCompoundPools)
+      .where(eq(autoCompoundPools.status, 'active'))
+      .orderBy(desc(autoCompoundPools.createdAt));
+    return pools;
+  }
+  
+  async getAutoCompoundPool(id: string) {
+    const [pool] = await db.select().from(autoCompoundPools)
+      .where(eq(autoCompoundPools.id, id))
+      .limit(1);
+    return pool;
+  }
+  
+  async createAutoCompoundPool(pool: InsertAutoCompoundPool) {
+    const [created] = await db.insert(autoCompoundPools).values(pool).returning();
+    return created;
+  }
+  
+  async updateAutoCompoundPool(id: string, updates: Partial<InsertAutoCompoundPool>) {
+    const [updated] = await db.update(autoCompoundPools)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(autoCompoundPools.id, id))
+      .returning();
+    return updated;
+  }
+  
+  // Auto-Compound Stake methods
+  async getUserStakes(walletAddress: string) {
+    const stakes = await db.select().from(autoCompoundStakes)
+      .where(eq(sql`lower(${autoCompoundStakes.walletAddress})`, normalizeAddress(walletAddress)))
+      .orderBy(desc(autoCompoundStakes.stakedAt));
+    return stakes;
+  }
+  
+  async getPoolStakes(poolId: string) {
+    const stakes = await db.select().from(autoCompoundStakes)
+      .where(eq(autoCompoundStakes.poolId, poolId))
+      .orderBy(desc(autoCompoundStakes.stakedAt));
+    return stakes;
+  }
+  
+  async getStake(id: string) {
+    const [stake] = await db.select().from(autoCompoundStakes)
+      .where(eq(autoCompoundStakes.id, id))
+      .limit(1);
+    return stake;
+  }
+  
+  async createStake(stake: InsertAutoCompoundStake) {
+    const [created] = await db.insert(autoCompoundStakes).values(stake).returning();
+    return created;
+  }
+  
+  async updateStake(id: string, updates: Partial<InsertAutoCompoundStake>) {
+    const [updated] = await db.update(autoCompoundStakes)
+      .set(updates)
+      .where(eq(autoCompoundStakes.id, id))
+      .returning();
+    return updated;
+  }
+  
+  // Compound Event methods
+  async getStakeCompoundEvents(stakeId: string, limit: number = 50) {
+    const events = await db.select().from(compoundEvents)
+      .where(eq(compoundEvents.stakeId, stakeId))
+      .orderBy(desc(compoundEvents.compoundedAt))
+      .limit(limit);
+    return events;
+  }
+  
+  async getUserCompoundEvents(walletAddress: string, limit: number = 50) {
+    const events = await db.select().from(compoundEvents)
+      .where(eq(sql`lower(${compoundEvents.walletAddress})`, normalizeAddress(walletAddress)))
+      .orderBy(desc(compoundEvents.compoundedAt))
+      .limit(limit);
+    return events;
+  }
+  
+  async createCompoundEvent(event: InsertCompoundEvent) {
+    const [created] = await db.insert(compoundEvents).values(event).returning();
+    return created;
   }
 }
 

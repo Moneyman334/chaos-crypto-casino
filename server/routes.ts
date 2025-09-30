@@ -2184,6 +2184,201 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to claim earning" });
     }
   });
+  
+  // Auto-Compound Staking Routes
+  
+  // Get all active auto-compound pools
+  app.get("/api/auto-compound/pools", async (req, res) => {
+    try {
+      const pools = await storage.getActiveAutoCompoundPools();
+      res.json(pools);
+    } catch (error) {
+      console.error("Failed to fetch pools:", error);
+      res.status(500).json({ error: "Failed to fetch pools" });
+    }
+  });
+  
+  // Get specific pool details
+  app.get("/api/auto-compound/pools/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const pool = await storage.getAutoCompoundPool(id);
+      
+      if (!pool) {
+        return res.status(404).json({ error: "Pool not found" });
+      }
+      
+      res.json(pool);
+    } catch (error) {
+      console.error("Failed to fetch pool:", error);
+      res.status(500).json({ error: "Failed to fetch pool" });
+    }
+  });
+  
+  // Get user's stakes
+  app.get("/api/auto-compound/stakes/:walletAddress", async (req, res) => {
+    try {
+      const { walletAddress } = req.params;
+      const stakes = await storage.getUserStakes(walletAddress);
+      res.json(stakes);
+    } catch (error) {
+      console.error("Failed to fetch stakes:", error);
+      res.status(500).json({ error: "Failed to fetch stakes" });
+    }
+  });
+  
+  // Create new stake
+  app.post("/api/auto-compound/pools/:poolId/stake", async (req, res) => {
+    try {
+      const { poolId } = req.params;
+      const stakeSchema = z.object({
+        walletAddress: z.string(),
+        initialStake: z.string(),
+        userId: z.string().optional()
+      });
+      
+      const stakeData = stakeSchema.parse(req.body);
+      
+      // Get pool details
+      const pool = await storage.getAutoCompoundPool(poolId);
+      if (!pool) {
+        return res.status(404).json({ error: "Pool not found" });
+      }
+      
+      // Check min stake
+      const stakeAmount = parseFloat(stakeData.initialStake);
+      const minStake = parseFloat(pool.minStake);
+      if (stakeAmount < minStake) {
+        return res.status(400).json({ error: `Minimum stake is ${minStake} ${pool.tokenSymbol}` });
+      }
+      
+      // Check max stake if set
+      if (pool.maxStake && parseFloat(stakeData.initialStake) > parseFloat(pool.maxStake)) {
+        return res.status(400).json({ error: `Maximum stake is ${pool.maxStake} ${pool.tokenSymbol}` });
+      }
+      
+      // Calculate unlock time if there's a lock period
+      let unlocksAt = null;
+      const lockDays = parseFloat(pool.lockPeriod);
+      if (lockDays > 0) {
+        unlocksAt = new Date();
+        unlocksAt.setDate(unlocksAt.getDate() + lockDays);
+      }
+      
+      // Create stake
+      const stake = await storage.createStake({
+        poolId,
+        walletAddress: stakeData.walletAddress,
+        userId: stakeData.userId,
+        initialStake: stakeData.initialStake,
+        currentBalance: stakeData.initialStake,
+        effectiveApy: pool.baseApy,
+        unlocksAt
+      });
+      
+      // Update pool total staked
+      const currentTotal = parseFloat(pool.totalStaked || '0');
+      const currentStakers = parseInt(pool.totalStakers || '0');
+      await storage.updateAutoCompoundPool(poolId, {
+        totalStaked: (currentTotal + stakeAmount).toString(),
+        totalStakers: (currentStakers + 1).toString()
+      });
+      
+      res.json({ success: true, stake });
+    } catch (error) {
+      console.error("Failed to create stake:", error);
+      res.status(500).json({ error: "Failed to create stake" });
+    }
+  });
+  
+  // Withdraw stake
+  app.post("/api/auto-compound/stakes/:stakeId/withdraw", async (req, res) => {
+    try {
+      const { stakeId } = req.params;
+      const { walletAddress } = req.body;
+      
+      const stake = await storage.getStake(stakeId);
+      if (!stake) {
+        return res.status(404).json({ error: "Stake not found" });
+      }
+      
+      // Verify ownership
+      if (stake.walletAddress.toLowerCase() !== walletAddress?.toLowerCase()) {
+        return res.status(403).json({ error: "Unauthorized: You can only withdraw your own stakes" });
+      }
+      
+      if (stake.status !== 'active') {
+        return res.status(400).json({ error: "Stake already withdrawn" });
+      }
+      
+      const pool = await storage.getAutoCompoundPool(stake.poolId);
+      if (!pool) {
+        return res.status(404).json({ error: "Pool not found" });
+      }
+      
+      // Check if locked
+      const now = new Date();
+      let withdrawAmount = parseFloat(stake.currentBalance);
+      let penalty = 0;
+      
+      if (stake.unlocksAt && now < stake.unlocksAt) {
+        // Apply early withdrawal penalty
+        penalty = withdrawAmount * (parseFloat(pool.earlyWithdrawPenalty) / 100);
+        withdrawAmount -= penalty;
+      }
+      
+      // Update stake
+      const updated = await storage.updateStake(stakeId, {
+        status: 'withdrawn',
+        withdrawnAt: now,
+        withdrawnAmount: withdrawAmount.toString()
+      });
+      
+      // Update pool totals
+      const currentTotal = parseFloat(pool.totalStaked || '0');
+      const currentStakers = parseInt(pool.totalStakers || '0');
+      await storage.updateAutoCompoundPool(stake.poolId, {
+        totalStaked: Math.max(0, currentTotal - parseFloat(stake.currentBalance)).toString(),
+        totalStakers: Math.max(0, currentStakers - 1).toString()
+      });
+      
+      res.json({ 
+        success: true, 
+        stake: updated,
+        withdrawAmount: withdrawAmount.toString(),
+        penalty: penalty.toString()
+      });
+    } catch (error) {
+      console.error("Failed to withdraw stake:", error);
+      res.status(500).json({ error: "Failed to withdraw stake" });
+    }
+  });
+  
+  // Get compound events for a stake
+  app.get("/api/auto-compound/stakes/:stakeId/events", async (req, res) => {
+    try {
+      const { stakeId } = req.params;
+      const limit = parseInt(req.query.limit as string) || 50;
+      const events = await storage.getStakeCompoundEvents(stakeId, limit);
+      res.json(events);
+    } catch (error) {
+      console.error("Failed to fetch compound events:", error);
+      res.status(500).json({ error: "Failed to fetch compound events" });
+    }
+  });
+  
+  // Get user's compound events
+  app.get("/api/auto-compound/events/:walletAddress", async (req, res) => {
+    try {
+      const { walletAddress } = req.params;
+      const limit = parseInt(req.query.limit as string) || 50;
+      const events = await storage.getUserCompoundEvents(walletAddress, limit);
+      res.json(events);
+    } catch (error) {
+      console.error("Failed to fetch compound events:", error);
+      res.status(500).json({ error: "Failed to fetch compound events" });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

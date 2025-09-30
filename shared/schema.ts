@@ -652,3 +652,89 @@ export type InsertHouseDistribution = z.infer<typeof insertHouseDistributionSche
 export type HouseDistribution = typeof houseDistributions.$inferSelect;
 export type InsertHouseEarning = z.infer<typeof insertHouseEarningSchema>;
 export type HouseEarning = typeof houseEarnings.$inferSelect;
+
+// Auto-Compounding Staking System
+export const autoCompoundPools = pgTable("auto_compound_pools", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  tokenSymbol: text("token_symbol").notNull().default("ETH"),
+  baseApy: text("base_apy").notNull(), // Base APY (e.g., "45.5" for 45.5%)
+  compoundFrequency: text("compound_frequency").notNull().default("hourly"), // hourly, daily, weekly
+  totalStaked: text("total_staked").notNull().default("0"),
+  totalStakers: text("total_stakers").notNull().default("0"),
+  minStake: text("min_stake").notNull().default("0.01"),
+  maxStake: text("max_stake"), // null for unlimited
+  earlyWithdrawPenalty: text("early_withdraw_penalty").notNull().default("2"), // % penalty
+  lockPeriod: text("lock_period").notNull().default("0"), // Days, 0 for no lock
+  status: text("status").notNull().default("active"), // active, paused, closed
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  statusIdx: index("auto_compound_pools_status_idx").on(table.status),
+  tokenIdx: index("auto_compound_pools_token_idx").on(table.tokenSymbol),
+}));
+
+export const autoCompoundStakes = pgTable("auto_compound_stakes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  poolId: varchar("pool_id").notNull().references(() => autoCompoundPools.id),
+  walletAddress: text("wallet_address").notNull(),
+  userId: varchar("user_id").references(() => users.id),
+  initialStake: text("initial_stake").notNull(), // Original stake amount
+  currentBalance: text("current_balance").notNull(), // Current value with compounds
+  totalEarned: text("total_earned").notNull().default("0"), // Total earnings
+  compoundCount: text("compound_count").notNull().default("0"), // Number of compounds
+  lastCompoundAt: timestamp("last_compound_at"),
+  effectiveApy: text("effective_apy").notNull(), // Actual APY with compounds
+  status: text("status").notNull().default("active"), // active, withdrawn
+  stakedAt: timestamp("staked_at").notNull().defaultNow(),
+  unlocksAt: timestamp("unlocks_at"), // When can withdraw without penalty
+  withdrawnAt: timestamp("withdrawn_at"),
+  withdrawnAmount: text("withdrawn_amount"),
+}, (table) => ({
+  poolIdx: index("auto_compound_stakes_pool_idx").on(table.poolId),
+  walletIdx: index("auto_compound_stakes_wallet_idx").on(sql`lower(${table.walletAddress})`),
+  userIdx: index("auto_compound_stakes_user_idx").on(table.userId),
+  statusIdx: index("auto_compound_stakes_status_idx").on(table.status),
+  stakedAtIdx: index("auto_compound_stakes_staked_at_idx").on(table.stakedAt),
+}));
+
+export const compoundEvents = pgTable("compound_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  stakeId: varchar("stake_id").notNull().references(() => autoCompoundStakes.id),
+  poolId: varchar("pool_id").notNull().references(() => autoCompoundPools.id),
+  walletAddress: text("wallet_address").notNull(),
+  balanceBefore: text("balance_before").notNull(),
+  balanceAfter: text("balance_after").notNull(),
+  rewardAmount: text("reward_amount").notNull(), // Amount compounded
+  apyAtCompound: text("apy_at_compound").notNull(), // APY rate at time of compound
+  compoundedAt: timestamp("compounded_at").notNull().defaultNow(),
+}, (table) => ({
+  stakeIdx: index("compound_events_stake_idx").on(table.stakeId),
+  poolIdx: index("compound_events_pool_idx").on(table.poolId),
+  walletIdx: index("compound_events_wallet_idx").on(sql`lower(${table.walletAddress})`),
+  compoundedAtIdx: index("compound_events_compounded_at_idx").on(table.compoundedAt),
+}));
+
+export const insertAutoCompoundPoolSchema = createInsertSchema(autoCompoundPools).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAutoCompoundStakeSchema = createInsertSchema(autoCompoundStakes).omit({
+  id: true,
+  stakedAt: true,
+});
+
+export const insertCompoundEventSchema = createInsertSchema(compoundEvents).omit({
+  id: true,
+  compoundedAt: true,
+});
+
+export type InsertAutoCompoundPool = z.infer<typeof insertAutoCompoundPoolSchema>;
+export type AutoCompoundPool = typeof autoCompoundPools.$inferSelect;
+export type InsertAutoCompoundStake = z.infer<typeof insertAutoCompoundStakeSchema>;
+export type AutoCompoundStake = typeof autoCompoundStakes.$inferSelect;
+export type InsertCompoundEvent = z.infer<typeof insertCompoundEventSchema>;
+export type CompoundEvent = typeof compoundEvents.$inferSelect;
