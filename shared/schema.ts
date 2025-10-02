@@ -406,7 +406,8 @@ export const botStrategies = pgTable("bot_strategies", {
 
 export const botSubscriptions = pgTable("bot_subscriptions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").references(() => users.id),
+  userId: varchar("user_id"), // Optional - can use walletAddress instead
+  walletAddress: varchar("wallet_address"), // Web3 wallet for wallet-based subscriptions
   planType: text("plan_type").notNull(), // starter, pro, elite
   status: text("status").notNull().default("active"), // active, paused, cancelled, expired
   startDate: timestamp("start_date").notNull().defaultNow(),
