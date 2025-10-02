@@ -12,7 +12,7 @@ import { Lock, Unlock, Shield, Eye, EyeOff, AlertTriangle, Check, X, KeyRound, D
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function OmniverseVault() {
-  const { address } = useWeb3();
+  const { account } = useWeb3();
   const { toast } = useToast();
   const [masterPassword, setMasterPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -20,9 +20,9 @@ export default function OmniverseVault() {
   const [vaultId, setVaultId] = useState<string | null>(null);
 
   // Fetch vault data
-  const { data: vault, isLoading: vaultLoading } = useQuery({
-    queryKey: ['/api/vault', address],
-    enabled: !!address,
+  const { data: vault, isLoading: vaultLoading } = useQuery<any>({
+    queryKey: ['/api/vault', account],
+    enabled: !!account,
   });
 
   // Fetch vault transactions
@@ -53,7 +53,7 @@ export default function OmniverseVault() {
   useEffect(() => {
     setIsUnlocked(false);
     setMasterPassword("");
-  }, [address]);
+  }, [account]);
 
   // Clear unlock state when vault becomes locked
   useEffect(() => {
@@ -67,7 +67,7 @@ export default function OmniverseVault() {
   const createVaultMutation = useMutation({
     mutationFn: async (password: string) => {
       return await apiRequest('POST', '/api/vault/create', {
-        ownerAddress: address,
+        ownerAddress: account,
         masterPassword: password,
       });
     },
@@ -76,7 +76,7 @@ export default function OmniverseVault() {
         title: "🔒 Vault Created!",
         description: "Your OMNIVERSE SYNDICATE vault is now active.",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/vault', address] });
+      queryClient.invalidateQueries({ queryKey: ['/api/vault', account] });
     },
     onError: (error: any) => {
       toast({
@@ -91,7 +91,7 @@ export default function OmniverseVault() {
   const unlockVaultMutation = useMutation({
     mutationFn: async (password: string) => {
       return await apiRequest('POST', '/api/vault/unlock', {
-        ownerAddress: address,
+        ownerAddress: account,
         masterPassword: password,
       });
     },
@@ -101,11 +101,35 @@ export default function OmniverseVault() {
         title: "🔓 Vault Unlocked",
         description: "Access granted to your secure vault.",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/vault', address] });
+      queryClient.invalidateQueries({ queryKey: ['/api/vault', account] });
     },
     onError: (error: any) => {
       toast({
         title: "Access Denied",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update password for auto-created vault
+  const updatePasswordMutation = useMutation({
+    mutationFn: async (password: string) => {
+      return await apiRequest('PATCH', `/api/vault/${vault?.id}/password`, {
+        masterPassword: password,
+        ownerAddress: account,
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "🔒 Password Set!",
+        description: "Your vault is now secured with your master password.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/vault', account] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to Set Password",
         description: error.message,
         variant: "destructive",
       });
@@ -121,7 +145,13 @@ export default function OmniverseVault() {
       });
       return;
     }
-    createVaultMutation.mutate(masterPassword);
+    
+    // If vault exists with temporary password, update it instead of creating
+    if (needsPasswordSetup && vault) {
+      updatePasswordMutation.mutate(masterPassword);
+    } else {
+      createVaultMutation.mutate(masterPassword);
+    }
   };
 
   const handleUnlockVault = () => {
@@ -136,7 +166,7 @@ export default function OmniverseVault() {
     unlockVaultMutation.mutate(masterPassword);
   };
 
-  if (!address) {
+  if (!account) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 flex items-center justify-center p-6">
         <Card className="max-w-md w-full bg-slate-900/80 border-purple-500/30 backdrop-blur">
@@ -164,8 +194,13 @@ export default function OmniverseVault() {
     );
   }
 
-  // Vault Creation Screen
-  if (!vault) {
+  // Check if vault needs password setup (auto-created vault)
+  const needsPasswordSetup = vault?.masterPassword === 'TEMPORARY_PASSWORD_CHANGE_REQUIRED';
+
+  // Vault Creation or Password Setup Screen
+  if (!vault || needsPasswordSetup) {
+    const isSetup = needsPasswordSetup;
+    
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 flex items-center justify-center p-6">
         <Card className="max-w-md w-full bg-slate-900/80 border-purple-500/30 backdrop-blur">
@@ -174,10 +209,12 @@ export default function OmniverseVault() {
               <Shield className="w-12 h-12 text-white" />
             </div>
             <CardTitle className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
-              Create Your Vault
+              {isSetup ? 'Secure Your Vault' : 'Create Your Vault'}
             </CardTitle>
             <CardDescription className="text-slate-300">
-              Establish your impenetrable OMNIVERSE SYNDICATE vault
+              {isSetup 
+                ? 'Your vault was auto-created with your first purchase. Set your master password to access it.'
+                : 'Establish your impenetrable OMNIVERSE SYNDICATE vault'}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">

@@ -5091,6 +5091,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update vault password (for auto-created vaults with temporary passwords)
+  app.patch("/api/vault/:vaultId/password", async (req, res) => {
+    try {
+      const { vaultId } = req.params;
+      const { masterPassword, ownerAddress } = req.body;
+      
+      if (!masterPassword || masterPassword.length < 8) {
+        return res.status(400).json({ error: "Password must be at least 8 characters" });
+      }
+      
+      if (!ownerAddress) {
+        return res.status(400).json({ error: "Owner address is required" });
+      }
+      
+      const vault = await storage.getVaultById(vaultId);
+      if (!vault) {
+        return res.status(404).json({ error: "Vault not found" });
+      }
+      
+      // SECURITY: Verify wallet ownership
+      if (vault.ownerAddress.toLowerCase() !== ownerAddress.toLowerCase()) {
+        await storage.createVaultSecurityLog({
+          vaultId: vaultId,
+          eventType: "unauthorized_password_change_attempt",
+          ipAddress: req.ip || 'unknown',
+          userAgent: req.get('user-agent') || 'unknown',
+          severity: "critical",
+          actionTaken: `Unauthorized password change attempt from ${ownerAddress}`,
+          success: "false",
+        });
+        
+        return res.status(403).json({ error: "Unauthorized: Wallet address does not match vault owner" });
+      }
+      
+      // Only allow password change if current password is temporary
+      if (vault.masterPassword !== 'TEMPORARY_PASSWORD_CHANGE_REQUIRED') {
+        return res.status(400).json({ error: "Password already set. Use password reset flow instead." });
+      }
+      
+      // Update password
+      await storage.updateVault(vaultId, {
+        masterPassword: masterPassword
+      });
+      
+      // Log password change in security logs
+      await storage.createVaultSecurityLog({
+        vaultId: vaultId,
+        eventType: "password_changed",
+        ipAddress: req.ip || 'unknown',
+        userAgent: req.get('user-agent') || 'unknown',
+        severity: "info",
+        actionTaken: "Master password updated successfully",
+        success: "true",
+      });
+      
+      res.json({ success: true, message: "Password updated successfully" });
+    } catch (error) {
+      console.error("Failed to update vault password:", error);
+      res.status(500).json({ error: "Failed to update password" });
+    }
+  });
+
   // Get vault transactions
   app.get("/api/vault/:vaultId/transactions", async (req, res) => {
     try {
