@@ -57,6 +57,7 @@ import SupremeCommandPage from "@/pages/supreme-command";
 import BridgeTrackerPage from "@/pages/bridge-tracker";
 import TradingSignalsPage from "@/pages/trading-signals";
 import LiveCryptoPage from "@/pages/live-crypto";
+import TradingTerminal from "@/pages/trading-terminal";
 import NotFound from "@/pages/not-found";
 import EnhancedConnectionModal from "@/components/enhanced-connection-modal";
 import { useWeb3 } from "@/hooks/use-web3";
@@ -124,6 +125,7 @@ function Router() {
       <Route path="/bridge-tracker" component={BridgeTrackerPage} />
       <Route path="/trading-signals" component={TradingSignalsPage} />
       <Route path="/live-crypto" component={LiveCryptoPage} />
+      <Route path="/trading-terminal" component={TradingTerminal} />
       <Route component={NotFound} />
     </Switch>
   );

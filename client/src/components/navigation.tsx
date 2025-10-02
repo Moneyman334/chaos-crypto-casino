@@ -27,7 +27,8 @@ import {
   Twitter,
   ArrowLeftRight,
   TrendingUp,
-  Activity
+  Activity,
+  LineChart
 } from "lucide-react";
 
 interface NavigationProps {
@@ -39,6 +40,7 @@ const navigationItems = [
   { path: "/", label: "Home", icon: Home },
   { path: "/empire", label: "Empire", icon: Crown, featured: true },
   { path: "/live-crypto", label: "Live Crypto", icon: Activity, featured: true },
+  { path: "/trading-terminal", label: "Trading Terminal", icon: LineChart, featured: true },
   { path: "/trading-signals", label: "Trading Signals", icon: TrendingUp },
   { path: "/bridge-tracker", label: "Bridge Tracker", icon: ArrowLeftRight },
   { path: "/auto-compound", label: "Auto-Compound", icon: Zap },
