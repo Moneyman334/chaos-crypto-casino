@@ -56,6 +56,7 @@ import TokenLaunchpadPage from "@/pages/token-launchpad";
 import SupremeCommandPage from "@/pages/supreme-command";
 import BridgePage from "@/pages/bridge";
 import BridgeTrackerPage from "@/pages/bridge-tracker";
+import DeFiSuitePage from "@/pages/defi-suite";
 import TradingSignalsPage from "@/pages/trading-signals";
 import LiveCryptoPage from "@/pages/live-crypto";
 import TradingTerminal from "@/pages/trading-terminal";
@@ -126,6 +127,7 @@ function Router() {
       <Route path="/supreme-command" component={SupremeCommandPage} />
       <Route path="/bridge" component={BridgePage} />
       <Route path="/bridge-tracker" component={BridgeTrackerPage} />
+      <Route path="/defi-suite" component={DeFiSuitePage} />
       <Route path="/trading-signals" component={TradingSignalsPage} />
       <Route path="/live-crypto" component={LiveCryptoPage} />
       <Route path="/trading-terminal" component={TradingTerminal} />
