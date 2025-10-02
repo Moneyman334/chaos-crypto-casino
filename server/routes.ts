@@ -16,6 +16,7 @@ import rateLimit from "express-rate-limit";
 import slowDown from "express-slow-down";
 import bcrypt from "bcrypt";
 import { getChainConfig, verifyTransaction, getAllSupportedChains } from "./blockchain-config";
+import { isAdmin, isAuthenticated } from "./auth-middleware";
 
 // Ethereum address validation schema
 const ethereumAddressSchema = z.string()
@@ -134,6 +135,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "Invalid credentials" });
       }
 
+      // Create session
+      req.session.userId = user.id;
+      req.session.username = user.username;
+      req.session.role = user.role;
+
       // Return user without password
       const { password: _, ...userWithoutPassword } = user;
       res.json({
@@ -151,6 +157,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.error("Login failed:", error);
       res.status(500).json({ error: "Login failed" });
+    }
+  });
+
+  // User logout
+  app.post("/api/auth/logout", (req, res) => {
+    req.session.destroy((err) => {
+      if (err) {
+        return res.status(500).json({ error: "Failed to logout" });
+      }
+      res.clearCookie("connect.sid");
+      res.json({ success: true, message: "Logged out successfully" });
+    });
+  });
+
+  // Get current logged-in user
+  app.get("/api/auth/me", (req, res) => {
+    if (req.session && req.session.userId) {
+      res.json({
+        userId: req.session.userId,
+        username: req.session.username,
+        role: req.session.role,
+      });
+    } else {
+      res.status(401).json({ error: "Not authenticated" });
     }
   });
 
@@ -3286,7 +3316,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Create discount code (admin)
-  app.post("/api/discounts", async (req, res) => {
+  app.post("/api/discounts", isAdmin, async (req, res) => {
     try {
       const schema = z.object({
         code: z.string().min(3),
@@ -4096,7 +4126,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create flash sale
-  app.post("/api/flash-sales", async (req, res) => {
+  app.post("/api/flash-sales", isAdmin, async (req, res) => {
     try {
       const schema = insertFlashSaleSchema;
       const data = schema.parse(req.body);
