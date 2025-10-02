@@ -1959,6 +1959,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🎉 Payment complete! Order ${order.id} marked as completed`);
 
+      // VAULT INTEGRATION: Auto-create vault and record transaction
+      try {
+        const customerWallet = verification.from;
+        let vault = await storage.getVaultByAddress(customerWallet);
+        
+        if (!vault) {
+          // Auto-create vault for first-time purchasers with temporary password
+          console.log(`📦 Auto-creating OMNIVERSE vault for ${customerWallet}`);
+          vault = await storage.createVault({
+            ownerAddress: customerWallet,
+            vaultName: `${customerWallet.slice(0, 6)}...${customerWallet.slice(-4)} Vault`,
+            masterPassword: 'TEMPORARY_PASSWORD_CHANGE_REQUIRED',
+            securityLevel: 'SUPERMAN',
+            totalBalance: '0',
+            accessCount: '0',
+            failedAttempts: '0',
+            isLocked: 'false'
+          });
+          
+          // Log vault creation in security logs
+          await storage.createVaultSecurityLog({
+            vaultId: vault.id,
+            eventType: 'vault_created',
+            ipAddress: req.ip || 'unknown',
+            userAgent: req.get('user-agent') || 'unknown',
+            success: 'true',
+            actionTaken: 'Auto-created vault on first purchase',
+            severity: 'info'
+          });
+        }
+        
+        // Record transaction in vault
+        await storage.createVaultTransaction({
+          vaultId: vault.id,
+          txHash: data.txHash,
+          type: 'purchase',
+          amount: verification.value,
+          currency: 'ETH',
+          fromAddress: verification.from,
+          toAddress: verification.to,
+          status: 'completed',
+          purpose: `Order #${order.id.slice(0, 8)}`,
+          category: 'ecommerce',
+          blockNumber: verification.blockNumber?.toString()
+        });
+        
+        // Update vault total balance
+        const newBalance = (parseFloat(vault.totalBalance) + parseFloat(verification.value)).toFixed(6);
+        await storage.updateVault(vault.id, {
+          totalBalance: newBalance
+        });
+        
+        console.log(`💎 Vault updated: +${verification.value} ETH (total: ${newBalance} ETH)`);
+        
+      } catch (vaultError) {
+        // Don't fail payment if vault integration fails - just log error
+        console.error('Vault integration error (non-critical):', vaultError);
+      }
+
       res.json(payment);
     } catch (error) {
       if (error instanceof z.ZodError) {
