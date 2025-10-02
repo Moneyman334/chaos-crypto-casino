@@ -4617,6 +4617,255 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+
+  // ===== ADVANCED TRADING FEATURES =====
+  
+  // Get OHLC candlestick data
+  app.get("/api/trading/ohlc/:coinId", async (req, res) => {
+    try {
+      const { coinId } = req.params;
+      const vsCurrency = req.query.vs_currency as string || "usd";
+      const days = req.query.days as string || "7";
+      
+      const response = await fetch(
+        `https://api.coingecko.com/api/v3/coins/${coinId}/ohlc?vs_currency=${vsCurrency}&days=${days}`
+      );
+      
+      if (!response.ok) {
+        throw new Error(`CoinGecko API error: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      res.json({
+        success: true,
+        data: data,
+        coinId,
+        vsCurrency,
+        days,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Failed to fetch OHLC data:", error);
+      res.status(500).json({ 
+        success: false,
+        error: "Failed to fetch candlestick data"
+      });
+    }
+  });
+  
+  // Get Fear & Greed Index
+  app.get("/api/market/fear-greed", async (req, res) => {
+    try {
+      const limit = req.query.limit as string || "1";
+      const response = await fetch(`https://api.alternative.me/fng/?limit=${limit}`);
+      
+      if (!response.ok) {
+        throw new Error(`Fear & Greed API error: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      res.json({
+        success: true,
+        data: data.data,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Failed to fetch Fear & Greed Index:", error);
+      res.status(500).json({ 
+        success: false,
+        error: "Failed to fetch market sentiment"
+      });
+    }
+  });
+  
+  // Price Alerts CRUD
+  app.get("/api/alerts/:walletAddress", async (req, res) => {
+    try {
+      const { walletAddress } = req.params;
+      const alerts = await storage.getPriceAlerts(walletAddress);
+      
+      res.json({
+        success: true,
+        data: alerts,
+        count: alerts.length,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Failed to fetch price alerts:", error);
+      res.status(500).json({ 
+        success: false,
+        error: "Failed to fetch price alerts"
+      });
+    }
+  });
+  
+  app.post("/api/alerts", async (req, res) => {
+    try {
+      const alertData = req.body;
+      const alert = await storage.createPriceAlert(alertData);
+      
+      res.json({
+        success: true,
+        data: alert,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Failed to create price alert:", error);
+      res.status(500).json({ 
+        success: false,
+        error: "Failed to create price alert"
+      });
+    }
+  });
+  
+  app.delete("/api/alerts/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deletePriceAlert(id);
+      
+      res.json({
+        success: true,
+        deleted,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Failed to delete price alert:", error);
+      res.status(500).json({ 
+        success: false,
+        error: "Failed to delete price alert"
+      });
+    }
+  });
+  
+  // Whale Transactions
+  app.get("/api/whale-watch", async (req, res) => {
+    try {
+      const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+      const chain = req.query.chain as string;
+      const token = req.query.token as string;
+      
+      let whales;
+      if (chain) {
+        whales = await storage.getWhaleTransactionsByChain(chain, limit);
+      } else if (token) {
+        whales = await storage.getWhaleTransactionsByToken(token, limit);
+      } else {
+        whales = await storage.getWhaleTransactions(limit);
+      }
+      
+      res.json({
+        success: true,
+        data: whales,
+        count: whales.length,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Failed to fetch whale transactions:", error);
+      res.status(500).json({ 
+        success: false,
+        error: "Failed to fetch whale transactions"
+      });
+    }
+  });
+  
+  // Crypto News
+  app.get("/api/news", async (req, res) => {
+    try {
+      const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+      const category = req.query.category as string;
+      
+      let news;
+      if (category) {
+        news = await storage.getCryptoNewsByCategory(category, limit);
+      } else {
+        news = await storage.getCryptoNews(limit);
+      }
+      
+      res.json({
+        success: true,
+        data: news,
+        count: news.length,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Failed to fetch crypto news:", error);
+      res.status(500).json({ 
+        success: false,
+        error: "Failed to fetch crypto news"
+      });
+    }
+  });
+  
+  // Market Sentiment
+  app.get("/api/market/sentiment", async (req, res) => {
+    try {
+      const latest = await storage.getLatestMarketSentiment();
+      
+      res.json({
+        success: true,
+        data: latest,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Failed to fetch market sentiment:", error);
+      res.status(500).json({ 
+        success: false,
+        error: "Failed to fetch market sentiment"
+      });
+    }
+  });
+  
+  app.get("/api/market/sentiment/history", async (req, res) => {
+    try {
+      const limit = Math.min(parseInt(req.query.limit as string) || 30, 100);
+      const history = await storage.getMarketSentimentHistory(limit);
+      
+      res.json({
+        success: true,
+        data: history,
+        count: history.length,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Failed to fetch sentiment history:", error);
+      res.status(500).json({ 
+        success: false,
+        error: "Failed to fetch sentiment history"
+      });
+    }
+  });
+  
+  // Gas Tracker (Ethereum mainnet)
+  app.get("/api/gas", async (req, res) => {
+    try {
+      const response = await fetch("https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey=YourApiKeyToken");
+      
+      if (!response.ok) {
+        throw new Error(`Gas API error: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      res.json({
+        success: true,
+        data: data.result,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Failed to fetch gas prices:", error);
+      res.status(500).json({ 
+        success: false,
+        error: "Failed to fetch gas prices",
+        data: {
+          SafeGasPrice: "0",
+          ProposeGasPrice: "0",
+          FastGasPrice: "0"
+        }
+      });
+    }
+  });
   
   const httpServer = createServer(app);
   return httpServer;

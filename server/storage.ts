@@ -96,7 +96,19 @@ import {
   type TradingSignal,
   type InsertTradingSignal,
   type GovernanceStake,
-  type InsertGovernanceStake
+  type InsertGovernanceStake,
+  priceAlerts,
+  whaleTransactions,
+  cryptoNews,
+  marketSentiment,
+  type PriceAlert,
+  type InsertPriceAlert,
+  type WhaleTransaction,
+  type InsertWhaleTransaction,
+  type CryptoNews,
+  type InsertCryptoNews,
+  type MarketSentiment,
+  type InsertMarketSentiment
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/neon-http";
@@ -370,6 +382,30 @@ export interface IStorage {
   getGovernanceStake(id: string): Promise<GovernanceStake | undefined>;
   createGovernanceStake(stake: InsertGovernanceStake): Promise<GovernanceStake>;
   updateGovernanceStake(id: string, updates: Partial<InsertGovernanceStake>): Promise<GovernanceStake | undefined>;
+  
+  // Price Alert methods
+  getPriceAlerts(walletAddress: string): Promise<PriceAlert[]>;
+  getActivePriceAlerts(walletAddress: string): Promise<PriceAlert[]>;
+  getPriceAlert(id: string): Promise<PriceAlert | undefined>;
+  createPriceAlert(alert: InsertPriceAlert): Promise<PriceAlert>;
+  updatePriceAlert(id: string, updates: Partial<InsertPriceAlert>): Promise<PriceAlert | undefined>;
+  deletePriceAlert(id: string): Promise<boolean>;
+  
+  // Whale Transaction methods
+  getWhaleTransactions(limit?: number): Promise<WhaleTransaction[]>;
+  getWhaleTransactionsByChain(chain: string, limit?: number): Promise<WhaleTransaction[]>;
+  getWhaleTransactionsByToken(tokenSymbol: string, limit?: number): Promise<WhaleTransaction[]>;
+  createWhaleTransaction(transaction: InsertWhaleTransaction): Promise<WhaleTransaction>;
+  
+  // Crypto News methods
+  getCryptoNews(limit?: number): Promise<CryptoNews[]>;
+  getCryptoNewsByCategory(category: string, limit?: number): Promise<CryptoNews[]>;
+  createCryptoNews(news: InsertCryptoNews): Promise<CryptoNews>;
+  
+  // Market Sentiment methods
+  getLatestMarketSentiment(): Promise<MarketSentiment | undefined>;
+  getMarketSentimentHistory(limit?: number): Promise<MarketSentiment[]>;
+  createMarketSentiment(sentiment: InsertMarketSentiment): Promise<MarketSentiment>;
 }
 
 export class MemStorage implements IStorage {
@@ -2470,6 +2506,111 @@ export class PostgreSQLStorage implements IStorage {
       .where(eq(governanceStakes.id, id))
       .returning();
     return updated;
+  }
+  
+  // Price Alert methods
+  async getPriceAlerts(walletAddress: string) {
+    const normalized = normalizeAddress(walletAddress);
+    return await db.select().from(priceAlerts)
+      .where(sql`lower(${priceAlerts.walletAddress}) = ${normalized}`)
+      .orderBy(desc(priceAlerts.createdAt));
+  }
+  
+  async getActivePriceAlerts(walletAddress: string) {
+    const normalized = normalizeAddress(walletAddress);
+    return await db.select().from(priceAlerts)
+      .where(sql`lower(${priceAlerts.walletAddress}) = ${normalized} AND ${priceAlerts.isActive} = 'true' AND ${priceAlerts.isTriggered} = 'false'`)
+      .orderBy(desc(priceAlerts.createdAt));
+  }
+  
+  async getPriceAlert(id: string) {
+    const [alert] = await db.select().from(priceAlerts)
+      .where(eq(priceAlerts.id, id))
+      .limit(1);
+    return alert;
+  }
+  
+  async createPriceAlert(alert: InsertPriceAlert) {
+    const [created] = await db.insert(priceAlerts).values(alert).returning();
+    return created;
+  }
+  
+  async updatePriceAlert(id: string, updates: Partial<InsertPriceAlert>) {
+    const [updated] = await db.update(priceAlerts)
+      .set(updates)
+      .where(eq(priceAlerts.id, id))
+      .returning();
+    return updated;
+  }
+  
+  async deletePriceAlert(id: string) {
+    const deleted = await db.delete(priceAlerts)
+      .where(eq(priceAlerts.id, id));
+    return deleted.rowCount ? deleted.rowCount > 0 : false;
+  }
+  
+  // Whale Transaction methods
+  async getWhaleTransactions(limit = 50) {
+    return await db.select().from(whaleTransactions)
+      .orderBy(desc(whaleTransactions.timestamp))
+      .limit(limit);
+  }
+  
+  async getWhaleTransactionsByChain(chain: string, limit = 50) {
+    return await db.select().from(whaleTransactions)
+      .where(eq(whaleTransactions.chain, chain))
+      .orderBy(desc(whaleTransactions.timestamp))
+      .limit(limit);
+  }
+  
+  async getWhaleTransactionsByToken(tokenSymbol: string, limit = 50) {
+    return await db.select().from(whaleTransactions)
+      .where(eq(whaleTransactions.tokenSymbol, tokenSymbol))
+      .orderBy(desc(whaleTransactions.timestamp))
+      .limit(limit);
+  }
+  
+  async createWhaleTransaction(transaction: InsertWhaleTransaction) {
+    const [created] = await db.insert(whaleTransactions).values(transaction).returning();
+    return created;
+  }
+  
+  // Crypto News methods
+  async getCryptoNews(limit = 50) {
+    return await db.select().from(cryptoNews)
+      .orderBy(desc(cryptoNews.publishedAt))
+      .limit(limit);
+  }
+  
+  async getCryptoNewsByCategory(category: string, limit = 50) {
+    return await db.select().from(cryptoNews)
+      .where(eq(cryptoNews.category, category))
+      .orderBy(desc(cryptoNews.publishedAt))
+      .limit(limit);
+  }
+  
+  async createCryptoNews(news: InsertCryptoNews) {
+    const [created] = await db.insert(cryptoNews).values(news).returning();
+    return created;
+  }
+  
+  // Market Sentiment methods
+  async getLatestMarketSentiment() {
+    const [sentiment] = await db.select().from(marketSentiment)
+      .orderBy(desc(marketSentiment.timestamp))
+      .limit(1);
+    return sentiment;
+  }
+  
+  async getMarketSentimentHistory(limit = 30) {
+    return await db.select().from(marketSentiment)
+      .orderBy(desc(marketSentiment.timestamp))
+      .limit(limit);
+  }
+  
+  async createMarketSentiment(sentiment: InsertMarketSentiment) {
+    const [created] = await db.insert(marketSentiment).values(sentiment).returning();
+    return created;
   }
 }
 

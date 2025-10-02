@@ -1653,3 +1653,103 @@ export type InsertTradingSignal = z.infer<typeof insertTradingSignalSchema>;
 export type TradingSignal = typeof tradingSignals.$inferSelect;
 export type InsertGovernanceStake = z.infer<typeof insertGovernanceStakeSchema>;
 export type GovernanceStake = typeof governanceStakes.$inferSelect;
+
+export const priceAlerts = pgTable("price_alerts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  walletAddress: text("wallet_address").notNull(),
+  coinId: text("coin_id").notNull(),
+  coinSymbol: text("coin_symbol").notNull(),
+  targetPrice: text("target_price").notNull(),
+  condition: text("condition").notNull(), // above, below
+  isActive: text("is_active").notNull().default("true"),
+  isTriggered: text("is_triggered").notNull().default("false"),
+  triggeredAt: timestamp("triggered_at"),
+  notificationSent: text("notification_sent").notNull().default("false"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  walletIdx: index("price_alerts_wallet_idx").on(sql`lower(${table.walletAddress})`),
+  coinIdx: index("price_alerts_coin_idx").on(table.coinId),
+  activeIdx: index("price_alerts_active_idx").on(table.isActive),
+  createdIdx: index("price_alerts_created_idx").on(table.createdAt),
+}));
+
+export const whaleTransactions = pgTable("whale_transactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  txHash: text("tx_hash").notNull().unique(),
+  chain: text("chain").notNull(),
+  fromAddress: text("from_address").notNull(),
+  toAddress: text("to_address").notNull(),
+  tokenSymbol: text("token_symbol").notNull(),
+  tokenName: text("token_name"),
+  amount: text("amount").notNull(),
+  usdValue: text("usd_value").notNull(),
+  timestamp: timestamp("timestamp").notNull(),
+  blockNumber: text("block_number"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  chainIdx: index("whale_tx_chain_idx").on(table.chain),
+  tokenIdx: index("whale_tx_token_idx").on(table.tokenSymbol),
+  timestampIdx: index("whale_tx_timestamp_idx").on(table.timestamp),
+  createdIdx: index("whale_tx_created_idx").on(table.createdAt),
+}));
+
+export const cryptoNews = pgTable("crypto_news", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  description: text("description"),
+  url: text("url").notNull().unique(),
+  source: text("source").notNull(),
+  imageUrl: text("image_url"),
+  publishedAt: timestamp("published_at").notNull(),
+  category: text("category"), // market, regulation, technology, defi, nft
+  sentiment: text("sentiment"), // positive, negative, neutral
+  coins: text("coins").array().default(sql`'{}'::text[]`),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  sourceIdx: index("crypto_news_source_idx").on(table.source),
+  categoryIdx: index("crypto_news_category_idx").on(table.category),
+  publishedIdx: index("crypto_news_published_idx").on(table.publishedAt),
+  createdIdx: index("crypto_news_created_idx").on(table.createdAt),
+}));
+
+export const marketSentiment = pgTable("market_sentiment", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  value: text("value").notNull(),
+  classification: text("classification").notNull(), // Extreme Fear, Fear, Neutral, Greed, Extreme Greed
+  timestamp: timestamp("timestamp").notNull(),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  timestampIdx: index("market_sentiment_timestamp_idx").on(table.timestamp),
+  createdIdx: index("market_sentiment_created_idx").on(table.createdAt),
+}));
+
+export const insertPriceAlertSchema = createInsertSchema(priceAlerts).omit({
+  id: true,
+  createdAt: true,
+  triggeredAt: true,
+});
+
+export const insertWhaleTransactionSchema = createInsertSchema(whaleTransactions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertCryptoNewsSchema = createInsertSchema(cryptoNews).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertMarketSentimentSchema = createInsertSchema(marketSentiment).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPriceAlert = z.infer<typeof insertPriceAlertSchema>;
+export type PriceAlert = typeof priceAlerts.$inferSelect;
+export type InsertWhaleTransaction = z.infer<typeof insertWhaleTransactionSchema>;
+export type WhaleTransaction = typeof whaleTransactions.$inferSelect;
+export type InsertCryptoNews = z.infer<typeof insertCryptoNewsSchema>;
+export type CryptoNews = typeof cryptoNews.$inferSelect;
+export type InsertMarketSentiment = z.infer<typeof insertMarketSentimentSchema>;
+export type MarketSentiment = typeof marketSentiment.$inferSelect;
