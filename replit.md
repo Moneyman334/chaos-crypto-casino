@@ -2,6 +2,19 @@
 
 "Web3 Blockchain Empire" is a comprehensive Web3 blockchain platform offering a complete cryptocurrency ecosystem. It features multi-chain wallet integration, multi-crypto deposits, and universal crypto payments via NOWPayments. The platform includes advanced tools like ERC-20 Token and ERC-721/ERC-1155 NFT creators, an AI-powered Sentinel Auto Trading Bot, and robust transaction management. It provides a "divine visual experience" with cosmic aesthetics and interactive UI effects, designed for production use. Key features include smart contract generators, automated trading, a blockchain-native e-commerce payment system with multi-currency support, discount codes, gift cards, loyalty programs, and on-chain NFT receipts. It also incorporates a Social Media Automation System for Twitter/X.
 
+# Recent Changes
+
+## October 2, 2025 - Bot Subscription System Fixes
+- **Fixed Critical Bug**: Corrected apiRequest parameter order throughout codebase (method, url, data)
+  - Fixed files: sentinel-bot.tsx, bot-config.tsx, auto-compound.tsx, transactionHistory.ts
+- **Database Schema Updates**: 
+  - Removed foreign key constraint on bot_subscriptions.userId for Web3-native authentication
+  - Added walletAddress column to support wallet-based subscriptions
+  - Made userId optional to support both traditional and wallet-only authentication
+- **API Validation Enhancement**: Added Zod refine validation ensuring either userId OR walletAddress is provided
+- **Testing**: All subscription flows verified working with 201 success responses
+- **Status**: Bot subscriptions fully functional, games confirmed free-to-play and accessible
+
 # User Preferences
 
 Preferred communication style: Simple, everyday language.
