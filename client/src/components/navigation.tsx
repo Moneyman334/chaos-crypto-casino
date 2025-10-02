@@ -16,6 +16,7 @@ import {
   Menu,
   Coins,
   DollarSign,
+  Brain,
   Network,
   AlertTriangle,
   CheckCircle2,
@@ -33,6 +34,8 @@ import {
   Activity,
   LineChart,
   Lock,
+  Shield,
+  BarChart3,
   LogOut,
   User as UserIcon
 } from "lucide-react";
@@ -51,6 +54,9 @@ const navigationItems = [
   { path: "/auto-compound", label: "Auto-Compound", icon: Zap, featured: true },
   { path: "/live-crypto", label: "Live Crypto", icon: Activity, featured: true },
   { path: "/trading-terminal", label: "Trading Terminal", icon: LineChart, featured: true },
+  { path: "/ai-oracle", label: "AI Oracle", icon: Brain, featured: true },
+  { path: "/multi-sig-treasury", label: "Multi-Sig Treasury", icon: Shield, featured: true },
+  { path: "/synthetic-assets", label: "Synthetic Assets", icon: BarChart3, featured: true },
   { path: "/trading-signals", label: "Trading Signals", icon: TrendingUp },
   { path: "/defi-suite", label: "DeFi Suite", icon: DollarSign, featured: true },
   { path: "/bridge", label: "Cross-Chain Bridge", icon: ArrowLeftRight, featured: true },

@@ -57,6 +57,9 @@ import SupremeCommandPage from "@/pages/supreme-command";
 import BridgePage from "@/pages/bridge";
 import BridgeTrackerPage from "@/pages/bridge-tracker";
 import DeFiSuitePage from "@/pages/defi-suite";
+import AITradingOracle from "@/pages/ai-oracle";
+import MultiSigTreasury from "@/pages/multi-sig-treasury";
+import SyntheticAssets from "@/pages/synthetic-assets";
 import TradingSignalsPage from "@/pages/trading-signals";
 import LiveCryptoPage from "@/pages/live-crypto";
 import TradingTerminal from "@/pages/trading-terminal";
@@ -128,6 +131,9 @@ function Router() {
       <Route path="/bridge" component={BridgePage} />
       <Route path="/bridge-tracker" component={BridgeTrackerPage} />
       <Route path="/defi-suite" component={DeFiSuitePage} />
+      <Route path="/ai-oracle" component={AITradingOracle} />
+      <Route path="/multi-sig-treasury" component={MultiSigTreasury} />
+      <Route path="/synthetic-assets" component={SyntheticAssets} />
       <Route path="/trading-signals" component={TradingSignalsPage} />
       <Route path="/live-crypto" component={LiveCryptoPage} />
       <Route path="/trading-terminal" component={TradingTerminal} />
