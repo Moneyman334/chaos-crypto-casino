@@ -1725,6 +1725,110 @@ export const marketSentiment = pgTable("market_sentiment", {
   createdIdx: index("market_sentiment_created_idx").on(table.createdAt),
 }));
 
+export const omniverseVaults = pgTable("omniverse_vaults", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ownerAddress: varchar("owner_address").notNull().unique(),
+  vaultName: text("vault_name").notNull().default("OMNIVERSE SYNDICATE VAULT"),
+  encryptedPrivateKey: text("encrypted_private_key"),
+  encryptedSeed: text("encrypted_seed"),
+  masterPassword: text("master_password").notNull(),
+  securityLevel: text("security_level").notNull().default("SUPERMAN"),
+  biometricHash: text("biometric_hash"),
+  recoveryPhrase: text("recovery_phrase"),
+  twoFactorSecret: text("two_factor_secret"),
+  totalBalance: text("total_balance").notNull().default("0"),
+  lastAccessed: timestamp("last_accessed").defaultNow(),
+  accessCount: text("access_count").notNull().default("0"),
+  isLocked: text("is_locked").notNull().default("false"),
+  lockoutUntil: timestamp("lockout_until"),
+  failedAttempts: text("failed_attempts").notNull().default("0"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  ownerIdx: index("omniverse_vaults_owner_idx").on(table.ownerAddress),
+  securityIdx: index("omniverse_vaults_security_idx").on(table.securityLevel),
+  accessedIdx: index("omniverse_vaults_accessed_idx").on(table.lastAccessed),
+}));
+
+export const vaultTransactions = pgTable("vault_transactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vaultId: varchar("vault_id").notNull().references(() => omniverseVaults.id),
+  txHash: text("tx_hash").unique(),
+  type: text("type").notNull(),
+  amount: text("amount").notNull(),
+  currency: text("currency").notNull(),
+  fromAddress: text("from_address"),
+  toAddress: text("to_address"),
+  status: text("status").notNull().default("pending"),
+  purpose: text("purpose"),
+  category: text("category"),
+  encryptedData: text("encrypted_data"),
+  blockNumber: text("block_number"),
+  gasUsed: text("gas_used"),
+  timestamp: timestamp("timestamp").notNull().defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  vaultIdx: index("vault_tx_vault_idx").on(table.vaultId),
+  typeIdx: index("vault_tx_type_idx").on(table.type),
+  statusIdx: index("vault_tx_status_idx").on(table.status),
+  timestampIdx: index("vault_tx_timestamp_idx").on(table.timestamp),
+}));
+
+export const vaultAssets = pgTable("vault_assets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vaultId: varchar("vault_id").notNull().references(() => omniverseVaults.id),
+  assetType: text("asset_type").notNull(),
+  tokenAddress: text("token_address"),
+  tokenSymbol: text("token_symbol").notNull(),
+  tokenName: text("token_name").notNull(),
+  balance: text("balance").notNull().default("0"),
+  usdValue: text("usd_value").notNull().default("0"),
+  chain: text("chain").notNull(),
+  decimals: text("decimals").notNull().default("18"),
+  logoUrl: text("logo_url"),
+  lastUpdated: timestamp("last_updated").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  vaultIdx: index("vault_assets_vault_idx").on(table.vaultId),
+  chainIdx: index("vault_assets_chain_idx").on(table.chain),
+  symbolIdx: index("vault_assets_symbol_idx").on(table.tokenSymbol),
+}));
+
+export const vaultSecurityLogs = pgTable("vault_security_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vaultId: varchar("vault_id").notNull().references(() => omniverseVaults.id),
+  eventType: text("event_type").notNull(),
+  severity: text("severity").notNull().default("info"),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  location: text("location"),
+  actionTaken: text("action_taken").notNull(),
+  metadata: jsonb("metadata"),
+  success: text("success").notNull(),
+  timestamp: timestamp("timestamp").notNull().defaultNow(),
+}, (table) => ({
+  vaultIdx: index("vault_security_vault_idx").on(table.vaultId),
+  eventIdx: index("vault_security_event_idx").on(table.eventType),
+  severityIdx: index("vault_security_severity_idx").on(table.severity),
+  timestampIdx: index("vault_security_timestamp_idx").on(table.timestamp),
+}));
+
+export const vaultBackups = pgTable("vault_backups", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vaultId: varchar("vault_id").notNull().references(() => omniverseVaults.id),
+  backupType: text("backup_type").notNull(),
+  encryptedBackup: text("encrypted_backup").notNull(),
+  backupHash: text("backup_hash").notNull(),
+  version: text("version").notNull(),
+  isRecoverable: text("is_recoverable").notNull().default("true"),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  vaultIdx: index("vault_backups_vault_idx").on(table.vaultId),
+  typeIdx: index("vault_backups_type_idx").on(table.backupType),
+  createdIdx: index("vault_backups_created_idx").on(table.createdAt),
+}));
+
 export const insertPriceAlertSchema = createInsertSchema(priceAlerts).omit({
   id: true,
   createdAt: true,
@@ -1754,3 +1858,42 @@ export type InsertCryptoNews = z.infer<typeof insertCryptoNewsSchema>;
 export type CryptoNews = typeof cryptoNews.$inferSelect;
 export type InsertMarketSentiment = z.infer<typeof insertMarketSentimentSchema>;
 export type MarketSentiment = typeof marketSentiment.$inferSelect;
+
+export const insertOmniverseVaultSchema = createInsertSchema(omniverseVaults).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastAccessed: true,
+});
+
+export const insertVaultTransactionSchema = createInsertSchema(vaultTransactions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertVaultAssetSchema = createInsertSchema(vaultAssets).omit({
+  id: true,
+  createdAt: true,
+  lastUpdated: true,
+});
+
+export const insertVaultSecurityLogSchema = createInsertSchema(vaultSecurityLogs).omit({
+  id: true,
+  timestamp: true,
+});
+
+export const insertVaultBackupSchema = createInsertSchema(vaultBackups).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertOmniverseVault = z.infer<typeof insertOmniverseVaultSchema>;
+export type OmniverseVault = typeof omniverseVaults.$inferSelect;
+export type InsertVaultTransaction = z.infer<typeof insertVaultTransactionSchema>;
+export type VaultTransaction = typeof vaultTransactions.$inferSelect;
+export type InsertVaultAsset = z.infer<typeof insertVaultAssetSchema>;
+export type VaultAsset = typeof vaultAssets.$inferSelect;
+export type InsertVaultSecurityLog = z.infer<typeof insertVaultSecurityLogSchema>;
+export type VaultSecurityLog = typeof vaultSecurityLogs.$inferSelect;
+export type InsertVaultBackup = z.infer<typeof insertVaultBackupSchema>;
+export type VaultBackup = typeof vaultBackups.$inferSelect;
