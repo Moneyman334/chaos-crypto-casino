@@ -25,8 +25,11 @@ The platform features a "Divine Visual System" with a cosmic theme (purple/blue 
 - **Core**: Express.js and TypeScript REST API with modular routes.
 - **Database Integration**: Interface-based storage layer with PostgreSQL and Drizzle ORM, with an in-memory option for development.
 - **API Architecture**: Over 70 RESTful endpoints with rate limiting, authentication, Zod validation, and a storage layer.
-- **Security**: PostgreSQL-backed sessions, Bcrypt password hashing, rate limiting, progressive slow down, CORS, input sanitization, and SQL injection prevention.
+- **Security**: Production-grade PostgreSQL-backed sessions (connect-pg-simple), Bcrypt password hashing (cost factor 12), rate limiting, progressive slow down, CORS, input sanitization, and SQL injection prevention.
+- **Session Management**: PostgreSQL session store with automatic table creation, 15-minute session pruning, 7-day cookie expiration, and automatic persistence across server restarts.
+- **Observability**: Request ID tracking for all API calls, enhanced error logging with request tracing, slow request warnings (>1s), and structured logging with sensitive field redaction.
 - **Real-time Services**: Auto-Compound Engine, Social Media Scheduler, Trading Bot Engine, and Price Service.
+- **Performance**: Comprehensive database indexes on all critical tables (users, wallets, transactions, tokens, NFTs, etc.) for optimized query performance.
 - **Stability & Resilience**: Idempotent graceful shutdown handling and sequential cleanup of background services.
 
 ## Feature Specifications

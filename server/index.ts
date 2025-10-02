@@ -8,6 +8,20 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Require SESSION_SECRET for production security
+if (!process.env.SESSION_SECRET) {
+  console.error("FATAL: SESSION_SECRET environment variable is required for secure session management");
+  process.exit(1);
+}
+
+// Request ID tracking for better debugging (using crypto for better randomness)
+app.use((req, res, next) => {
+  const requestId = `req_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
+  (req as any).requestId = requestId;
+  res.setHeader('X-Request-ID', requestId);
+  next();
+});
+
 const PgStore = connectPgSimple(session);
 
 app.use(
@@ -18,7 +32,7 @@ app.use(
       createTableIfMissing: true,
       pruneSessionInterval: 60 * 15,
     }),
-    secret: process.env.SESSION_SECRET || "blockchain-empire-secret-key-change-in-production",
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -68,18 +82,30 @@ app.use((req, res, next) => {
 
   res.on("finish", () => {
     const duration = Date.now() - start;
+    const requestId = (req as any).requestId || 'unknown';
     if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+      let logLine = `[${requestId}] ${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+      
+      // Add slow request warning
+      if (duration > 1000) {
+        logLine += ` ⚠️ SLOW`;
+      }
+      
       if (capturedJsonResponse) {
         const redacted = redactSensitiveFields(capturedJsonResponse);
         logLine += ` :: ${JSON.stringify(redacted)}`;
       }
 
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
+      if (logLine.length > 120) {
+        logLine = logLine.slice(0, 119) + "…";
       }
 
       log(logLine);
+      
+      // Log errors separately for better visibility (skip expected 401 auth checks)
+      if (res.statusCode >= 400 && !(res.statusCode === 401 && path === '/api/auth/me')) {
+        console.error(`ERROR [${requestId}]: ${req.method} ${path} returned ${res.statusCode}`);
+      }
     }
   });
 
