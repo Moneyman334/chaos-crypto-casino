@@ -5095,14 +5095,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/vault/:vaultId/password", async (req, res) => {
     try {
       const { vaultId } = req.params;
-      const { masterPassword, ownerAddress } = req.body;
+      const { masterPassword, ownerAddress, signature, message, timestamp } = req.body;
       
       if (!masterPassword || masterPassword.length < 8) {
         return res.status(400).json({ error: "Password must be at least 8 characters" });
       }
       
-      if (!ownerAddress) {
-        return res.status(400).json({ error: "Owner address is required" });
+      if (!ownerAddress || !signature || !message || !timestamp) {
+        return res.status(400).json({ error: "Wallet signature verification required" });
       }
       
       const vault = await storage.getVaultById(vaultId);
@@ -5110,24 +5110,126 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Vault not found" });
       }
       
-      // SECURITY: Verify wallet ownership
-      if (vault.ownerAddress.toLowerCase() !== ownerAddress.toLowerCase()) {
+      // SECURITY: Verify timestamp is recent (within 5 minutes)
+      const now = Date.now();
+      const signatureAge = now - timestamp;
+      if (signatureAge > 5 * 60 * 1000 || signatureAge < 0) {
+        await storage.createVaultSecurityLog({
+          vaultId: vaultId,
+          eventType: "expired_signature_attempt",
+          ipAddress: req.ip || 'unknown',
+          userAgent: req.get('user-agent') || 'unknown',
+          severity: "critical",
+          actionTaken: `Signature expired or invalid timestamp: ${signatureAge}ms old`,
+          success: "false",
+        });
+        
+        return res.status(401).json({ error: "Signature expired. Please try again." });
+      }
+      
+      // SECURITY: Verify wallet ownership via cryptographic signature
+      const { recoverMessageAddress } = await import('viem');
+      const crypto = await import('crypto');
+      let recoveredAddress: string;
+      
+      try {
+        recoveredAddress = await recoverMessageAddress({
+          message: message,
+          signature: signature as `0x${string}`,
+        });
+      } catch (error) {
+        await storage.createVaultSecurityLog({
+          vaultId: vaultId,
+          eventType: "invalid_signature_attempt",
+          ipAddress: req.ip || 'unknown',
+          userAgent: req.get('user-agent') || 'unknown',
+          severity: "critical",
+          actionTaken: `Invalid signature provided for vault password update`,
+          success: "false",
+        });
+        
+        return res.status(401).json({ error: "Invalid signature" });
+      }
+      
+      // Verify recovered address matches vault owner
+      if (recoveredAddress.toLowerCase() !== vault.ownerAddress.toLowerCase()) {
         await storage.createVaultSecurityLog({
           vaultId: vaultId,
           eventType: "unauthorized_password_change_attempt",
           ipAddress: req.ip || 'unknown',
           userAgent: req.get('user-agent') || 'unknown',
           severity: "critical",
-          actionTaken: `Unauthorized password change attempt from ${ownerAddress}`,
+          actionTaken: `Signature verification failed: ${recoveredAddress} != ${vault.ownerAddress}`,
           success: "false",
         });
         
-        return res.status(403).json({ error: "Unauthorized: Wallet address does not match vault owner" });
+        return res.status(403).json({ error: "Unauthorized: Signature does not match vault owner" });
+      }
+      
+      // Verify claimed address matches signature
+      if (ownerAddress.toLowerCase() !== recoveredAddress.toLowerCase()) {
+        await storage.createVaultSecurityLog({
+          vaultId: vaultId,
+          eventType: "address_mismatch_attempt",
+          ipAddress: req.ip || 'unknown',
+          userAgent: req.get('user-agent') || 'unknown',
+          severity: "critical",
+          actionTaken: `Address mismatch: claimed ${ownerAddress} but signature from ${recoveredAddress}`,
+          success: "false",
+        });
+        
+        return res.status(403).json({ error: "Address mismatch" });
       }
       
       // Only allow password change if current password is temporary
       if (vault.masterPassword !== 'TEMPORARY_PASSWORD_CHANGE_REQUIRED') {
         return res.status(400).json({ error: "Password already set. Use password reset flow instead." });
+      }
+      
+      // SECURITY: Hash submitted password and verify it matches the hash in signed message
+      const passwordHash = crypto.createHash('sha256').update(masterPassword).digest('hex');
+      if (!message.includes(passwordHash)) {
+        await storage.createVaultSecurityLog({
+          vaultId: vaultId,
+          eventType: "password_tampering_attempt",
+          ipAddress: req.ip || 'unknown',
+          userAgent: req.get('user-agent') || 'unknown',
+          severity: "critical",
+          actionTaken: `Password hash mismatch - signature does not bind to submitted password`,
+          success: "false",
+        });
+        
+        return res.status(403).json({ error: "Password tampering detected" });
+      }
+      
+      // Verify message contains vault ID to prevent replay attacks
+      if (!message.includes(vaultId)) {
+        await storage.createVaultSecurityLog({
+          vaultId: vaultId,
+          eventType: "replay_attack_attempt",
+          ipAddress: req.ip || 'unknown',
+          userAgent: req.get('user-agent') || 'unknown',
+          severity: "critical",
+          actionTaken: `Signature message does not contain vault ID`,
+          success: "false",
+        });
+        
+        return res.status(403).json({ error: "Invalid signature message" });
+      }
+      
+      // Verify message contains exact timestamp to prevent replay
+      if (!message.includes(timestamp.toString())) {
+        await storage.createVaultSecurityLog({
+          vaultId: vaultId,
+          eventType: "timestamp_tampering_attempt",
+          ipAddress: req.ip || 'unknown',
+          userAgent: req.get('user-agent') || 'unknown',
+          severity: "critical",
+          actionTaken: `Timestamp mismatch in signature message`,
+          success: "false",
+        });
+        
+        return res.status(403).json({ error: "Invalid signature timestamp" });
       }
       
       // Update password
@@ -5142,7 +5244,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ipAddress: req.ip || 'unknown',
         userAgent: req.get('user-agent') || 'unknown',
         severity: "info",
-        actionTaken: "Master password updated successfully",
+        actionTaken: "Master password updated successfully with cryptographic verification",
         success: "true",
       });
       

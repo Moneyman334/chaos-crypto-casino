@@ -115,10 +115,42 @@ export default function OmniverseVault() {
   // Update password for auto-created vault
   const updatePasswordMutation = useMutation({
     mutationFn: async (password: string) => {
-      return await apiRequest('PATCH', `/api/vault/${vault?.id}/password`, {
-        masterPassword: password,
-        ownerAddress: account,
-      });
+      if (!window.ethereum || !account || !vault?.id) {
+        throw new Error("Wallet not connected or vault not loaded");
+      }
+
+      // Hash the password to include in signature (prevents password interception)
+      const encoder = new TextEncoder();
+      const data = encoder.encode(password);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+      // Create signature message with password hash binding
+      const timestamp = Date.now();
+      const message = `Secure OMNIVERSE SYNDICATE Vault\n\nVault ID: ${vault.id}\nOwner: ${account}\nPassword Hash: ${passwordHash}\nTimestamp: ${timestamp}\n\nI authorize setting this master password for my vault.`;
+      
+      try {
+        // Request signature from MetaMask
+        const signature = await window.ethereum.request({
+          method: 'personal_sign',
+          params: [message, account],
+        });
+
+        // Send password update with cryptographic proof
+        return await apiRequest('PATCH', `/api/vault/${vault.id}/password`, {
+          masterPassword: password,
+          ownerAddress: account,
+          signature,
+          message,
+          timestamp,
+        });
+      } catch (error: any) {
+        if (error.code === 4001) {
+          throw new Error("Signature rejected. You must sign to secure your vault.");
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       toast({
