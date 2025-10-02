@@ -87,7 +87,16 @@ import {
   type Payment,
   type InsertPayment,
   type PaymentWebhook,
-  type InsertPaymentWebhook
+  type InsertPaymentWebhook,
+  bridgeTransactions,
+  tradingSignals,
+  governanceStakes,
+  type BridgeTransaction,
+  type InsertBridgeTransaction,
+  type TradingSignal,
+  type InsertTradingSignal,
+  type GovernanceStake,
+  type InsertGovernanceStake
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/neon-http";
@@ -342,6 +351,24 @@ export interface IStorage {
   getUnprocessedWebhooks(provider: string): Promise<PaymentWebhook[]>;
   createPaymentWebhook(webhook: InsertPaymentWebhook): Promise<PaymentWebhook>;
   markWebhookProcessed(id: string, error?: string): Promise<PaymentWebhook | undefined>;
+  
+  // Bridge Transaction methods
+  getBridgeTransactions(walletAddress: string): Promise<BridgeTransaction[]>;
+  getBridgeTransaction(id: string): Promise<BridgeTransaction | undefined>;
+  createBridgeTransaction(transaction: InsertBridgeTransaction): Promise<BridgeTransaction>;
+  updateBridgeTransaction(id: string, updates: Partial<InsertBridgeTransaction>): Promise<BridgeTransaction | undefined>;
+  
+  // Trading Signal methods
+  getTradingSignals(): Promise<TradingSignal[]>;
+  getTradingSignal(id: string): Promise<TradingSignal | undefined>;
+  createTradingSignal(signal: InsertTradingSignal): Promise<TradingSignal>;
+  updateTradingSignal(id: string, updates: Partial<InsertTradingSignal>): Promise<TradingSignal | undefined>;
+  
+  // Governance Stake methods
+  getGovernanceStakes(walletAddress: string): Promise<GovernanceStake[]>;
+  getGovernanceStake(id: string): Promise<GovernanceStake | undefined>;
+  createGovernanceStake(stake: InsertGovernanceStake): Promise<GovernanceStake>;
+  updateGovernanceStake(id: string, updates: Partial<InsertGovernanceStake>): Promise<GovernanceStake | undefined>;
 }
 
 export class MemStorage implements IStorage {

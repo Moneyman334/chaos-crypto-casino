@@ -4481,6 +4481,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // ===== BRIDGE TRACKER ROUTES =====
+  
+  // Get user's bridge transactions
+  app.get("/api/bridge/transactions/:walletAddress", async (req, res) => {
+    try {
+      const { walletAddress } = req.params;
+      const transactions = await storage.getBridgeTransactions(walletAddress);
+      res.json(transactions);
+    } catch (error) {
+      console.error("Failed to fetch bridge transactions:", error);
+      res.status(500).json({ error: "Failed to fetch bridge transactions" });
+    }
+  });
+  
+  // Create new bridge transaction
+  app.post("/api/bridge/transactions", async (req, res) => {
+    try {
+      const transaction = await storage.createBridgeTransaction(req.body);
+      res.json(transaction);
+    } catch (error) {
+      console.error("Failed to create bridge transaction:", error);
+      res.status(500).json({ error: "Failed to create bridge transaction" });
+    }
+  });
+  
+  // Update bridge transaction
+  app.patch("/api/bridge/transactions/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const transaction = await storage.updateBridgeTransaction(id, req.body);
+      res.json(transaction);
+    } catch (error) {
+      console.error("Failed to update bridge transaction:", error);
+      res.status(500).json({ error: "Failed to update bridge transaction" });
+    }
+  });
+  
+  // ===== TRADING SIGNALS ROUTES =====
+  
+  // Get all active trading signals
+  app.get("/api/trading/signals", async (req, res) => {
+    try {
+      const signals = await storage.getTradingSignals();
+      res.json(signals);
+    } catch (error) {
+      console.error("Failed to fetch trading signals:", error);
+      res.status(500).json({ error: "Failed to fetch trading signals" });
+    }
+  });
+  
+  // Get signal by ID
+  app.get("/api/trading/signals/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const signal = await storage.getTradingSignal(id);
+      if (!signal) {
+        return res.status(404).json({ error: "Signal not found" });
+      }
+      res.json(signal);
+    } catch (error) {
+      console.error("Failed to fetch trading signal:", error);
+      res.status(500).json({ error: "Failed to fetch trading signal" });
+    }
+  });
+  
+  // Create new trading signal
+  app.post("/api/trading/signals", async (req, res) => {
+    try {
+      const signal = await storage.createTradingSignal(req.body);
+      res.json(signal);
+    } catch (error) {
+      console.error("Failed to create trading signal:", error);
+      res.status(500).json({ error: "Failed to create trading signal" });
+    }
+  });
+  
+  // Update trading signal
+  app.patch("/api/trading/signals/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const signal = await storage.updateTradingSignal(id, req.body);
+      res.json(signal);
+    } catch (error) {
+      console.error("Failed to update trading signal:", error);
+      res.status(500).json({ error: "Failed to update trading signal" });
+    }
+  });
+  
   const httpServer = createServer(app);
   return httpServer;
 }
