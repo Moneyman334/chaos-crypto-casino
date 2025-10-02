@@ -63,7 +63,18 @@ The platform features a "Divine Visual System" with a cosmic theme (purple/blue 
   - Search and filtering capabilities
   - **Sentinel Bot Trading Activity Feed**: Real-time display of automated bot trades with 10s polling, showing trading pairs, buy/sell indicators, execution prices, amounts, status badges, and trade reasoning. Fully integrated with manual and auto-refresh controls.
 
-### Comprehensive Frontend Pages (23 Total)
+- **Advanced Trading Terminal** (/trading-terminal) - Professional-grade market intelligence & analytics platform with 8 advanced features:
+  - **OHLC Candlestick Chart**: Real-time price chart with CoinGecko integration, supports multiple timeframes (1D/7D/30D), updates every 60 seconds
+  - **Market Sentiment Dashboard**: Fear & Greed Index from Alternative.me with 0-100 scale visualization and color-coded sentiment levels
+  - **Gas Tracker**: Ethereum network fees (Safe/Standard/Fast) in Gwei, updates every 15 seconds for optimal transaction timing
+  - **Price Alerts System**: User-configurable price notifications with above/below triggers, wallet-based persistence, full CRUD operations
+  - **Whale Watch**: Large blockchain transaction tracker across all chains, 30-second refresh with transaction details (from/to address, token, USD value, tx hash)
+  - **Market Heatmap**: Visual performance grid for 32 cryptocurrencies with color-coded 24h changes (green for gains, red for losses), hover tooltips with coin details
+  - **Order Book Depth**: Real-time bid/ask visualization with depth chart showing buy/sell order levels and price impact
+  - **Live Crypto News Feed**: Latest crypto news with sentiment analysis (positive/negative/neutral), updates every 5 minutes
+  - **Multi-Coin Support**: Coin selector dropdown (Bitcoin/Ethereum/Cardano/Solana/Polkadot) dynamically updates chart and analytics
+
+### Comprehensive Frontend Pages (24 Total)
 1. **Products Catalog** (/products) - Advanced filtering, search, grid/list view, price range filtering, category selection, featured products, stock indicators
 2. **Wishlist** (/wishlist) - Save products, remove items, wallet-based persistence, quick add to cart, stock monitoring
 3. **Customer Dashboard** (/dashboard) - Unified view of loyalty points, tier status, subscriptions, recent orders, account stats, spending analytics
@@ -87,6 +98,7 @@ The platform features a "Divine Visual System" with a cosmic theme (purple/blue 
 21. **Yield Farming Dashboard** (/yield-farming) - Stake LP tokens for high-yield rewards, multiple farm pools with varying APYs, auto-compound strategies, harvest rewards, deposit/withdraw management, TVL tracking, APY calculators, lock periods, multipliers, vesting schedules
 22. **Social Trading Platform** (/social-trading) - Copy successful traders automatically, trader leaderboards, performance metrics (total return, win rate), risk levels, follower counts, copy allocations, automatic trade replication, P&L tracking, trader profiles, strategies showcase
 23. **Token Launchpad** (/token-launchpad) - Invest in new token launches (ICOs/IDOs), fair token distribution, vesting schedules, hard/soft caps, fundraising progress, token allocation, TGE (Token Generation Event), claim schedules, project categories, investment tracking, upcoming/active launches
+24. **Advanced Trading Terminal** (/trading-terminal) - Professional-grade market intelligence platform with OHLC candlestick charts, market sentiment (Fear & Greed Index), gas tracker, price alerts system, whale watch, market heatmap, order book depth visualization, live crypto news feed, multi-coin selector (BTC/ETH/ADA/SOL/DOT)
 
 # External Dependencies
 
