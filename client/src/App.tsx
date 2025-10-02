@@ -54,6 +54,7 @@ import YieldFarmingPage from "@/pages/yield-farming";
 import SocialTradingPage from "@/pages/social-trading";
 import TokenLaunchpadPage from "@/pages/token-launchpad";
 import SupremeCommandPage from "@/pages/supreme-command";
+import BridgePage from "@/pages/bridge";
 import BridgeTrackerPage from "@/pages/bridge-tracker";
 import TradingSignalsPage from "@/pages/trading-signals";
 import LiveCryptoPage from "@/pages/live-crypto";
@@ -123,6 +124,7 @@ function Router() {
       <Route path="/social-trading" component={SocialTradingPage} />
       <Route path="/token-launchpad" component={TokenLaunchpadPage} />
       <Route path="/supreme-command" component={SupremeCommandPage} />
+      <Route path="/bridge" component={BridgePage} />
       <Route path="/bridge-tracker" component={BridgeTrackerPage} />
       <Route path="/trading-signals" component={TradingSignalsPage} />
       <Route path="/live-crypto" component={LiveCryptoPage} />

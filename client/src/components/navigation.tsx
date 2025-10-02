@@ -51,6 +51,7 @@ const navigationItems = [
   { path: "/live-crypto", label: "Live Crypto", icon: Activity, featured: true },
   { path: "/trading-terminal", label: "Trading Terminal", icon: LineChart, featured: true },
   { path: "/trading-signals", label: "Trading Signals", icon: TrendingUp },
+  { path: "/bridge", label: "Cross-Chain Bridge", icon: ArrowLeftRight, featured: true },
   { path: "/bridge-tracker", label: "Bridge Tracker", icon: ArrowLeftRight },
   { path: "/vaults", label: "House Vaults", icon: Trophy },
   { path: "/social-automation", label: "Social Automation", icon: Twitter },
