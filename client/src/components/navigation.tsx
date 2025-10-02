@@ -179,10 +179,10 @@ export default function Navigation({ onConnect, onDisconnect }: NavigationProps)
               </div>
               <div className="hidden sm:block">
                 <h1 className="text-xl font-bold bg-gradient-to-r from-primary via-purple-500 to-accent bg-clip-text text-transparent drop-shadow-[0_0_10px_rgba(168,85,247,0.3)]">
-                  Crypto Casino
+                  CODEX
                 </h1>
                 <p className="text-xs text-muted-foreground -mt-1">
-                  Provably Fair Gaming
+                  The Dominant Platform
                 </p>
               </div>
             </div>
