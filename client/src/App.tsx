@@ -27,6 +27,7 @@ import HouseVaultsPage from "@/pages/house-vaults";
 import AutoCompoundPage from "@/pages/auto-compound";
 import SocialAutomationPage from "@/pages/social-automation";
 import MarketingDashboardPage from "@/pages/marketing-dashboard";
+import MarketingOverviewPage from "@/pages/marketing-overview";
 import AdminDiscountsPage from "@/pages/admin-discounts";
 import AdminFlashSalesPage from "@/pages/admin-flash-sales";
 import SubscriptionsPage from "@/pages/subscriptions";
@@ -100,6 +101,7 @@ function Router() {
       <Route path="/play" component={GamePlayPage} />
       <Route path="/social-automation" component={SocialAutomationPage} />
       <Route path="/marketing" component={MarketingDashboardPage} />
+      <Route path="/marketing-overview" component={MarketingOverviewPage} />
       <Route path="/admin/discounts" component={AdminDiscountsPage} />
       <Route path="/admin/flash-sales" component={AdminFlashSalesPage} />
       <Route path="/subscriptions" component={SubscriptionsPage} />
