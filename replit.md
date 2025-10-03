@@ -1,25 +1,6 @@
 # Overview
 
-**CODEX - The Dominant Blockchain Platform** is the most comprehensive Web3 blockchain ecosystem ever created, offering a complete cryptocurrency and DeFi platform that dominates the industry. It features multi-chain wallet integration, multi-crypto deposits, and universal crypto payments via NOWPayments. The platform includes advanced tools like ERC-20 Token and ERC-721/ERC-1155 NFT creators, an AI-powered Sentinel Auto Trading Bot, and robust transaction management. It provides a "divine visual experience" with cosmic aesthetics and interactive UI effects, designed for production use. Key features include smart contract generators, automated trading, a blockchain-native e-commerce payment system with multi-currency support, discount codes, gift cards, loyalty programs, and on-chain NFT receipts. It also incorporates a Social Media Automation System for Twitter/X.
-
-## Production Status (October 2025)
-
-**CODEX is PRODUCTION-READY** with the following verified systems:
-✅ Real-time price feeds for 15 cryptocurrencies (30-second updates with fallback protection)
-✅ Dynamic gas estimation for cross-chain bridge (L1: 0.003-0.005 ETH, L2: 0.0001-0.0002 ETH)
-✅ Comprehensive feature accessibility: 60 of 61 routes verified and functional
-✅ Database performance optimization: 40+ tables with production-grade indexing
-✅ Background services: Auto-compound engine, social scheduler, price service
-✅ Session security: PostgreSQL session store with SESSION_SECRET configured
-✅ All critical systems architect-approved and production-ready
-
-**Optional API Integrations** (can be configured post-deployment via Replit Secrets):
-- NOWPayments API (crypto payments)
-- Stripe API (traditional payments)
-- Basescan API (blockchain explorer)
-- OpenSea API (NFT data)
-- Base RPC URL (Base network)
-- Coinbase Advanced Trade API (automated trading)
+"Web3 Blockchain Empire" is a comprehensive Web3 blockchain platform offering a complete cryptocurrency ecosystem. It features multi-chain wallet integration, multi-crypto deposits, and universal crypto payments via NOWPayments. The platform includes advanced tools like ERC-20 Token and ERC-721/ERC-1155 NFT creators, an AI-powered Sentinel Auto Trading Bot, and robust transaction management. It provides a "divine visual experience" with cosmic aesthetics and interactive UI effects, designed for production use. Key features include smart contract generators, automated trading, a blockchain-native e-commerce payment system with multi-currency support, discount codes, gift cards, loyalty programs, and on-chain NFT receipts. It also incorporates a Social Media Automation System for Twitter/X.
 
 # User Preferences
 
@@ -34,54 +15,69 @@ The platform features a "Divine Visual System" with a cosmic theme (purple/blue 
 
 ### Frontend
 - **Technology Stack**: React 18, TypeScript, Vite, Wouter (lightweight routing), TanStack Query v5 (server state management), shadcn/ui, Radix UI, Tailwind CSS, Lucide React, Framer Motion.
-- **State Management**: Three-layer architecture combining TanStack Query for server state, Context/Hooks for global client state, and `useState` for local component state.
+- **State Management**: Three-layer architecture combining TanStack Query for server state, Context/Hooks for global client state (e.g., authentication, theme), and `useState` for local component state.
 - **Web3 Integration**: A `useWeb3` hook handles MetaMask integration, wallet connection, network switching, and account/balance monitoring.
-- **Form Handling**: Utilizes React Hook Form with Zod for client-side validation.
+- **Form Handling**: Utilizes React Hook Form with Zod for client-side validation and strongly typed form submissions.
 - **Performance**: Implements code splitting, lazy loading, memoization, virtual scrolling, and image optimization.
-- **Error Handling & Resilience**: React Error Boundary, Network Status Monitor, automatic retry with exponential backoff, QueryClient configurations, branded loading overlay, and Toast notifications.
+- **Error Handling & Resilience**:
+  - React Error Boundary catches all crashes with recovery UI (reload/home actions)
+  - Network Status Monitor with real-time online/offline detection and visual banners
+  - Automatic retry with exponential backoff (1s→2s→4s→10s cap) for 408/429/5xx errors
+  - QueryClient: 3 query retries, 2 mutation retries, refetch on reconnect
+  - Branded loading overlay with cosmic animations for initial load
+  - Toast notifications for connectivity changes
 
 ### Backend
 - **Core**: Express.js and TypeScript REST API with modular routes.
-- **Database Integration**: Interface-based storage layer with PostgreSQL and Drizzle ORM, with an in-memory option for development.
-- **API Architecture**: Over 70 RESTful endpoints with rate limiting, authentication, Zod validation, and a storage layer.
-- **Security**: Production-grade PostgreSQL-backed sessions (connect-pg-simple), Bcrypt password hashing (cost factor 12), rate limiting, progressive slow down, CORS, input sanitization, and SQL injection prevention.
-- **Session Management**: PostgreSQL session store with automatic table creation, 15-minute session pruning, 7-day cookie expiration, and automatic persistence across server restarts.
-- **Observability**: Request ID tracking for all API calls, enhanced error logging with request tracing, slow request warnings (>1s), and structured logging with sensitive field redaction.
-- **Real-time Services**: Auto-Compound Engine, Social Media Scheduler, Trading Bot Engine, and Price Service.
-- **Performance**: Comprehensive database indexes on all critical tables (users, wallets, transactions, tokens, NFTs, etc.) for optimized query performance.
-- **Stability & Resilience**: Idempotent graceful shutdown handling and sequential cleanup of background services.
+- **Database Integration**: Uses an interface-based storage layer with PostgreSQL and Drizzle ORM, with an in-memory option for development.
+- **API Architecture**: Over 70 RESTful endpoints organized by feature, with a request/response flow incorporating rate limiting, authentication, Zod validation, and a storage layer.
+- **Security**: PostgreSQL-backed sessions, Bcrypt password hashing, rate limiting, progressive slow down, CORS, input sanitization, and SQL injection prevention.
+- **Real-time Services**: Auto-Compound Engine, Social Media Scheduler, Trading Bot Engine, and Price Service for real-time crypto price aggregation.
+- **Stability & Resilience**: 
+  - Idempotent graceful shutdown handling (SIGTERM, SIGINT, uncaughtException, unhandledRejection)
+  - Sequential cleanup of all background services even on errors
+  - Proper exit codes (0 for clean, 1 for errors)
+  - Service monitoring with 10s timeout warnings
 
 ## Feature Specifications
 
 ### Web3 & Blockchain
-- **Multi-Chain Wallet Integration**: MetaMask for wallet connections and transaction signing.
-- **Cross-Chain Bridge**: Full-featured bridge interface supporting 6 chains (Ethereum, Polygon, BSC, Arbitrum, Optimism, Base) with 6 tokens (ETH, USDC, USDT, DAI, MATIC, BNB). Features automated fee calculation (0.1% bridge fee + gas), estimated transfer times (2-5min L2, 10-15min L1), chain swap functionality, and transaction tracking. Military-grade security with testnet simulation for development.
-- **Smart Contract Generators**: Production-ready ERC-20 token and ERC-721/721A/1155 NFT creators with IPFS integration.
+- **Multi-Chain Wallet Integration**: MetaMask for wallet connections, account data, balance retrieval, and transaction signing.
+- **Smart Contract Generators**: Production-ready ERC-20 token (mintable, burnable, pausable) and ERC-721/721A/1155 NFT creators with IPFS integration.
 - **Multi-Cryptocurrency Support**: Deposits for BTC, ETH, SOL, LTC, DOGE, and universal payments for 300+ cryptocurrencies via NOWPayments.
-- **Vault System (OMNIVERSE SYNDICATE)**: Automated vault creation on first purchase, all transactions deposit directly to vault, cryptographic security with MetaMask signature verification (password hash binding, timestamp expiry, replay attack prevention), comprehensive security logging, transaction history tracking.
 
 ### Trading & Automation
-- **Sentinel Auto Trading Bot**: AI-powered bot for Coinbase Pro (requires migration to Advanced Trade API) with five strategies and configurable risk management.
-- **AI Trading Oracle**: Real-time market intelligence system featuring multi-source sentiment analysis (Twitter/X, Reddit, news, Telegram), live whale tracking with transaction monitoring, AI-powered price predictions with confidence scoring, Fear & Greed Index with component breakdowns, and smart money flow tracking across major DeFi protocols. Provides actionable trading signals with 89% AI confidence.
-- **Advanced DeFi Suite**: Comprehensive DeFi platform with three integrated systems:
-  - **Yield Aggregator**: Auto-optimize yields across 6 major protocols (Aave, Compound, Curve, Yearn, Convex, GMX) with APYs from 8.2% to 45.7%. Features risk classification (Low/Medium/High), TVL tracking ($9.99B total), strategy types (Lending, LP, Vault, Staking), and automated capital allocation.
-  - **Flash Loans**: Execute uncollateralized loans from Aave, dYdX, and Uniswap V3 with loans up to $200M. Features include fee comparison (0% to 0.09%), multiple assets support, and single-transaction execution for arbitrage and liquidations.
-  - **Derivatives Trading**: Trade perpetuals (100x leverage), futures (50x leverage), and options across major pairs (ETH-USD, BTC-USD). Includes funding rates, strike prices, IV tracking, and $42.7B daily volume.
-- **Synthetic Assets Platform**: Trade tokenized real-world assets including stocks (Tesla, Apple, Google, Amazon, Microsoft, NVIDIA), commodities (gold, oil, silver, natural gas), and forex pairs (EUR/USD, GBP/USD, JPY/USD, AUD/USD). Features up to 20x leverage, Chainlink oracle pricing, position management with P&L tracking, and $1.2B daily volume.
-- **Multi-Sig Treasury Management**: Enterprise-grade DAO treasury system with multi-signature approvals (3-of-5), proposal creation and voting, spending limits, signer management, transaction history, and comprehensive audit trails. Manages $12.4M in treasury assets across multiple cryptocurrencies.
+- **Sentinel Auto Trading Bot**: AI-powered bot for Coinbase Pro (requires migration to Advanced Trade API) with five strategies, configurable risk management, and real-time monitoring.
 - **House Vaults System**: Player-owned liquidity system for ETH staking with varying APY and lock periods.
 
 ### E-commerce & Payments
 - **Blockchain-Native Payment System**: Instant settlement, no chargebacks, lower fees, multi-chain support (Ethereum, Base, Polygon, Sepolia). Includes product management, shopping cart, multi-payment options, blockchain verification, and order management.
 - **Advanced E-commerce Features**: Multi-currency & stablecoin support, discount codes, gift cards, invoice/payment links, refund system, wallet-based loyalty points, customer tier system, blockchain-verified product reviews, wishlist, recently viewed products, subscription/recurring payments, affiliate/referral system, flash sales, pre-order system, product variants, AI-powered product recommendations, abandoned cart recovery, and on-chain NFT receipts.
 
-### Live Market & Trading Monitoring
-- **Live Crypto Market**: Real-time cryptocurrency market data for 100+ cryptocurrencies via CoinGecko API with auto-refresh, market statistics, favorites, search, and filtering.
-- **Sentinel Bot Trading Activity Feed**: Real-time display of automated bot trades with polling, showing trading pairs, buy/sell indicators, execution prices, amounts, status, and trade reasoning.
-- **Advanced Trading Terminal**: Professional-grade market intelligence & analytics with OHLC Candlestick Chart, Market Sentiment Dashboard (Fear & Greed Index), Gas Tracker, Price Alerts System, Whale Watch, Market Heatmap, Order Book Depth, Live Crypto News Feed, and Multi-Coin Support.
-
-### Comprehensive Frontend Pages (Examples)
-- **Products Catalog**, **Wishlist**, **Customer Dashboard**, **Enhanced Checkout**, **Product Reviews**, **Flash Sales Admin**, **Invoice Management**, **Enhanced Orders**, **Analytics Dashboard**, **Portfolio Tracker**, **Notifications System**, **Achievements & Gamification**, **Marketplace**, **Staking Rewards**, **Referral/Affiliate System**, **Token Swap/DEX**, **NFT Gallery**, **DAO Governance**, **P2P Lending Platform**, **Prediction Markets**, **Yield Farming Dashboard**, **Social Trading Platform**, **Token Launchpad**.
+### Comprehensive Frontend Pages (23 Total)
+1. **Products Catalog** (/products) - Advanced filtering, search, grid/list view, price range filtering, category selection, featured products, stock indicators
+2. **Wishlist** (/wishlist) - Save products, remove items, wallet-based persistence, quick add to cart, stock monitoring
+3. **Customer Dashboard** (/dashboard) - Unified view of loyalty points, tier status, subscriptions, recent orders, account stats, spending analytics
+4. **Enhanced Checkout** (/checkout) - Multi-step checkout with discount code redemption, gift card application, payment method selection, order review, wallet integration
+5. **Product Reviews** (/reviews) - Blockchain-verified reviews, rating system, filtering by rating/product/verified status, review submission with wallet verification
+6. **Flash Sales Admin** (/admin/flash-sales) - Create/manage time-limited sales, product selection, discount configuration, start/end times, active/expired sales tracking
+7. **Invoice Management** (/invoices) - View all invoices, create payment links, share invoices, payment status tracking, due date management
+8. **Enhanced Orders** (/orders) - Detailed order tracking with timeline, NFT receipt minting, refund requests, order status updates, delivery tracking
+9. **Analytics Dashboard** (/analytics) - Real-time revenue trends, order status distribution charts, payment method breakdown, top products, blockchain activity across chains
+10. **Portfolio Tracker** (/portfolio) - Multi-chain asset management, portfolio distribution charts, chain/token breakdowns, performance tracking, total value overview
+11. **Notifications System** (/notifications) - Live notification center, filtering by type (orders, payments, system), mark as read/unread, delete notifications, notification stats
+12. **Achievements & Gamification** (/achievements) - NFT badge collection, achievement progress tracking, XP and level system, achievement categories, badge minting, tier progression
+13. **Marketplace** (/marketplace) - Peer-to-peer trading, create listings, search and filter items, sort by price/date, buy/sell functionality, listing management
+14. **Staking Rewards** (/staking) - Multiple staking pools with varying APYs, stake/unstake tokens, rewards tracking, lock period management, APY calculator with custom amounts/periods
+15. **Referral/Affiliate System** (/referrals) - Complete affiliate program with referral code generation, commission tracking (total earned, pending, referrals count), referral link sharing with copy/share, withdrawal functionality, detailed referral history with status tracking, transaction verification
+16. **Token Swap/DEX** (/swap) - Built-in decentralized exchange for swapping cryptocurrencies (ETH, USDC, USDT, DAI, WBTC), rate calculations, slippage tolerance settings, fee estimates, price impact display, popular trading pairs, wallet-integrated swap execution
+17. **NFT Gallery** (/nft-gallery) - Multi-chain NFT collection showcase with grid/list views, search and chain filtering, collection grouping, stats dashboard (total NFTs, collections, value, chains), detailed NFT modal with attributes, rarity, sale history, OpenSea integration
+18. **DAO Governance** (/dao) - Decentralized autonomous organization with proposal creation, voting system (for/against/abstain), quorum tracking, voting power management, treasury balance display, proposal execution, time-limited voting periods, vote percentage calculations, active/passed/all proposal tabs
+19. **P2P Lending Platform** (/lending) - Decentralized peer-to-peer lending with loan requests, collateral management, interest rate bidding, lending pools, automatic matching, repayment tracking, risk assessment, default handling, lender/borrower dashboards
+20. **Prediction Markets** (/prediction-markets) - Bet on future events with liquidity pools, YES/NO markets, odds calculation, position tracking, market resolution, winnings claiming, categories (crypto, sports, politics), live odds updates, profit/loss tracking
+21. **Yield Farming Dashboard** (/yield-farming) - Stake LP tokens for high-yield rewards, multiple farm pools with varying APYs, auto-compound strategies, harvest rewards, deposit/withdraw management, TVL tracking, APY calculators, lock periods, multipliers, vesting schedules
+22. **Social Trading Platform** (/social-trading) - Copy successful traders automatically, trader leaderboards, performance metrics (total return, win rate), risk levels, follower counts, copy allocations, automatic trade replication, P&L tracking, trader profiles, strategies showcase
+23. **Token Launchpad** (/token-launchpad) - Invest in new token launches (ICOs/IDOs), fair token distribution, vesting schedules, hard/soft caps, fundraising progress, token allocation, TGE (Token Generation Event), claim schedules, project categories, investment tracking, upcoming/active launches
 
 # External Dependencies
 

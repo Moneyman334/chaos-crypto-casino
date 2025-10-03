@@ -1,48 +1,10 @@
 import express, { type Request, Response, NextFunction } from "express";
-import session from "express-session";
-import connectPgSimple from "connect-pg-simple";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-
-// Require SESSION_SECRET for production security
-if (!process.env.SESSION_SECRET) {
-  console.error("FATAL: SESSION_SECRET environment variable is required for secure session management");
-  process.exit(1);
-}
-
-// Request ID tracking for better debugging (using crypto for better randomness)
-app.use((req, res, next) => {
-  const requestId = `req_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
-  (req as any).requestId = requestId;
-  res.setHeader('X-Request-ID', requestId);
-  next();
-});
-
-const PgStore = connectPgSimple(session);
-
-app.use(
-  session({
-    store: new PgStore({
-      conString: process.env.DATABASE_URL,
-      tableName: "session",
-      createTableIfMissing: true,
-      pruneSessionInterval: 60 * 15,
-    }),
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: process.env.NODE_ENV === "production",
-      httpOnly: true,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      sameSite: "lax",
-    },
-  })
-);
 
 // Redact sensitive fields from objects for logging
 function redactSensitiveFields(obj: any): any {
@@ -82,30 +44,18 @@ app.use((req, res, next) => {
 
   res.on("finish", () => {
     const duration = Date.now() - start;
-    const requestId = (req as any).requestId || 'unknown';
     if (path.startsWith("/api")) {
-      let logLine = `[${requestId}] ${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      
-      // Add slow request warning
-      if (duration > 1000) {
-        logLine += ` ⚠️ SLOW`;
-      }
-      
+      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
         const redacted = redactSensitiveFields(capturedJsonResponse);
         logLine += ` :: ${JSON.stringify(redacted)}`;
       }
 
-      if (logLine.length > 120) {
-        logLine = logLine.slice(0, 119) + "…";
+      if (logLine.length > 80) {
+        logLine = logLine.slice(0, 79) + "…";
       }
 
       log(logLine);
-      
-      // Log errors separately for better visibility (skip expected 401 auth checks)
-      if (res.statusCode >= 400 && !(res.statusCode === 401 && path === '/api/auth/me')) {
-        console.error(`ERROR [${requestId}]: ${req.method} ${path} returned ${res.statusCode}`);
-      }
     }
   });
 
@@ -139,14 +89,6 @@ app.use((req, res, next) => {
     socialScheduler.start();
   } catch (error) {
     console.error("Failed to start social media scheduler:", error);
-  }
-  
-  // Start price update service
-  const { priceUpdateService } = await import("./price-service");
-  try {
-    await priceUpdateService.start();
-  } catch (error) {
-    console.error("Failed to start price update service:", error);
   }
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -242,16 +184,6 @@ app.use((req, res, next) => {
         } catch (error) {
           hasErrors = true;
           console.error('Error stopping social scheduler:', error);
-        }
-
-        // Stop price update service
-        try {
-          const { priceUpdateService } = await import("./price-service");
-          priceUpdateService.stop();
-          log('Price update service stopped');
-        } catch (error) {
-          hasErrors = true;
-          console.error('Error stopping price update service:', error);
         }
 
         cleanupComplete = true;
