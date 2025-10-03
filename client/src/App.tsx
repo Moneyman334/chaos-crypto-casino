@@ -57,6 +57,7 @@ import SupremeCommandPage from "@/pages/supreme-command";
 import TermsPage from "@/pages/terms";
 import PrivacyPage from "@/pages/privacy";
 import FAQPage from "@/pages/faq";
+import OwnerAnalyticsPage from "@/pages/owner-analytics";
 import NotFound from "@/pages/not-found";
 import EnhancedConnectionModal from "@/components/enhanced-connection-modal";
 import { useWeb3 } from "@/hooks/use-web3";
@@ -69,6 +70,7 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import LoadingOverlay from "@/components/loading-overlay";
 import NetworkStatus from "@/components/network-status";
 import OnboardingTour from "@/components/onboarding-tour";
+import LaunchBanner from "@/components/launch-banner";
 
 function Router() {
   return (
@@ -125,6 +127,7 @@ function Router() {
       <Route path="/terms" component={TermsPage} />
       <Route path="/privacy" component={PrivacyPage} />
       <Route path="/faq" component={FAQPage} />
+      <Route path="/owner-analytics" component={OwnerAnalyticsPage} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -161,6 +164,7 @@ function AppContent() {
         <div className="bg-background text-foreground min-h-screen">
           <CosmicCursor />
           <Toaster />
+          <LaunchBanner />
           <Navigation 
             onConnect={handleConnect}
             onDisconnect={handleDisconnect}
