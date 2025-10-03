@@ -71,6 +71,7 @@ import LoadingOverlay from "@/components/loading-overlay";
 import NetworkStatus from "@/components/network-status";
 import OnboardingTour from "@/components/onboarding-tour";
 import LaunchBanner from "@/components/launch-banner";
+import Footer from "@/components/footer";
 
 function Router() {
   return (
@@ -180,6 +181,9 @@ function AppContent() {
           <WalletActivityIndicator />
           
           <Router />
+          
+          {/* Footer */}
+          <Footer />
         
         {/* Enhanced Connection Modal */}
         <EnhancedConnectionModal
