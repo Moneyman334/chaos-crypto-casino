@@ -265,11 +265,7 @@ export default function BridgePage() {
                 <SelectContent>
                   {supportedChains.map(chain => (
                     <SelectItem key={chain.id} value={chain.id} data-testid={`option-source-${chain.name.toLowerCase()}`}>
-                      <span className="flex items-center gap-2">
-                        <span>{chain.icon}</span>
-                        <span>{chain.name}</span>
-                        <span className="text-muted-foreground text-xs">({chain.symbol})</span>
-                      </span>
+                      {chain.icon} {chain.name} ({chain.symbol})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -302,11 +298,7 @@ export default function BridgePage() {
                 <SelectContent>
                   {supportedChains.map(chain => (
                     <SelectItem key={chain.id} value={chain.id} data-testid={`option-dest-${chain.name.toLowerCase()}`}>
-                      <span className="flex items-center gap-2">
-                        <span>{chain.icon}</span>
-                        <span>{chain.name}</span>
-                        <span className="text-muted-foreground text-xs">({chain.symbol})</span>
-                      </span>
+                      {chain.icon} {chain.name} ({chain.symbol})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -323,11 +315,7 @@ export default function BridgePage() {
                 <SelectContent>
                   {supportedTokens.map(token => (
                     <SelectItem key={token.symbol} value={token.symbol} data-testid={`option-token-${token.symbol.toLowerCase()}`}>
-                      <span className="flex items-center gap-2">
-                        <span>{token.icon}</span>
-                        <span>{token.symbol}</span>
-                        <span className="text-muted-foreground text-xs">{token.name}</span>
-                      </span>
+                      {token.icon} {token.symbol} - {token.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
