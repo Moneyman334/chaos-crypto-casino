@@ -123,14 +123,37 @@ export default function WalletPage() {
     },
   });
 
+  // Emergency lockdown toggle mutation
+  const toggleLockdownMutation = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      const response = await fetch(`/api/security/lockdown/${account}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled }),
+      });
+      if (!response.ok) throw new Error('Failed to toggle lockdown');
+      return response.json();
+    },
+    onSuccess: (_, enabled) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/security/policy', account] });
+      queryClient.invalidateQueries({ queryKey: ['/api/security/alerts', account] });
+      toast({
+        title: enabled ? "🔒 Lockdown Activated" : "🔓 Lockdown Deactivated",
+        description: enabled ? "All transactions are now blocked" : "Wallet unlocked",
+        variant: enabled ? "destructive" : "default",
+      });
+    },
+  });
+
   // Calculate security score
   const calculateSecurityScore = () => {
     if (!policy) return 30;
     let score = 30;
-    if (policy.multiSigEnabled) score += 25;
-    if (policy.hardwareWalletEnabled) score += 20;
+    if (policy.multiSigEnabled) score += 20;
+    if (policy.hardwareWalletEnabled) score += 15;
     if (policy.txSimulationEnabled) score += 10;
     if (policy.aiSentinelEnabled) score += 15;
+    if (policy.dailySpendingLimit && parseFloat(policy.dailySpendingLimit) < 10) score += 10;
     return Math.min(score, 100);
   };
 
@@ -480,6 +503,41 @@ export default function WalletPage() {
                     checked={policy?.aiSentinelEnabled || false} 
                     onCheckedChange={(val) => toggleFeature('aiSentinelEnabled', val)}
                     data-testid="switch-ai-sentinel"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* EMERGENCY LOCKDOWN */}
+            <Card className="border-2 border-red-500/30 bg-red-500/5">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                  <AlertTriangle className="h-5 w-5" />
+                  Emergency Lockdown
+                </CardTitle>
+                <CardDescription>Immediately block all transactions in case of emergency</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between p-4 bg-background/50 rounded-lg border border-red-500/20">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Ban className="h-5 w-5 text-red-500" />
+                      <h3 className="font-semibold">Lockdown Mode</h3>
+                      {policy?.lockdownEnabled && (
+                        <Badge variant="destructive" className="ml-2">ACTIVE</Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {policy?.lockdownEnabled 
+                        ? "🔒 All transactions are currently blocked" 
+                        : "Emergency protection for suspicious activity"}
+                    </p>
+                  </div>
+                  <Switch 
+                    checked={policy?.lockdownEnabled || false} 
+                    onCheckedChange={(val) => toggleLockdownMutation.mutate(val)}
+                    data-testid="switch-lockdown"
+                    className="data-[state=checked]:bg-red-500"
                   />
                 </div>
               </CardContent>

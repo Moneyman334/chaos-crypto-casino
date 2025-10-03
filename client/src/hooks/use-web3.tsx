@@ -397,13 +397,28 @@ export function useWeb3() {
       }
 
       // SECURITY ENFORCEMENT: Validate transaction before sending
+      const valueInWei = (() => {
+        try {
+          const [intPart, fracPart = '0'] = value.split('.');
+          const paddedFrac = fracPart.padEnd(18, '0').slice(0, 18);
+          const weiBigInt = BigInt(intPart) * WEI_PER_ETH + BigInt(paddedFrac);
+          return weiBigInt.toString();
+        } catch {
+          throw new Error('Invalid amount format');
+        }
+      })();
+
       const validationResponse = await fetch('/api/security/validate-transaction', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           from: state.account,
           to,
-          amount: value
+          amount: value,
+          amountWei: valueInWei,
+          network: state.network?.name || 'Unknown',
+          chainId: state.chainId || '0x1',
+          timestamp: new Date().toISOString()
         })
       });
 
@@ -436,23 +451,14 @@ export function useWeb3() {
         }
       }
 
-      const valueInWei = (() => {
-        try {
-          const [intPart, fracPart = '0'] = value.split('.');
-          const paddedFrac = fracPart.padEnd(18, '0').slice(0, 18);
-          const weiBigInt = BigInt(intPart) * WEI_PER_ETH + BigInt(paddedFrac);
-          return '0x' + weiBigInt.toString(16);
-        } catch {
-          throw new Error('Invalid amount format');
-        }
-      })();
+      const valueInHex = '0x' + BigInt(valueInWei).toString(16);
       
       const txHash = await window.ethereum.request({
         method: 'eth_sendTransaction',
         params: [{
           from: state.account,
           to,
-          value: valueInWei
+          value: valueInHex
         }]
       });
 

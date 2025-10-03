@@ -4912,16 +4912,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Validate transaction (security enforcement)
+  // Validate transaction (ADVANCED security enforcement)
   app.post("/api/security/validate-transaction", async (req, res) => {
     try {
       const schema = z.object({
         from: z.string(),
         to: z.string(),
         amount: z.string(),
+        amountWei: z.string().optional(),
+        network: z.string().optional(),
+        chainId: z.string().optional(),
+        timestamp: z.string().optional(),
       });
       
-      const { from, to, amount } = schema.parse(req.body);
+      const { from, to, amount, amountWei, network, chainId, timestamp } = schema.parse(req.body);
       const fromKey = from.toLowerCase();
       const toKey = to.toLowerCase();
       
@@ -4930,55 +4934,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let blocked = false;
       let warnings: string[] = [];
       
-      // Check if address is blocked
-      if (blockedAddresses.get(fromKey)?.has(toKey)) {
+      // VELOCITY LIMIT CHECK: Track transaction frequency
+      const now = Date.now();
+      const oneHour = 60 * 60 * 1000;
+      const recentTxKey = `${fromKey}_recent`;
+      let recentTx = transactionLimits.get(recentTxKey) || [];
+      
+      // Clean old transactions (older than 1 hour)
+      recentTx = recentTx.filter((tx: any) => now - tx.timestamp < oneHour);
+      
+      // Check velocity: max 10 transactions per hour
+      if (recentTx.length >= 10) {
         blocked = true;
         alerts.push({
           id: Date.now().toString(),
-          type: 'blocked_transaction',
+          type: 'velocity_limit',
           severity: 'critical',
-          title: 'Transaction Blocked',
-          description: `Attempted transaction to blocked address ${to.slice(0, 10)}...`,
+          title: 'Velocity Limit Exceeded',
+          description: `Too many transactions (${recentTx.length}) in the last hour. Please wait before sending more.`,
+          metadata: { from, count: recentTx.length, limit: 10 },
+          isRead: false,
+          createdAt: new Date(),
+        });
+      }
+      
+      // Add current transaction to tracking
+      recentTx.push({ timestamp: now, amount: parseFloat(amount) });
+      transactionLimits.set(recentTxKey, recentTx);
+      
+      // EMERGENCY LOCKDOWN CHECK
+      if (policy.lockdownEnabled) {
+        blocked = true;
+        alerts.push({
+          id: (Date.now() + 1).toString(),
+          type: 'lockdown',
+          severity: 'critical',
+          title: 'Wallet Locked',
+          description: 'Emergency lockdown is active. All transactions are blocked.',
           metadata: { from, to, amount },
           isRead: false,
           createdAt: new Date(),
         });
       }
       
-      // Check spending limit
+      // BLACKLIST CHECK
+      if (blockedAddresses.get(fromKey)?.has(toKey)) {
+        blocked = true;
+        alerts.push({
+          id: (Date.now() + 2).toString(),
+          type: 'blocked_transaction',
+          severity: 'critical',
+          title: 'Transaction Blocked',
+          description: `Attempted transaction to blocked address ${to.slice(0, 10)}...`,
+          metadata: { from, to, amount, network, chainId },
+          isRead: false,
+          createdAt: new Date(),
+        });
+      }
+      
+      // SPENDING LIMIT CHECK (per chain)
       const dailyLimit = parseFloat(policy.dailySpendingLimit || "10");
       const txAmount = parseFloat(amount);
       
       if (txAmount > dailyLimit) {
         warnings.push(`Transaction amount (${amount} ETH) exceeds daily limit (${dailyLimit} ETH)`);
         alerts.push({
-          id: (Date.now() + 1).toString(),
+          id: (Date.now() + 3).toString(),
           type: 'spending_limit',
           severity: 'medium',
           title: 'Spending Limit Exceeded',
           description: `Transaction of ${amount} ETH exceeds daily limit of ${dailyLimit} ETH`,
-          metadata: { from, to, amount, limit: dailyLimit },
+          metadata: { from, to, amount, limit: dailyLimit, network, chainId },
           isRead: false,
           createdAt: new Date(),
         });
       }
       
-      // Check if high-value transaction
+      // HIGH-VALUE CHECK
       const requireApproval = parseFloat(policy.requireApprovalAbove || "5");
       if (txAmount > requireApproval) {
         warnings.push(`High-value transaction requires approval (>${requireApproval} ETH)`);
       }
       
-      // Check if address is trusted
+      // WHITELIST CHECK
       const isTrusted = trustedAddresses.get(fromKey)?.has(toKey);
       if (!isTrusted && !blocked) {
         warnings.push(`Recipient address is not in your trusted list`);
       }
       
+      // PATTERN ANALYSIS: Detect suspicious behavior
+      const hourlyTotal = recentTx.reduce((sum: number, tx: any) => sum + tx.amount, 0);
+      if (hourlyTotal > dailyLimit * 2) {
+        warnings.push(`⚠️ FRAUD ALERT: Unusual spending pattern detected (${hourlyTotal.toFixed(2)} ETH in 1 hour)`);
+        alerts.push({
+          id: (Date.now() + 4).toString(),
+          type: 'suspicious_pattern',
+          severity: 'high',
+          title: 'Suspicious Activity Detected',
+          description: `Unusual spending pattern: ${hourlyTotal.toFixed(2)} ETH in the last hour`,
+          metadata: { from, hourlyTotal, transactions: recentTx.length },
+          isRead: false,
+          createdAt: new Date(),
+        });
+      }
+      
       // Store alerts
       if (alerts.length > 0) {
         const existingAlerts = securityAlerts.get(fromKey) || [];
-        securityAlerts.set(fromKey, [...alerts, ...existingAlerts].slice(0, 50));
+        securityAlerts.set(fromKey, [...alerts, ...existingAlerts].slice(0, 100)); // Keep last 100
       }
       
       res.json({
@@ -4988,6 +5051,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         requiresApproval: txAmount > requireApproval,
         alerts,
         policy,
+        metadata: {
+          network,
+          chainId,
+          timestamp,
+          velocityCheck: {
+            recentCount: recentTx.length,
+            limit: 10,
+            hourlyTotal: hourlyTotal.toFixed(2)
+          }
+        }
       });
     } catch (error) {
       console.error("Transaction validation failed:", error);
@@ -5020,6 +5093,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Failed to mark alert as read:", error);
       res.status(500).json({ error: "Failed to mark alert as read" });
+    }
+  });
+  
+  // Emergency lockdown toggle
+  app.post("/api/security/lockdown/:walletAddress", async (req, res) => {
+    try {
+      const { walletAddress } = req.params;
+      const schema = z.object({
+        enabled: z.boolean(),
+      });
+      
+      const { enabled } = schema.parse(req.body);
+      const key = walletAddress.toLowerCase();
+      
+      const current = securityPolicies.get(key) || {};
+      const updated = { ...current, lockdownEnabled: enabled, walletAddress, updatedAt: new Date() };
+      
+      securityPolicies.set(key, updated);
+      
+      // Create alert
+      const alert = {
+        id: Date.now().toString(),
+        type: enabled ? 'lockdown_enabled' : 'lockdown_disabled',
+        severity: enabled ? 'critical' : 'medium',
+        title: enabled ? 'Emergency Lockdown Activated' : 'Emergency Lockdown Deactivated',
+        description: enabled ? '🔒 All transactions are now blocked' : '🔓 Wallet unlocked, transactions allowed',
+        metadata: { walletAddress, enabled },
+        isRead: false,
+        createdAt: new Date(),
+      };
+      
+      const alerts = securityAlerts.get(key) || [];
+      alerts.unshift(alert);
+      securityAlerts.set(key, alerts.slice(0, 100));
+      
+      res.json({ success: true, lockdownEnabled: enabled });
+    } catch (error) {
+      console.error("Failed to toggle lockdown:", error);
+      res.status(500).json({ error: "Failed to toggle lockdown" });
     }
   });
   
