@@ -28,6 +28,7 @@ The backend is an Express.js and TypeScript REST API with modular routes. It use
 - **Multi-Cryptocurrency Support**: Deposits for BTC, ETH, SOL, LTC, DOGE, and universal payments for 300+ cryptocurrencies.
 
 ### Trading & Automation
+- **Buy & Trade Crypto Platform**: Comprehensive trading interface with real-time order book, multiple order types (Market, Limit, Stop Loss, Take Profit), trading pair selection (BTC-USD, ETH-USD, SOL-USD, MATIC-USD, LINK-USD, UNI-USD, AAVE-USD, ATOM-USD), live price ticker with 24h stats, order history with profit/loss tracking, open orders management with cancel functionality, trading statistics dashboard (open orders, total trades, win rate), and fee calculation. Currently uses in-memory storage for demo/development with mock order book data.
 - **Sentinel Auto Trading Bot**: AI-powered bot with five strategies and configurable risk management for Coinbase Pro (requires migration to Advanced Trade API).
 - **House Vaults System**: Player-owned liquidity system for ETH staking with varying APY and lock periods.
 
@@ -44,10 +45,11 @@ The backend is an Express.js and TypeScript REST API with modular routes. It use
 - **Twitter Auto-Posting**: Automated promotional content posting every 3 hours using OAuth 1.0a credentials, cycling through specific messages.
 
 ### Key Frontend Pages
-The platform includes 26 comprehensive frontend pages covering:
+The platform includes 27 comprehensive frontend pages covering:
 - **Product Management**: Catalog, Wishlist, Product Reviews, Flash Sales Admin.
 - **User & Order Management**: Customer Dashboard, Enhanced Checkout, Invoices, Enhanced Orders.
 - **Analytics & Portfolio**: Analytics Dashboard, Portfolio Tracker, Notifications System.
+- **Trading**: Buy & Trade Crypto (featured in navigation).
 - **Web3 Features**: Achievements & Gamification, Marketplace, Staking Rewards, Referral/Affiliate System, Token Swap/DEX, NFT Gallery, DAO Governance, P2P Lending, Prediction Markets, Yield Farming, Social Trading, Token Launchpad.
 - **Marketing**: Marketing Overview, Campaign Management, Command Center.
 
