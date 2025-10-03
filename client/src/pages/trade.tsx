@@ -107,13 +107,25 @@ export default function TradePage() {
   // Cancel order mutation
   const cancelOrderMutation = useMutation({
     mutationFn: async (orderId: string) => {
-      return await apiRequest(`/api/trading/orders/${orderId}/cancel`, 'POST');
+      const response = await fetch(`/api/trading/orders/${orderId}/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!response.ok) throw new Error('Failed to cancel order');
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/trading/orders/open'] });
       toast({
         title: "Order Cancelled",
         description: "Order has been cancelled successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Cancel Failed",
+        description: error.message || "Failed to cancel order",
+        variant: "destructive",
       });
     },
   });
