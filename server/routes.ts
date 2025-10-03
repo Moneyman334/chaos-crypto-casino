@@ -5135,6 +5135,161 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // ===== TRADING PLATFORM ROUTES =====
+  
+  // Get order book for a trading pair
+  app.get("/api/trading/orderbook/:pair", async (req, res) => {
+    try {
+      const { pair } = req.params;
+      
+      // Mock order book data (in production, fetch from Coinbase)
+      const orderBook = {
+        bids: Array.from({ length: 20 }, (_, i) => ({
+          price: (50000 - i * 10).toFixed(2),
+          size: (Math.random() * 2).toFixed(4)
+        })),
+        asks: Array.from({ length: 20 }, (_, i) => ({
+          price: (50010 + i * 10).toFixed(2),
+          size: (Math.random() * 2).toFixed(4)
+        }))
+      };
+      
+      res.json(orderBook);
+    } catch (error) {
+      console.error("Failed to fetch order book:", error);
+      res.status(500).json({ error: "Failed to fetch order book" });
+    }
+  });
+  
+  // Place trading order
+  app.post("/api/trading/orders", async (req, res) => {
+    try {
+      const orderSchema = z.object({
+        pair: z.string(),
+        side: z.enum(['buy', 'sell']),
+        type: z.enum(['market', 'limit', 'stop_loss', 'take_profit']),
+        amount: z.number().positive(),
+        limitPrice: z.number().positive().optional(),
+        stopPrice: z.number().positive().optional(),
+        targetPrice: z.number().positive().optional(),
+      });
+      
+      const orderData = orderSchema.parse(req.body);
+      
+      // Get current price (mock - in production, fetch from Coinbase)
+      const currentPrice = 50000 + Math.random() * 1000;
+      
+      // Create order
+      const order = {
+        id: `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        ...orderData,
+        status: orderData.type === 'market' ? 'filled' : 'open',
+        executedPrice: orderData.type === 'market' ? currentPrice.toFixed(2) : orderData.limitPrice?.toFixed(2) || '0',
+        executedAt: orderData.type === 'market' ? new Date().toISOString() : null,
+        createdAt: new Date().toISOString(),
+      };
+      
+      res.json(order);
+    } catch (error) {
+      console.error("Failed to place order:", error);
+      res.status(500).json({ error: "Failed to place order" });
+    }
+  });
+  
+  // Get open orders
+  app.get("/api/trading/orders/open", async (req, res) => {
+    try {
+      // Mock open orders (in production, fetch from database)
+      const openOrders = [
+        {
+          id: `order_${Date.now()}_1`,
+          pair: 'BTC-USD',
+          side: 'buy',
+          type: 'limit',
+          amount: 0.1,
+          price: '49500.00',
+          status: 'open',
+          createdAt: new Date(Date.now() - 3600000).toISOString()
+        },
+        {
+          id: `order_${Date.now()}_2`,
+          pair: 'ETH-USD',
+          side: 'sell',
+          type: 'limit',
+          amount: 2,
+          price: '3100.00',
+          status: 'open',
+          createdAt: new Date(Date.now() - 7200000).toISOString()
+        }
+      ];
+      
+      res.json(openOrders);
+    } catch (error) {
+      console.error("Failed to fetch open orders:", error);
+      res.status(500).json({ error: "Failed to fetch open orders" });
+    }
+  });
+  
+  // Get order history
+  app.get("/api/trading/orders/history", async (req, res) => {
+    try {
+      // Mock order history (in production, fetch from database)
+      const history = [
+        {
+          id: `order_history_1`,
+          pair: 'BTC-USD',
+          side: 'buy',
+          type: 'market',
+          amount: 0.05,
+          executedPrice: '49800.00',
+          profit: 150.50,
+          status: 'filled',
+          executedAt: new Date(Date.now() - 86400000).toISOString()
+        },
+        {
+          id: `order_history_2`,
+          pair: 'ETH-USD',
+          side: 'sell',
+          type: 'market',
+          amount: 1,
+          executedPrice: '3050.00',
+          profit: -25.00,
+          status: 'filled',
+          executedAt: new Date(Date.now() - 172800000).toISOString()
+        },
+        {
+          id: `order_history_3`,
+          pair: 'SOL-USD',
+          side: 'buy',
+          type: 'limit',
+          amount: 10,
+          executedPrice: '98.50',
+          profit: 45.00,
+          status: 'filled',
+          executedAt: new Date(Date.now() - 259200000).toISOString()
+        }
+      ];
+      
+      res.json(history);
+    } catch (error) {
+      console.error("Failed to fetch order history:", error);
+      res.status(500).json({ error: "Failed to fetch order history" });
+    }
+  });
+  
+  // Cancel order
+  app.post("/api/trading/orders/:orderId/cancel", async (req, res) => {
+    try {
+      const { orderId } = req.params;
+      
+      // In production, cancel the order in Coinbase and update database
+      res.json({ success: true, orderId });
+    } catch (error) {
+      console.error("Failed to cancel order:", error);
+      res.status(500).json({ error: "Failed to cancel order" });
+    }
+  });
+  
   // ===== COMMAND CENTER / PLATFORM STATISTICS ROUTES =====
   
   // Get platform statistics

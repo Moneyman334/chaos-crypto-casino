@@ -57,6 +57,7 @@ import YieldFarmingPage from "@/pages/yield-farming";
 import SocialTradingPage from "@/pages/social-trading";
 import TokenLaunchpadPage from "@/pages/token-launchpad";
 import SupremeCommandPage from "@/pages/supreme-command";
+import TradePage from "@/pages/trade";
 import TermsPage from "@/pages/terms";
 import PrivacyPage from "@/pages/privacy";
 import FAQPage from "@/pages/faq";
@@ -96,6 +97,7 @@ function Router() {
       <Route path="/orders" component={OrdersPage} />
       <Route path="/token-creator" component={TokenCreatorPage} />
       <Route path="/nft-creator" component={NFTCreatorPage} />
+      <Route path="/trade" component={TradePage} />
       <Route path="/sentinel-bot" component={SentinelBotPage} />
       <Route path="/bot-dashboard" component={BotDashboardPage} />
       <Route path="/bot-config" component={BotConfigPage} />
