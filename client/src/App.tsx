@@ -122,7 +122,9 @@ function Router() {
       <Route path="/swap" component={SwapPage} />
       <Route path="/nft-gallery" component={NFTGalleryPage} />
       <Route path="/dao" component={DAOGovernancePage} />
+      <Route path="/dao-governance" component={DAOGovernancePage} />
       <Route path="/lending" component={P2PLendingPage} />
+      <Route path="/p2p-lending" component={P2PLendingPage} />
       <Route path="/prediction-markets" component={PredictionMarketsPage} />
       <Route path="/yield-farming" component={YieldFarmingPage} />
       <Route path="/social-trading" component={SocialTradingPage} />
