@@ -47,45 +47,33 @@ export default function Footer() {
             <h4 className="font-semibold mb-4">Platform</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <Link href="/sentinel-bot">
-                  <a className="hover:text-foreground transition-colors" data-testid="link-trading-bot">
-                    Trading Bot
-                  </a>
+                <Link href="/sentinel-bot" className="hover:text-foreground transition-colors block" data-testid="link-trading-bot">
+                  Trading Bot
                 </Link>
               </li>
               <li>
-                <Link href="/yield-farming">
-                  <a className="hover:text-foreground transition-colors" data-testid="link-staking">
-                    Staking & Farming
-                  </a>
+                <Link href="/yield-farming" className="hover:text-foreground transition-colors block" data-testid="link-staking">
+                  Staking & Farming
                 </Link>
               </li>
               <li>
-                <Link href="/nft-creator">
-                  <a className="hover:text-foreground transition-colors" data-testid="link-nft-creator">
-                    NFT Creator
-                  </a>
+                <Link href="/nft-creator" className="hover:text-foreground transition-colors block" data-testid="link-nft-creator">
+                  NFT Creator
                 </Link>
               </li>
               <li>
-                <Link href="/crypto-payments">
-                  <a className="hover:text-foreground transition-colors" data-testid="link-payments">
-                    Crypto Payments
-                  </a>
+                <Link href="/crypto-payments" className="hover:text-foreground transition-colors block" data-testid="link-payments">
+                  Crypto Payments
                 </Link>
               </li>
               <li>
-                <Link href="/marketplace">
-                  <a className="hover:text-foreground transition-colors" data-testid="link-marketplace">
-                    Marketplace
-                  </a>
+                <Link href="/marketplace" className="hover:text-foreground transition-colors block" data-testid="link-marketplace">
+                  Marketplace
                 </Link>
               </li>
               <li>
-                <Link href="/supreme-command">
-                  <a className="hover:text-foreground transition-colors" data-testid="link-supreme-command">
-                    Supreme Command
-                  </a>
+                <Link href="/supreme-command" className="hover:text-foreground transition-colors block" data-testid="link-supreme-command">
+                  Supreme Command
                 </Link>
               </li>
             </ul>
@@ -96,38 +84,28 @@ export default function Footer() {
             <h4 className="font-semibold mb-4">Resources</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <Link href="/faq">
-                  <a className="hover:text-foreground transition-colors" data-testid="link-faq">
-                    FAQ & Help
-                  </a>
+                <Link href="/faq" className="hover:text-foreground transition-colors block" data-testid="link-faq">
+                  FAQ & Help
                 </Link>
               </li>
               <li>
-                <Link href="/analytics">
-                  <a className="hover:text-foreground transition-colors" data-testid="link-analytics">
-                    Analytics
-                  </a>
+                <Link href="/analytics" className="hover:text-foreground transition-colors block" data-testid="link-analytics">
+                  Analytics
                 </Link>
               </li>
               <li>
-                <Link href="/portfolio">
-                  <a className="hover:text-foreground transition-colors" data-testid="link-portfolio">
-                    Portfolio Tracker
-                  </a>
+                <Link href="/portfolio" className="hover:text-foreground transition-colors block" data-testid="link-portfolio">
+                  Portfolio Tracker
                 </Link>
               </li>
               <li>
-                <Link href="/achievements">
-                  <a className="hover:text-foreground transition-colors" data-testid="link-achievements">
-                    Achievements
-                  </a>
+                <Link href="/achievements" className="hover:text-foreground transition-colors block" data-testid="link-achievements">
+                  Achievements
                 </Link>
               </li>
               <li>
-                <Link href="/notifications">
-                  <a className="hover:text-foreground transition-colors" data-testid="link-notifications">
-                    Notifications
-                  </a>
+                <Link href="/notifications" className="hover:text-foreground transition-colors block" data-testid="link-notifications">
+                  Notifications
                 </Link>
               </li>
             </ul>
@@ -138,17 +116,13 @@ export default function Footer() {
             <h4 className="font-semibold mb-4">Legal</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <Link href="/terms">
-                  <a className="hover:text-foreground transition-colors" data-testid="link-terms">
-                    Terms of Service
-                  </a>
+                <Link href="/terms" className="hover:text-foreground transition-colors block" data-testid="link-terms">
+                  Terms of Service
                 </Link>
               </li>
               <li>
-                <Link href="/privacy">
-                  <a className="hover:text-foreground transition-colors" data-testid="link-privacy">
-                    Privacy Policy
-                  </a>
+                <Link href="/privacy" className="hover:text-foreground transition-colors block" data-testid="link-privacy">
+                  Privacy Policy
                 </Link>
               </li>
               <li>
@@ -164,10 +138,8 @@ export default function Footer() {
                 </a>
               </li>
               <li>
-                <Link href="/owner-analytics">
-                  <a className="hover:text-foreground transition-colors" data-testid="link-owner-dashboard">
-                    Owner Dashboard
-                  </a>
+                <Link href="/owner-analytics" className="hover:text-foreground transition-colors block" data-testid="link-owner-dashboard">
+                  Owner Dashboard
                 </Link>
               </li>
             </ul>
