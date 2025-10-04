@@ -66,6 +66,11 @@ The backend is an Express.js and TypeScript REST API with modular routes. It use
     - `/codex-staking`: Staking pools with stake creation, rewards claiming, and unstaking
   - **Database Schema**: 9 tables (platformToken, tokenHoldings, platformNftCollections, platformUserNfts, platformAchievements, platformUserAchievements, platformNftEvolutionLog, codexStakingPools, codexUserStakes)
   - **Featured Navigation**: All 4 CODEX pages featured prominently in main navigation
+  - **API Integration Pattern**: TanStack Query v5 implementation with wallet-scoped endpoints:
+    - Queries use explicit URL construction: `queryKey: ['/api/codex/stakes/${account}']`
+    - Mutations include wallet address in request body: `{walletAddress: account, poolId, amount, unlockDate}`
+    - Cache invalidation uses wallet-specific keys: `invalidateQueries({queryKey: ['/api/codex/stakes/${account}']})`
+    - Stakes mutation calculates unlock dates client-side based on pool lock periods
 - **Multi-Chain Wallet Integration**: MetaMask for connections, account data, balances, and transaction signing.
 - **Advanced Wallet Security Protection**: Features a Transaction Validation Engine, Velocity Limits, Emergency Lockdown Mode, Fraud Detection, Blacklist/Whitelist System, Spending Limits, AI Sentinel Monitoring, and readiness for Multi-Signature and Hardware Wallet integrations.
 - **Smart Contract Generators**: Production-ready ERC-20 token and ERC-721/721A/1155 NFT creators with IPFS integration.
