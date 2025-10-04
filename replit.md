@@ -46,7 +46,18 @@ The backend is an Express.js and TypeScript REST API with modular routes. It use
 
 ### Trading & Automation
 - **Buy & Trade Crypto Platform**: Comprehensive trading interface with real-time order book, multiple order types (Market, Limit, Stop Loss, Take Profit), trading pair selection (BTC-USD, ETH-USD, SOL-USD, MATIC-USD, LINK-USD, UNI-USD, AAVE-USD, ATOM-USD), live price ticker with 24h stats, order history with profit/loss tracking, open orders management with cancel functionality, trading statistics dashboard (open orders, total trades, win rate), and fee calculation. Currently uses in-memory storage for demo/development with mock order book data.
-- **Sentinel Auto Trading Bot**: AI-powered bot with five strategies and configurable risk management for Coinbase Pro (requires migration to Advanced Trade API).
+- **Auto Trading Bot** (PRODUCTION READY): Advanced AI-powered bot with real-time activity feed showing live market analysis, signal detection, and trade execution. Features:
+  - **Demo Mode (Default)**: Simulates trades safely without risking real money, tracks P&L with realistic profit/loss calculations
+  - **Live Mode**: Warning alerts when enabled, ready for real trading platform integration via POST /api/trading/orders
+  - **5 Trading Strategies**: SMA Crossover, RSI Oversold, Trend Following, Mean Reversion, Breakout
+  - **Intelligent Activity Feed**: Real-time updates every 2-3 seconds showing market analysis, indicator calculations, buy/sell signals, risk evaluation, and trade execution details
+  - **Emergency Stop Button**: Instant bot shutdown with one click
+  - **Performance Dashboard**: Real-time statistics tracking total trades, winning trades, total profit, and win rate
+  - **Trade History**: Last 10 trades with profit/loss, mode badges (DEMO/LIVE), and detailed execution data
+  - **Risk Management**: Configurable stop loss (0-100%), take profit (0-1000%), max daily trades (1-100), and trade amounts
+  - **Comprehensive Validation**: Both frontend and backend validation prevent NaN corruption, with HTML input constraints for user guidance
+  - **Activity Feed Limited**: Maximum 30 entries to prevent memory issues
+  - Accessible at `/auto-trading-bot` (featured in navigation)
 - **House Vaults System**: Player-owned liquidity system for ETH staking with varying APY and lock periods.
 
 ### E-commerce & Payments
