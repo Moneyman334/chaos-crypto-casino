@@ -358,13 +358,20 @@ export default function AutoCompoundPage() {
                           className="w-full"
                           onClick={(e) => {
                             e.stopPropagation();
+                            if (!account) {
+                              toast({
+                                title: "Wallet Required",
+                                description: "Please connect your wallet to stake",
+                                variant: "destructive",
+                              });
+                              return;
+                            }
                             setSelectedPool(pool);
                           }}
-                          disabled={!account}
                           data-testid={`button-stake-${pool.id}`}
                         >
                           <ArrowUpCircle className="h-4 w-4 mr-2" />
-                          {selectedPool?.id === pool.id ? 'Selected - Enter Amount Above' : account ? "Select Pool & Stake" : "Connect Wallet"}
+                          {selectedPool?.id === pool.id ? 'Selected - Enter Amount Above' : "Select Pool & Stake"}
                         </Button>
                       )}
                     </CardContent>
