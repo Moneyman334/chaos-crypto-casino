@@ -214,10 +214,21 @@ export default function AutoCompoundPage() {
                 </div>
               ) : pools && pools.length > 0 ? (
                 pools.map((pool: any) => (
-                  <Card key={pool.id} className="glass-strong aurora-border cosmic-dust border-2 border-purple-500/30 hover:border-purple-500/60 transition-all duration-300 glow-primary" data-testid={`pool-card-${pool.id}`}>
+                  <Card 
+                    key={pool.id} 
+                    className={`glass-strong aurora-border cosmic-dust border-2 border-purple-500/30 hover:border-purple-500 transition-all duration-300 glow-primary cursor-pointer hover:shadow-lg hover:shadow-purple-500/20 ${selectedPool?.id === pool.id ? 'border-purple-500 shadow-xl shadow-purple-500/30' : ''}`}
+                    data-testid={`pool-card-${pool.id}`}
+                    onClick={() => setSelectedPool(pool)}
+                    data-selected={selectedPool?.id === pool.id ? 'true' : 'false'}
+                  >
                     <CardHeader>
                       <div className="flex items-center justify-between mb-2">
-                        <CardTitle className="text-xl">{pool.name}</CardTitle>
+                        <CardTitle className="text-xl flex items-center gap-2">
+                          {pool.name}
+                          {selectedPool?.id === pool.id && (
+                            <Badge className="bg-green-500">Selected</Badge>
+                          )}
+                        </CardTitle>
                         <Badge variant="outline" className="bg-purple-500/10 text-purple-500 border-purple-500/50">
                           {pool.tokenSymbol}
                         </Badge>
@@ -345,12 +356,15 @@ export default function AutoCompoundPage() {
                       ) : (
                         <Button
                           className="w-full"
-                          onClick={() => setSelectedPool(pool)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedPool(pool);
+                          }}
                           disabled={!account}
                           data-testid={`button-stake-${pool.id}`}
                         >
                           <ArrowUpCircle className="h-4 w-4 mr-2" />
-                          {account ? "Stake Now" : "Connect Wallet"}
+                          {selectedPool?.id === pool.id ? 'Selected - Enter Amount Above' : account ? "Select Pool & Stake" : "Connect Wallet"}
                         </Button>
                       )}
                     </CardContent>
