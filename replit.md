@@ -14,6 +14,7 @@
 2. **Clickable Staking Pools**: Transformed CODEX staking pool selection from dropdown to clickable cards with visual feedback (border highlight, "Selected" badge), smooth auto-scroll to stake form
 3. **Wallet Connection State**: Fixed connection status inconsistency by adding `isCheckingConnection` state to useWeb3 hook; navigation now shows "Checking..." with animated pulse during reconnection, prevents race conditions between localStorage and MetaMask
 4. **Auto-Compound Pool Selection**: Fixed pool selection on auto-compound page - cards now show "Selected" badge, border highlighting, and data-selected attribute; selection works even when wallet disconnected for better UX
+5. **Bot Dashboard Navigation**: Fixed "Configure Bot" button to redirect to /auto-trading-bot page and "Start Trading" button to redirect to /trade page for seamless navigation flow
 
 ## Comprehensive Application Testing (Oct 4, 2025)
 Completed full end-to-end testing of all 29+ pages:
@@ -64,6 +65,9 @@ The backend is an Express.js and TypeScript REST API with modular routes. It use
 
 ### E-commerce & Payments
 - **Complete Checkout System**: A full e-commerce checkout flow with a persistent shopping cart, three-stage checkout process, MetaMask direct payments, NOWPayments multi-crypto support, payment status monitoring, and order management.
+- **Universal Payment System**: Platform accepts all world currencies through two integrated payment methods:
+  - **MetaMask Integration**: Direct ETH payments to merchant wallet with blockchain verification
+  - **NOWPayments Gateway**: Support for 300+ cryptocurrencies including BTC, ETH, USDT, BNB, SOL, XRP, ADA, DOGE, MATIC, AVAX, FTM, CRO, and more. Also supports fiat-to-crypto conversion for accepting traditional currencies (USD, EUR, GBP, JPY, etc.)
 - **Blockchain-Native Payment System**: Instant settlement, no chargebacks, lower fees, multi-chain support, product management, shopping cart, and order management.
 - **Advanced E-commerce Features**: Multi-currency, stablecoin support, discount codes, gift cards, invoice/payment links, refund system, wallet-based loyalty points, blockchain-verified product reviews, subscription/recurring payments, affiliate/referral system, and on-chain NFT receipts.
 
