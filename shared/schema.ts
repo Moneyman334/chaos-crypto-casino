@@ -2038,3 +2038,121 @@ export type CodexStakingPool = typeof codexStakingPools.$inferSelect;
 export type InsertCodexStakingPool = z.infer<typeof insertCodexStakingPoolSchema>;
 export type CodexUserStake = typeof codexUserStakes.$inferSelect;
 export type InsertCodexUserStake = z.infer<typeof insertCodexUserStakeSchema>;
+
+// ===== CODEX RELICS SYSTEM =====
+// Tiered, soulbound artifacts earned through milestones
+
+// Master Relic Catalog - Defines what relics exist
+export const codexRelics = pgTable("codex_relics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  class: text("class").notNull(), // chronicle, catalyst, sentinel
+  tier: text("tier").notNull(), // common, rare, epic, legendary, mythic
+  imageUrl: text("image_url"),
+  effectType: text("effect_type").notNull(), // stake_apy, trading_fee, bot_boost, achievement_unlock
+  effectValue: text("effect_value").notNull(), // e.g., "1.2" for 20% boost
+  effectDescription: text("effect_description").notNull(),
+  acquisitionType: text("acquisition_type").notNull(), // milestone, forge, vault_ritual
+  acquisitionRequirements: jsonb("acquisition_requirements").notNull(), // {stakingDays: 30, cdxBurned: 1000, etc}
+  maxSupply: text("max_supply").default("0"), // "0" = unlimited
+  currentSupply: text("current_supply").default("0"),
+  isSoulbound: text("is_soulbound").notNull().default("true"), // Cannot be transferred
+  isActive: text("is_active").notNull().default("true"),
+  seasonId: text("season_id"), // For seasonal relics
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  classIdx: index("codex_relics_class_idx").on(table.class),
+  tierIdx: index("codex_relics_tier_idx").on(table.tier),
+  effectTypeIdx: index("codex_relics_effect_type_idx").on(table.effectType),
+  activeIdx: index("codex_relics_active_idx").on(table.isActive),
+  acquisitionIdx: index("codex_relics_acquisition_idx").on(table.acquisitionType),
+}));
+
+// User Relic Instances - Who owns what
+export const codexRelicInstances = pgTable("codex_relic_instances", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  relicId: varchar("relic_id").notNull().references(() => codexRelics.id),
+  walletAddress: text("wallet_address").notNull(),
+  isEquipped: text("is_equipped").notNull().default("false"), // Can equip up to 3 relics
+  equipSlot: text("equip_slot"), // slot1, slot2, slot3
+  level: text("level").notNull().default("1"), // Relics can level up
+  experience: text("experience").notNull().default("0"),
+  powerScore: text("power_score").notNull().default("100"), // Overall strength
+  acquiredAt: timestamp("acquired_at").defaultNow(),
+  metadata: jsonb("metadata"), // Additional relic-specific data
+}, (table) => ({
+  relicIdx: index("codex_relic_instances_relic_idx").on(table.relicId),
+  walletLowerIdx: index("codex_relic_instances_wallet_lower_idx").on(sql`lower(${table.walletAddress})`),
+  equippedIdx: index("codex_relic_instances_equipped_idx").on(table.isEquipped),
+  walletEquippedIdx: index("codex_relic_instances_wallet_equipped_idx").on(table.walletAddress, table.isEquipped),
+  levelIdx: index("codex_relic_instances_level_idx").on(table.level),
+}));
+
+// Relic Progress Tracking - Milestone progress for earning relics
+export const codexRelicProgress = pgTable("codex_relic_progress", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  relicId: varchar("relic_id").notNull().references(() => codexRelics.id),
+  walletAddress: text("wallet_address").notNull(),
+  progressType: text("progress_type").notNull(), // staking_time, cdx_burned, trading_volume, vault_contribution
+  currentValue: text("current_value").notNull().default("0"),
+  requiredValue: text("required_value").notNull(),
+  isCompleted: text("is_completed").notNull().default("false"),
+  completedAt: timestamp("completed_at"),
+  lastUpdated: timestamp("last_updated").defaultNow(),
+  metadata: jsonb("metadata"), // Track specific progress details
+}, (table) => ({
+  relicWalletIdx: index("codex_relic_progress_relic_wallet_idx").on(table.relicId, table.walletAddress),
+  walletLowerIdx: index("codex_relic_progress_wallet_lower_idx").on(sql`lower(${table.walletAddress})`),
+  progressTypeIdx: index("codex_relic_progress_type_idx").on(table.progressType),
+  completedIdx: index("codex_relic_progress_completed_idx").on(table.isCompleted),
+}));
+
+// Active Relic Effects - Track currently active boosts
+export const codexRelicEffects = pgTable("codex_relic_effects", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  instanceId: varchar("instance_id").notNull().references(() => codexRelicInstances.id),
+  walletAddress: text("wallet_address").notNull(),
+  effectType: text("effect_type").notNull(), // stake_apy, trading_fee, bot_boost
+  effectValue: text("effect_value").notNull(),
+  isActive: text("is_active").notNull().default("true"),
+  activatedAt: timestamp("activated_at").defaultNow(),
+  expiresAt: timestamp("expires_at"), // For time-limited effects
+}, (table) => ({
+  instanceIdx: index("codex_relic_effects_instance_idx").on(table.instanceId),
+  walletLowerIdx: index("codex_relic_effects_wallet_lower_idx").on(sql`lower(${table.walletAddress})`),
+  effectTypeIdx: index("codex_relic_effects_type_idx").on(table.effectType),
+  activeIdx: index("codex_relic_effects_active_idx").on(table.isActive),
+  walletActiveIdx: index("codex_relic_effects_wallet_active_idx").on(table.walletAddress, table.isActive),
+}));
+
+// Insert Schemas
+export const insertCodexRelicSchema = createInsertSchema(codexRelics).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertCodexRelicInstanceSchema = createInsertSchema(codexRelicInstances).omit({
+  id: true,
+  acquiredAt: true,
+});
+
+export const insertCodexRelicProgressSchema = createInsertSchema(codexRelicProgress).omit({
+  id: true,
+  lastUpdated: true,
+});
+
+export const insertCodexRelicEffectSchema = createInsertSchema(codexRelicEffects).omit({
+  id: true,
+  activatedAt: true,
+});
+
+// Types
+export type CodexRelic = typeof codexRelics.$inferSelect;
+export type InsertCodexRelic = z.infer<typeof insertCodexRelicSchema>;
+export type CodexRelicInstance = typeof codexRelicInstances.$inferSelect;
+export type InsertCodexRelicInstance = z.infer<typeof insertCodexRelicInstanceSchema>;
+export type CodexRelicProgress = typeof codexRelicProgress.$inferSelect;
+export type InsertCodexRelicProgress = z.infer<typeof insertCodexRelicProgressSchema>;
+export type CodexRelicEffect = typeof codexRelicEffects.$inferSelect;
+export type InsertCodexRelicEffect = z.infer<typeof insertCodexRelicEffectSchema>;
