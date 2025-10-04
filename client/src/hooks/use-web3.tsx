@@ -122,8 +122,11 @@ export function useWeb3() {
       if (!window.ethereum) {
         // Mobile device without MetaMask - redirect to MetaMask mobile app
         if (isMobile) {
-          const currentUrl = window.location.href;
-          const metamaskAppDeepLink = `https://metamask.app.link/dapp/${window.location.host}${window.location.pathname}`;
+          // Store the current path to redirect back after connection
+          const returnPath = window.location.pathname + window.location.search;
+          localStorage.setItem('web3_return_path', returnPath);
+          
+          const metamaskAppDeepLink = `https://metamask.app.link/dapp/${window.location.host}${returnPath}`;
           
           toast({
             title: "Open in MetaMask App",
@@ -149,10 +152,26 @@ export function useWeb3() {
 
       if (accounts.length > 0) {
         await checkConnection();
-        toast({
-          title: "Wallet connected",
-          description: "Successfully connected to MetaMask",
-        });
+        
+        // Check if there's a return path and redirect
+        const returnPath = localStorage.getItem('web3_return_path');
+        if (returnPath && returnPath !== window.location.pathname) {
+          localStorage.removeItem('web3_return_path');
+          toast({
+            title: "Wallet connected",
+            description: "Returning to your previous page...",
+          });
+          // Use setTimeout to ensure toast is visible before redirect
+          setTimeout(() => {
+            window.location.href = returnPath;
+          }, 500);
+        } else {
+          localStorage.removeItem('web3_return_path');
+          toast({
+            title: "Wallet connected",
+            description: "Successfully connected to MetaMask",
+          });
+        }
       }
     } catch (error: any) {
       console.error("Failed to connect wallet:", error);
