@@ -61,7 +61,10 @@ export default function CodexStakingPage() {
         }),
         headers: { "Content-Type": "application/json" },
       });
-      if (!response.ok) throw new Error("Failed to stake");
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Failed to stake" }));
+        throw new Error(errorData.error || errorData.message || "Failed to stake");
+      }
       return response.json();
     },
     onSuccess: () => {
@@ -88,7 +91,10 @@ export default function CodexStakingPage() {
       const response = await fetch(`/api/codex/stakes/${stakeId}/claim`, {
         method: "POST",
       });
-      if (!response.ok) throw new Error("Failed to claim rewards");
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Failed to claim rewards" }));
+        throw new Error(errorData.error || errorData.message || "Failed to claim rewards");
+      }
       return response.json();
     },
     onSuccess: () => {
@@ -113,7 +119,10 @@ export default function CodexStakingPage() {
       const response = await fetch(`/api/codex/stakes/${stakeId}/unstake`, {
         method: "POST",
       });
-      if (!response.ok) throw new Error("Failed to unstake");
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Failed to unstake" }));
+        throw new Error(errorData.error || errorData.message || "Failed to unstake");
+      }
       return response.json();
     },
     onSuccess: () => {
