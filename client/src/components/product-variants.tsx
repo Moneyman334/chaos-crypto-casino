@@ -10,7 +10,7 @@ interface ProductVariant {
   sku: string;
   attributes: Record<string, string>;
   priceAdjustment: string;
-  stockQuantity: string;
+  stock: string;
   isActive: string;
 }
 
@@ -94,7 +94,7 @@ export function ProductVariants({
     const testAttributes = { ...selectedAttributes, [type]: value };
     return variants.some((variant) => {
       if (!variant.attributes || variant.isActive !== "true") return false;
-      if (parseInt(variant.stockQuantity) <= 0) return false;
+      if (!variant.stock || parseInt(variant.stock) <= 0) return false;
       return Object.entries(testAttributes).every(
         ([key, val]) => variant.attributes[key] === val
       );
@@ -166,13 +166,13 @@ export function ProductVariants({
             </div>
             
             <div className="flex items-center gap-2 text-sm">
-              {parseInt(matchingVariant.stockQuantity) > 0 ? (
+              {matchingVariant.stock && parseInt(matchingVariant.stock) > 0 ? (
                 <>
                   <Badge variant="outline" className="bg-green-500/10 text-green-700">
                     In Stock
                   </Badge>
                   <span className="text-muted-foreground">
-                    {matchingVariant.stockQuantity} available
+                    {matchingVariant.stock} available
                   </span>
                 </>
               ) : (

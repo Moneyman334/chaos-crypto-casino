@@ -15,7 +15,7 @@ interface Product {
   price: string;
   category: string;
   imageUrl: string | null;
-  stockQuantity: string;
+  stock: string;
 }
 
 interface WishlistItem {
@@ -148,7 +148,7 @@ export default function Wishlist() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {activeItems.map((item) => {
               const product = item.product!;
-              const inStock = parseInt(product.stockQuantity) > 0;
+              const inStock = product.stock && parseInt(product.stock) > 0;
               const daysAgo = Math.floor(
                 (Date.now() - new Date(item.addedAt).getTime()) / (1000 * 60 * 60 * 24)
               );

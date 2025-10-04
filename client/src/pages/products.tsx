@@ -19,7 +19,7 @@ interface Product {
   price: string;
   category: string;
   imageUrl: string | null;
-  stockQuantity: string;
+  stock: string;
   isActive: string;
 }
 
@@ -282,7 +282,7 @@ interface ProductCardProps {
 }
 
 function ProductCard({ product, onAddToWishlist }: ProductCardProps) {
-  const inStock = parseInt(product.stockQuantity) > 0;
+  const inStock = product.stock && parseInt(product.stock) > 0;
 
   return (
     <Card
@@ -359,7 +359,7 @@ function ProductCard({ product, onAddToWishlist }: ProductCardProps) {
 }
 
 function ProductListItem({ product, onAddToWishlist }: ProductCardProps) {
-  const inStock = parseInt(product.stockQuantity) > 0;
+  const inStock = product.stock && parseInt(product.stock) > 0;
 
   return (
     <Card data-testid={`product-list-${product.id}`}>
