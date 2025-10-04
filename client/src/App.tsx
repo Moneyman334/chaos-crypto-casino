@@ -66,6 +66,10 @@ import TermsPage from "@/pages/terms";
 import PrivacyPage from "@/pages/privacy";
 import FAQPage from "@/pages/faq";
 import OwnerAnalyticsPage from "@/pages/owner-analytics";
+import CodexTokenDashboard from "@/pages/codex-token-dashboard";
+import CodexNftsPage from "@/pages/codex-nfts";
+import CodexAchievementsPage from "@/pages/codex-achievements";
+import CodexStakingPage from "@/pages/codex-staking";
 import NotFound from "@/pages/not-found";
 import EnhancedConnectionModal from "@/components/enhanced-connection-modal";
 import { useWeb3 } from "@/hooks/use-web3";
@@ -119,6 +123,10 @@ function Router() {
       <Route path="/affiliate" component={AffiliateDashboardPage} />
       <Route path="/gift-cards" component={GiftCardsPage} />
       <Route path="/loyalty" component={LoyaltyPage} />
+      <Route path="/codex-dashboard" component={CodexTokenDashboard} />
+      <Route path="/codex-nfts" component={CodexNftsPage} />
+      <Route path="/codex-achievements" component={CodexAchievementsPage} />
+      <Route path="/codex-staking" component={CodexStakingPage} />
       <Route path="/cart" component={CartPage} />
       <Route path="/cart-recovery" component={CartRecoveryPage} />
       <Route path="/products" component={ProductsPage} />
