@@ -28,7 +28,10 @@ import {
   BarChart3,
   Activity,
   TrendingUp,
-  Settings
+  Settings,
+  ShoppingCart,
+  ShoppingBag,
+  Package
 } from "lucide-react";
 
 interface NavigationProps {
@@ -42,6 +45,9 @@ const navigationItems = [
   { path: "/command-center", label: "Command Center", icon: Activity, featured: true },
   { path: "/wallet-nexus", label: "Wallet Nexus", icon: Network, featured: true },
   { path: "/trade", label: "Trade Crypto", icon: TrendingUp, featured: true },
+  { path: "/products", label: "Shop", icon: ShoppingBag, featured: true },
+  { path: "/cart", label: "Cart", icon: ShoppingCart },
+  { path: "/orders", label: "Orders", icon: Package },
   { path: "/auto-compound", label: "Auto-Compound", icon: Zap },
   { path: "/vaults", label: "House Vaults", icon: Trophy },
   { path: "/sentinel-bot", label: "Sentinel Bot", icon: Bot },
