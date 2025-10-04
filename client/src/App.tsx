@@ -88,6 +88,7 @@ import Footer from "@/components/footer";
 import { DemoModeProvider } from "@/hooks/use-demo-mode";
 import WalletNexusPage from "@/pages/wallet-nexus";
 import { WalletNexusProvider } from "@/lib/wallet-nexus";
+import BridgePage from "@/pages/bridge";
 
 function Router() {
   return (
@@ -145,6 +146,7 @@ function Router() {
       <Route path="/staking" component={StakingPage} />
       <Route path="/referrals" component={ReferralsPage} />
       <Route path="/swap" component={SwapPage} />
+      <Route path="/bridge" component={BridgePage} />
       <Route path="/nft-gallery" component={NFTGalleryPage} />
       <Route path="/dao" component={DAOGovernancePage} />
       <Route path="/lending" component={P2PLendingPage} />
