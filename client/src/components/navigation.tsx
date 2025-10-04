@@ -40,6 +40,7 @@ const navigationItems = [
   { path: "/", label: "Home", icon: Home },
   { path: "/empire", label: "Empire", icon: Crown, featured: true },
   { path: "/command-center", label: "Command Center", icon: Activity, featured: true },
+  { path: "/wallet-nexus", label: "Wallet Nexus", icon: Network, featured: true },
   { path: "/trade", label: "Trade Crypto", icon: TrendingUp, featured: true },
   { path: "/auto-compound", label: "Auto-Compound", icon: Zap },
   { path: "/vaults", label: "House Vaults", icon: Trophy },

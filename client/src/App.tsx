@@ -78,6 +78,8 @@ import OnboardingTour from "@/components/onboarding-tour";
 import LaunchBanner from "@/components/launch-banner";
 import Footer from "@/components/footer";
 import { DemoModeProvider } from "@/hooks/use-demo-mode";
+import WalletNexusPage from "@/pages/wallet-nexus";
+import { WalletNexusProvider } from "@/lib/wallet-nexus";
 
 function Router() {
   return (
@@ -135,6 +137,7 @@ function Router() {
       <Route path="/social-trading" component={SocialTradingPage} />
       <Route path="/token-launchpad" component={TokenLaunchpadPage} />
       <Route path="/supreme-command" component={SupremeCommandPage} />
+      <Route path="/wallet-nexus" component={WalletNexusPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route path="/terms" component={TermsPage} />
       <Route path="/privacy" component={PrivacyPage} />
@@ -219,7 +222,9 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <DemoModeProvider>
-        <AppContent />
+        <WalletNexusProvider>
+          <AppContent />
+        </WalletNexusProvider>
       </DemoModeProvider>
     </QueryClientProvider>
   );
