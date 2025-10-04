@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useUserPreferences } from "@/hooks/use-user-preferences";
+import { useAnalytics, usePageTracking } from "@/hooks/use-analytics";
 import {
   TrendingUp,
   TrendingDown,
@@ -47,10 +49,14 @@ const ORDER_TYPES = [
 ];
 
 export default function TradePage() {
+  usePageTracking('/trade');
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [selectedPair, setSelectedPair] = useState('BTC-USD');
-  const [orderType, setOrderType] = useState('market');
+  const { preferences } = useUserPreferences();
+  const { trackAction, trackEvent } = useAnalytics();
+  
+  const [selectedPair, setSelectedPair] = useState(preferences.trading.defaultTradingPair);
+  const [orderType, setOrderType] = useState(preferences.trading.defaultOrderType);
   const [orderSide, setOrderSide] = useState<'buy' | 'sell'>('buy');
   const [amount, setAmount] = useState('');
   const [limitPrice, setLimitPrice] = useState('');
@@ -82,14 +88,29 @@ export default function TradePage() {
   // Place order mutation
   const placeOrderMutation = useMutation({
     mutationFn: async (orderData: any) => {
-      return await apiRequest('/api/trading/orders', 'POST', orderData);
+      trackAction('place_order', 'trading', {
+        pair: orderData.pair,
+        side: orderData.side,
+        type: orderData.type,
+        amount: orderData.amount
+      });
+      const response = await apiRequest('POST', '/api/trading/orders', orderData);
+      return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/trading/orders/open'] });
       queryClient.invalidateQueries({ queryKey: ['/api/trading/orders/history'] });
+      trackEvent('order_placed', 'trading', {
+        pair: variables.pair,
+        side: variables.side,
+        type: variables.type
+      });
       setAmount('');
       setLimitPrice('');
       setStopPrice('');
+      if (preferences.trading.soundEnabled) {
+        // Play success sound if enabled
+      }
       toast({
         title: "Order Placed",
         description: `${orderSide.toUpperCase()} order for ${selectedPair} submitted successfully`,
@@ -107,6 +128,7 @@ export default function TradePage() {
   // Cancel order mutation
   const cancelOrderMutation = useMutation({
     mutationFn: async (orderId: string) => {
+      trackAction('cancel_order', 'trading', { orderId });
       const response = await fetch(`/api/trading/orders/${orderId}/cancel`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -116,6 +138,7 @@ export default function TradePage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/trading/orders/open'] });
+      trackEvent('order_cancelled', 'trading');
       toast({
         title: "Order Cancelled",
         description: "Order has been cancelled successfully",

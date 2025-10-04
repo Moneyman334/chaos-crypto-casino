@@ -27,7 +27,8 @@ import {
   Twitter,
   BarChart3,
   Activity,
-  TrendingUp
+  TrendingUp,
+  Settings
 } from "lucide-react";
 
 interface NavigationProps {
@@ -45,6 +46,7 @@ const navigationItems = [
   { path: "/sentinel-bot", label: "Sentinel Bot", icon: Bot },
   { path: "/social-automation", label: "Social Automation", icon: Twitter },
   { path: "/marketing-overview", label: "Marketing Overview", icon: BarChart3 },
+  { path: "/settings", label: "Settings", icon: Settings, featured: true },
   { path: "/games", label: "Games", icon: Gamepad2 },
   { path: "/wallet", label: "Wallet", icon: Wallet },
   { path: "/deposits", label: "Deposits", icon: ArrowDownToLine },

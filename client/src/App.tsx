@@ -58,6 +58,7 @@ import SocialTradingPage from "@/pages/social-trading";
 import TokenLaunchpadPage from "@/pages/token-launchpad";
 import SupremeCommandPage from "@/pages/supreme-command";
 import TradePage from "@/pages/trade";
+import SettingsPage from "@/pages/settings";
 import TermsPage from "@/pages/terms";
 import PrivacyPage from "@/pages/privacy";
 import FAQPage from "@/pages/faq";
@@ -134,6 +135,7 @@ function Router() {
       <Route path="/social-trading" component={SocialTradingPage} />
       <Route path="/token-launchpad" component={TokenLaunchpadPage} />
       <Route path="/supreme-command" component={SupremeCommandPage} />
+      <Route path="/settings" component={SettingsPage} />
       <Route path="/terms" component={TermsPage} />
       <Route path="/privacy" component={PrivacyPage} />
       <Route path="/faq" component={FAQPage} />

@@ -16,6 +16,12 @@ The platform features a "Divine Visual System" with a cosmic theme (purple/blue 
 ### Frontend
 The frontend uses React 18, TypeScript, Vite, Wouter for routing, and TanStack Query v5 for server state management. It implements a three-layer state management approach, `useWeb3` hook for MetaMask integration, React Hook Form with Zod for validation, and various performance optimizations (code splitting, lazy loading). Robust error handling includes React Error Boundaries, a network status monitor, automatic retry with exponential backoff, and toast notifications.
 
+**User Preferences & Analytics System**:
+- **localStorage Preferences**: Comprehensive user preference management with `useUserPreferences` hook for Trading (default pair, order type, favorites, sound, confirmations), Display (compact mode, chart type, refresh interval, advanced stats), and Security (auto-lock, confirmation requirements, security alerts) settings
+- **Analytics Tracking**: Full user behavior analytics with `useAnalytics` hook tracking page views, user actions, events, and session data with automatic 1000-event rotation
+- **Settings Page**: Complete preferences management UI at `/settings` with real-time analytics insights dashboard showing total page views, actions, sessions, avg session duration, top pages, and top actions
+- **Trading Integration**: Trade page automatically uses saved preferences for default trading pair and order type, with all trading actions tracked in analytics
+
 ### Backend
 The backend is an Express.js and TypeScript REST API with modular routes. It uses PostgreSQL and Drizzle ORM for database integration. The API architecture includes over 70 RESTful endpoints with rate limiting, authentication, Zod validation, and a storage layer. Security features include PostgreSQL-backed sessions, Bcrypt password hashing, CORS, input sanitization, and SQL injection prevention. Real-time services include an Auto-Compound Engine, Social Media Scheduler, Trading Bot Engine, and Price Service. The backend is designed for stability with idempotent graceful shutdown handling and service monitoring.
 
@@ -45,11 +51,12 @@ The backend is an Express.js and TypeScript REST API with modular routes. It use
 - **Twitter Auto-Posting**: Automated promotional content posting every 3 hours using OAuth 1.0a credentials, cycling through specific messages.
 
 ### Key Frontend Pages
-The platform includes 27 comprehensive frontend pages covering:
+The platform includes 28 comprehensive frontend pages covering:
 - **Product Management**: Catalog, Wishlist, Product Reviews, Flash Sales Admin.
 - **User & Order Management**: Customer Dashboard, Enhanced Checkout, Invoices, Enhanced Orders.
 - **Analytics & Portfolio**: Analytics Dashboard, Portfolio Tracker, Notifications System.
 - **Trading**: Buy & Trade Crypto (featured in navigation).
+- **User Experience**: Settings & Preferences (featured in navigation) with comprehensive preference management and real-time analytics insights.
 - **Web3 Features**: Achievements & Gamification, Marketplace, Staking Rewards, Referral/Affiliate System, Token Swap/DEX, NFT Gallery, DAO Governance, P2P Lending, Prediction Markets, Yield Farming, Social Trading, Token Launchpad.
 - **Marketing**: Marketing Overview, Campaign Management, Command Center.
 
