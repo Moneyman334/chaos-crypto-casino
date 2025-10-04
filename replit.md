@@ -7,6 +7,7 @@
 ## Bug Fixes
 1. **Staking Error Messages**: Fixed error handling in CODEX staking - now displays actual backend error messages instead of generic "Failed to stake" message; improved debugging experience by showing specific validation errors
 2. **Trading Bot Error Messages**: Enhanced error handling in Auto Trading Bot - now shows specific error messages from backend instead of generic "Unable to connect to trading bot"; includes helpful fallback messages for better user experience
+3. **Cross-Chain Bridge 404 Error**: Fixed homepage "Cross-Chain Bridge" link that was redirecting to 404 error page; created full bridge page with 6-chain support (Ethereum, Polygon, Arbitrum, Optimism, Base, BNB Chain), token selection, fee calculation (0.1%), and wallet integration
 
 ## UX Improvements
 1. **Bot Subscription Payment**: Added prominent subscription banner on auto-trading-bot page with $49/mo Premium pricing, dismissible UI, and direct link to /subscriptions page
