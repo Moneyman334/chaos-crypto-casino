@@ -25,6 +25,7 @@ import GamePlayPage from "@/pages/game-play";
 import EmpireDashboard from "@/pages/empire-dashboard";
 import HouseVaultsPage from "@/pages/house-vaults";
 import AutoCompoundPage from "@/pages/auto-compound";
+import AutoTradingBotPage from "@/pages/auto-trading-bot";
 import SocialAutomationPage from "@/pages/social-automation";
 import MarketingDashboardPage from "@/pages/marketing-dashboard";
 import MarketingOverviewPage from "@/pages/marketing-overview";
@@ -90,6 +91,7 @@ function Router() {
       <Route path="/empire" component={EmpireDashboard} />
       <Route path="/vaults" component={HouseVaultsPage} />
       <Route path="/auto-compound" component={AutoCompoundPage} />
+      <Route path="/auto-trading-bot" component={AutoTradingBotPage} />
       <Route path="/games" component={GamesPage} />
       <Route path="/wallet" component={WalletPage} />
       <Route path="/tokens" component={TokensPage} />

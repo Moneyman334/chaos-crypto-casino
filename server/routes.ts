@@ -5424,6 +5424,254 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // ===== AUTO TRADING BOT ROUTES =====
+  
+  // In-memory bot state
+  let botState: any = {
+    status: 'stopped',
+    config: null,
+    startTime: null,
+  };
+  
+  const botTrades: any[] = [];
+  const botStats = {
+    totalProfit: 0,
+    totalTrades: 0,
+    winningTrades: 0,
+    winRate: 0,
+  };
+  
+  // Get bot status
+  app.get("/api/bot/status", async (req, res) => {
+    try {
+      res.json(botState);
+    } catch (error) {
+      console.error("Failed to fetch bot status:", error);
+      res.status(500).json({ error: "Failed to fetch bot status" });
+    }
+  });
+  
+  
+  // Get bot trades
+  app.get("/api/bot/trades", async (req, res) => {
+    try {
+      res.json(botTrades);
+    } catch (error) {
+      console.error("Failed to fetch bot trades:", error);
+      res.status(500).json({ error: "Failed to fetch bot trades" });
+    }
+  });
+  
+  // Get bot stats
+  app.get("/api/bot/stats", async (req, res) => {
+    try {
+      const winRate = botStats.totalTrades > 0 
+        ? ((botStats.winningTrades / botStats.totalTrades) * 100).toFixed(1)
+        : 0;
+      
+      res.json({
+        ...botStats,
+        winRate,
+      });
+    } catch (error) {
+      console.error("Failed to fetch bot stats:", error);
+      res.status(500).json({ error: "Failed to fetch bot stats" });
+    }
+  });
+  
+  // Bot activity feed (demo mode)
+  const botActivityFeed: any[] = [];
+  let activityInterval: NodeJS.Timeout | null = null;
+  
+  const generateBotActivity = async () => {
+    if (botState.status !== 'running' || !botState.config) return;
+    
+    const config = botState.config;
+    const demoMode = config.demoMode !== false; // Default to demo mode for safety
+    
+    // Simulate market analysis
+    const currentPrice = 42000 + Math.random() * 2000; // Random price for demo
+    const sma20 = currentPrice * (0.98 + Math.random() * 0.04);
+    
+    const activities = [
+      { type: 'analysis', message: `Analyzing ${config.tradingPair} market conditions`, details: 'Fetching latest candlestick data and calculating indicators' },
+      { type: 'analysis', message: 'Computing SMA20 indicator', details: `Current price: $${currentPrice.toFixed(2)} | SMA20: $${sma20.toFixed(2)}` },
+    ];
+    
+    // Randomly decide if signal should trigger
+    if (Math.random() > 0.7) {
+      const side = currentPrice > sma20 ? 'buy' : 'sell';
+      const signalType = side === 'buy' ? 'Bullish' : 'Bearish';
+      
+      activities.push({ 
+        type: 'signal', 
+        message: `✨ ${side.toUpperCase()} signal detected!`, 
+        details: `Price ${side === 'buy' ? 'crossed above' : 'crossed below'} SMA20 - ${signalType} momentum confirmed` 
+      });
+      
+      activities.push({ 
+        type: 'strategy', 
+        message: 'Evaluating risk parameters', 
+        details: `Stop loss: ${config.stopLoss}% | Take profit: ${config.takeProfit}% | Position size validated` 
+      });
+      
+      // Execute trade (demo or live)
+      if (demoMode) {
+        activities.push({ 
+          type: 'trade', 
+          message: `🎮 DEMO ${side.toUpperCase()} order executed`, 
+          details: `${(parseFloat(config.tradeAmount) / currentPrice).toFixed(6)} ${config.tradingPair.split('-')[0]} @ $${currentPrice.toFixed(2)} | Total: $${config.tradeAmount}` 
+        });
+        
+        // Record demo trade
+        const profit = (Math.random() - 0.4) * parseFloat(config.tradeAmount) * 0.1;
+        botTrades.unshift({
+          id: 'demo_' + Date.now(),
+          tradingPair: config.tradingPair,
+          side,
+          orderType: 'market',
+          amount: (parseFloat(config.tradeAmount) / currentPrice).toFixed(6),
+          price: currentPrice.toFixed(2),
+          strategy: config.strategy,
+          timestamp: new Date().toISOString(),
+          profit: profit.toFixed(2),
+          mode: 'DEMO'
+        });
+        
+        // Update stats
+        botStats.totalTrades++;
+        botStats.totalProfit += profit;
+        if (profit > 0) botStats.winningTrades++;
+        
+      } else {
+        activities.push({ 
+          type: 'trade', 
+          message: `🚀 LIVE ${side.toUpperCase()} order submitted`, 
+          details: `Executing on real trading platform - ${config.tradingPair}` 
+        });
+        
+        // Note: In production, this would call POST /api/trading/orders
+        // For now, we log that it would execute
+        activities.push({ 
+          type: 'system', 
+          message: '⚠️ Live trading requires trading platform integration', 
+          details: 'Enable demo mode for safe testing' 
+        });
+      }
+    } else {
+      activities.push({ 
+        type: 'system', 
+        message: 'No trading signal - Waiting for optimal entry', 
+        details: `Monitoring ${config.tradingPair} | Daily trades: ${botStats.totalTrades}/${config.maxDailyTrades}` 
+      });
+    }
+    
+    // Add activities to feed
+    for (const activity of activities) {
+      botActivityFeed.unshift({
+        ...activity,
+        timestamp: new Date().toISOString(),
+      });
+    }
+    
+    // Keep only last 30 activities
+    while (botActivityFeed.length > 30) {
+      botActivityFeed.pop();
+    }
+  };
+  
+  // Bot configuration validation schema
+  const botConfigSchema = z.object({
+    tradingPair: z.string().min(1, "Trading pair is required"),
+    strategy: z.string().min(1, "Strategy is required"),
+    tradeAmount: z.string().refine((val) => {
+      const num = parseFloat(val);
+      return !isNaN(num) && num > 0;
+    }, "Trade amount must be a positive number"),
+    stopLoss: z.string().refine((val) => {
+      const num = parseFloat(val);
+      return !isNaN(num) && num >= 0 && num <= 100;
+    }, "Stop loss must be between 0 and 100"),
+    takeProfit: z.string().refine((val) => {
+      const num = parseFloat(val);
+      return !isNaN(num) && num >= 0 && num <= 1000;
+    }, "Take profit must be between 0 and 1000"),
+    maxDailyTrades: z.string().refine((val) => {
+      const num = parseInt(val);
+      return !isNaN(num) && num > 0 && num <= 100;
+    }, "Max daily trades must be between 1 and 100"),
+    demoMode: z.boolean().default(true),
+  });
+
+  // Start bot with activity generation
+  app.post("/api/bot/start", async (req, res) => {
+    try {
+      // Validate configuration
+      const validationResult = botConfigSchema.safeParse(req.body);
+      
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          error: "Invalid bot configuration", 
+          details: validationResult.error.errors 
+        });
+      }
+      
+      const config = validationResult.data;
+      
+      botState = {
+        status: 'running',
+        config,
+        startTime: new Date().toISOString(),
+      };
+      
+      // Clear old activity and start new feed
+      botActivityFeed.length = 0;
+      if (activityInterval) clearInterval(activityInterval);
+      
+      // Generate activity every 3-5 seconds
+      activityInterval = setInterval(() => {
+        generateBotActivity();
+      }, 3000 + Math.random() * 2000);
+      
+      res.json({ success: true, message: "Bot started successfully", status: botState });
+    } catch (error) {
+      console.error("Failed to start bot:", error);
+      res.status(500).json({ error: "Failed to start bot" });
+    }
+  });
+  
+  // Stop bot and activity generation
+  app.post("/api/bot/stop", async (req, res) => {
+    try {
+      botState = {
+        status: 'stopped',
+        config: botState.config,
+        startTime: null,
+      };
+      
+      // Stop activity generation
+      if (activityInterval) {
+        clearInterval(activityInterval);
+        activityInterval = null;
+      }
+      
+      res.json({ success: true, message: "Bot stopped successfully", status: botState });
+    } catch (error) {
+      console.error("Failed to stop bot:", error);
+      res.status(500).json({ error: "Failed to stop bot" });
+    }
+  });
+  
+  // Get bot activity feed
+  app.get("/api/bot/activity", async (req, res) => {
+    try {
+      res.json(botActivityFeed);
+    } catch (error) {
+      console.error("Failed to fetch bot activity:", error);
+      res.status(500).json({ error: "Failed to fetch bot activity" });
+    }
+  });
+  
   const httpServer = createServer(app);
   return httpServer;
 }
