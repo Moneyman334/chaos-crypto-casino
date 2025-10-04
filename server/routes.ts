@@ -5672,6 +5672,272 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // ===== CODEX ECOSYSTEM ROUTES =====
+  
+  // Get CODEX token info
+  app.get("/api/codex/token", async (req, res) => {
+    try {
+      const token = await storage.getPlatformToken();
+      res.json(token);
+    } catch (error) {
+      console.error("Failed to fetch token info:", error);
+      res.status(500).json({ error: "Failed to fetch token info" });
+    }
+  });
+  
+  // Get user token holdings
+  app.get("/api/codex/holdings/:walletAddress", async (req, res) => {
+    try {
+      const walletAddress = req.params.walletAddress.toLowerCase();
+      const holdings = await storage.getTokenHoldings(walletAddress);
+      res.json(holdings);
+    } catch (error) {
+      console.error("Failed to fetch token holdings:", error);
+      res.status(500).json({ error: "Failed to fetch token holdings" });
+    }
+  });
+  
+  // Get all NFT collections
+  app.get("/api/codex/nft-collections", async (req, res) => {
+    try {
+      const collections = await storage.getPlatformNftCollections();
+      res.json(collections);
+    } catch (error) {
+      console.error("Failed to fetch NFT collections:", error);
+      res.status(500).json({ error: "Failed to fetch NFT collections" });
+    }
+  });
+  
+  // Get NFT collection by ID
+  app.get("/api/codex/nft-collections/:id", async (req, res) => {
+    try {
+      const collection = await storage.getPlatformNftCollectionById(req.params.id);
+      if (!collection) {
+        return res.status(404).json({ error: "Collection not found" });
+      }
+      res.json(collection);
+    } catch (error) {
+      console.error("Failed to fetch NFT collection:", error);
+      res.status(500).json({ error: "Failed to fetch NFT collection" });
+    }
+  });
+  
+  // Get user's NFTs
+  app.get("/api/codex/nfts/:walletAddress", async (req, res) => {
+    try {
+      const walletAddress = req.params.walletAddress.toLowerCase();
+      const nfts = await storage.getPlatformUserNfts(walletAddress);
+      res.json(nfts);
+    } catch (error) {
+      console.error("Failed to fetch user NFTs:", error);
+      res.status(500).json({ error: "Failed to fetch user NFTs" });
+    }
+  });
+  
+  // Mint NFT for user
+  app.post("/api/codex/nfts/mint", async (req, res) => {
+    try {
+      const mintSchema = z.object({
+        collectionId: z.string(),
+        walletAddress: z.string(),
+        tokenId: z.string(),
+        name: z.string(),
+        description: z.string().optional(),
+        imageUrl: z.string().optional(),
+        attributes: z.any().optional(),
+      });
+      
+      const data = mintSchema.parse(req.body);
+      const nft = await storage.createPlatformUserNft(data);
+      res.status(201).json(nft);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid NFT data", 
+          details: error.errors 
+        });
+      }
+      console.error("Failed to mint NFT:", error);
+      res.status(500).json({ error: "Failed to mint NFT" });
+    }
+  });
+  
+  // Get all achievements
+  app.get("/api/codex/achievements", async (req, res) => {
+    try {
+      const achievements = await storage.getPlatformAchievements();
+      res.json(achievements);
+    } catch (error) {
+      console.error("Failed to fetch achievements:", error);
+      res.status(500).json({ error: "Failed to fetch achievements" });
+    }
+  });
+  
+  // Get user achievements
+  app.get("/api/codex/achievements/:walletAddress", async (req, res) => {
+    try {
+      const walletAddress = req.params.walletAddress.toLowerCase();
+      const achievements = await storage.getPlatformUserAchievements(walletAddress);
+      res.json(achievements);
+    } catch (error) {
+      console.error("Failed to fetch user achievements:", error);
+      res.status(500).json({ error: "Failed to fetch user achievements" });
+    }
+  });
+  
+  // Update achievement progress
+  app.post("/api/codex/achievements/progress", async (req, res) => {
+    try {
+      const progressSchema = z.object({
+        walletAddress: z.string(),
+        achievementId: z.string(),
+        progress: z.any(),
+        isCompleted: z.boolean().optional(),
+      });
+      
+      const data = progressSchema.parse(req.body);
+      const achievement = await storage.updatePlatformUserAchievement(data);
+      res.json(achievement);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid progress data", 
+          details: error.errors 
+        });
+      }
+      console.error("Failed to update achievement progress:", error);
+      res.status(500).json({ error: "Failed to update achievement progress" });
+    }
+  });
+  
+  // Get all staking pools
+  app.get("/api/codex/staking-pools", async (req, res) => {
+    try {
+      const pools = await storage.getCodexStakingPools();
+      res.json(pools);
+    } catch (error) {
+      console.error("Failed to fetch staking pools:", error);
+      res.status(500).json({ error: "Failed to fetch staking pools" });
+    }
+  });
+  
+  // Get staking pool by ID
+  app.get("/api/codex/staking-pools/:id", async (req, res) => {
+    try {
+      const pool = await storage.getCodexStakingPoolById(req.params.id);
+      if (!pool) {
+        return res.status(404).json({ error: "Pool not found" });
+      }
+      res.json(pool);
+    } catch (error) {
+      console.error("Failed to fetch staking pool:", error);
+      res.status(500).json({ error: "Failed to fetch staking pool" });
+    }
+  });
+  
+  // Get user stakes
+  app.get("/api/codex/stakes/:walletAddress", async (req, res) => {
+    try {
+      const walletAddress = req.params.walletAddress.toLowerCase();
+      const stakes = await storage.getCodexUserStakes(walletAddress);
+      res.json(stakes);
+    } catch (error) {
+      console.error("Failed to fetch user stakes:", error);
+      res.status(500).json({ error: "Failed to fetch user stakes" });
+    }
+  });
+  
+  // Create new stake
+  app.post("/api/codex/stakes", async (req, res) => {
+    try {
+      const stakeSchema = z.object({
+        walletAddress: z.string(),
+        poolId: z.string(),
+        amount: z.string(),
+        unlockDate: z.string(),
+      });
+      
+      const data = stakeSchema.parse(req.body);
+      const stake = await storage.createCodexUserStake(data);
+      res.status(201).json(stake);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid stake data", 
+          details: error.errors 
+        });
+      }
+      console.error("Failed to create stake:", error);
+      res.status(500).json({ error: "Failed to create stake" });
+    }
+  });
+  
+  // Claim stake rewards
+  app.post("/api/codex/stakes/:stakeId/claim", async (req, res) => {
+    try {
+      const stake = await storage.claimCodexStakeRewards(req.params.stakeId);
+      if (!stake) {
+        return res.status(404).json({ error: "Stake not found" });
+      }
+      res.json(stake);
+    } catch (error) {
+      console.error("Failed to claim rewards:", error);
+      res.status(500).json({ error: "Failed to claim rewards" });
+    }
+  });
+  
+  // Unstake (if lock period ended)
+  app.post("/api/codex/stakes/:stakeId/unstake", async (req, res) => {
+    try {
+      const stake = await storage.unstakeCodex(req.params.stakeId);
+      if (!stake) {
+        return res.status(404).json({ error: "Stake not found or still locked" });
+      }
+      res.json(stake);
+    } catch (error) {
+      console.error("Failed to unstake:", error);
+      res.status(500).json({ error: "Failed to unstake" });
+    }
+  });
+  
+  // Get NFT evolution history
+  app.get("/api/codex/nfts/:nftId/evolution", async (req, res) => {
+    try {
+      const evolution = await storage.getPlatformNftEvolutionLog(req.params.nftId);
+      res.json(evolution);
+    } catch (error) {
+      console.error("Failed to fetch NFT evolution:", error);
+      res.status(500).json({ error: "Failed to fetch NFT evolution" });
+    }
+  });
+  
+  // Log NFT evolution event
+  app.post("/api/codex/nfts/evolve", async (req, res) => {
+    try {
+      const evolveSchema = z.object({
+        nftId: z.string(),
+        evolutionType: z.string(),
+        oldValue: z.any().optional(),
+        newValue: z.any().optional(),
+        trigger: z.string().optional(),
+        aiAnalysis: z.string().optional(),
+      });
+      
+      const data = evolveSchema.parse(req.body);
+      const log = await storage.logPlatformNftEvolution(data);
+      res.status(201).json(log);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid evolution data", 
+          details: error.errors 
+        });
+      }
+      console.error("Failed to log NFT evolution:", error);
+      res.status(500).json({ error: "Failed to log NFT evolution" });
+    }
+  });
+  
   const httpServer = createServer(app);
   return httpServer;
 }

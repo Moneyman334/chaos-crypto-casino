@@ -102,7 +102,34 @@ import {
   type CampaignMetric,
   type InsertCampaignMetric,
   type MarketingBudget,
-  type InsertMarketingBudget
+  type InsertMarketingBudget,
+  platformToken,
+  tokenHoldings,
+  platformNftCollections,
+  platformUserNfts,
+  platformAchievements,
+  platformUserAchievements,
+  platformNftEvolutionLog,
+  codexStakingPools,
+  codexUserStakes,
+  type PlatformToken,
+  type InsertPlatformToken,
+  type TokenHolding,
+  type InsertTokenHolding,
+  type PlatformNftCollection,
+  type InsertPlatformNftCollection,
+  type PlatformUserNft,
+  type InsertPlatformUserNft,
+  type PlatformAchievement,
+  type InsertPlatformAchievement,
+  type PlatformUserAchievement,
+  type InsertPlatformUserAchievement,
+  type PlatformNftEvolutionLog,
+  type InsertPlatformNftEvolutionLog,
+  type CodexStakingPool,
+  type InsertCodexStakingPool,
+  type CodexUserStake,
+  type InsertCodexUserStake
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/neon-http";
@@ -387,6 +414,42 @@ export interface IStorage {
   getPlatformStatistics(): Promise<any>;
   getPlatformActivity(limit: number): Promise<any[]>;
   getSystemHealth(): Promise<any>;
+  
+  // ===== CODEX ECOSYSTEM METHODS =====
+  
+  // Platform Token methods
+  getPlatformToken(): Promise<PlatformToken | undefined>;
+  
+  // Token Holdings methods
+  getTokenHoldings(walletAddress: string): Promise<TokenHolding | undefined>;
+  createOrUpdateTokenHoldings(holdings: InsertTokenHolding): Promise<TokenHolding>;
+  
+  // Platform NFT Collection methods
+  getPlatformNftCollections(): Promise<PlatformNftCollection[]>;
+  getPlatformNftCollectionById(id: string): Promise<PlatformNftCollection | undefined>;
+  
+  // Platform User NFT methods
+  getPlatformUserNfts(walletAddress: string): Promise<PlatformUserNft[]>;
+  createPlatformUserNft(nft: any): Promise<PlatformUserNft>;
+  
+  // Platform Achievement methods
+  getPlatformAchievements(): Promise<PlatformAchievement[]>;
+  getPlatformUserAchievements(walletAddress: string): Promise<any[]>;
+  updatePlatformUserAchievement(data: any): Promise<any>;
+  
+  // NFT Evolution methods
+  getPlatformNftEvolutionLog(nftId: string): Promise<PlatformNftEvolutionLog[]>;
+  logPlatformNftEvolution(data: any): Promise<PlatformNftEvolutionLog>;
+  
+  // CODEX Staking Pool methods
+  getCodexStakingPools(): Promise<CodexStakingPool[]>;
+  getCodexStakingPoolById(id: string): Promise<CodexStakingPool | undefined>;
+  
+  // CODEX User Stake methods
+  getCodexUserStakes(walletAddress: string): Promise<any[]>;
+  createCodexUserStake(stake: any): Promise<CodexUserStake>;
+  claimCodexStakeRewards(stakeId: string): Promise<CodexUserStake | undefined>;
+  unstakeCodex(stakeId: string): Promise<CodexUserStake | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -2746,6 +2809,199 @@ export class PostgreSQLStorage implements IStorage {
         }
       }
     };
+  }
+  
+  // ===== CODEX ECOSYSTEM METHODS =====
+  
+  // Platform Token methods
+  async getPlatformToken() {
+    const [token] = await db.select().from(platformToken).limit(1);
+    return token;
+  }
+  
+  // Token Holdings methods
+  async getTokenHoldings(walletAddress: string) {
+    const [holdings] = await db.select().from(tokenHoldings)
+      .where(eq(sql`lower(${tokenHoldings.walletAddress})`, normalizeAddress(walletAddress)))
+      .limit(1);
+    return holdings;
+  }
+  
+  async createOrUpdateTokenHoldings(holdings: InsertTokenHolding) {
+    const normalized = normalizeAddress(holdings.walletAddress);
+    const [result] = await db.insert(tokenHoldings)
+      .values({ ...holdings, walletAddress: normalized })
+      .onConflictDoUpdate({
+        target: tokenHoldings.walletAddress,
+        set: {
+          balance: holdings.balance,
+          stakedBalance: holdings.stakedBalance,
+          rewardsEarned: holdings.rewardsEarned,
+          lastUpdated: sql`now()`
+        }
+      })
+      .returning();
+    return result;
+  }
+  
+  // Platform NFT Collection methods
+  async getPlatformNftCollections() {
+    return await db.select().from(platformNftCollections)
+      .orderBy(platformNftCollections.name);
+  }
+  
+  async getPlatformNftCollectionById(id: string) {
+    const [collection] = await db.select().from(platformNftCollections)
+      .where(eq(platformNftCollections.id, id))
+      .limit(1);
+    return collection;
+  }
+  
+  // Platform User NFT methods
+  async getPlatformUserNfts(walletAddress: string) {
+    return await db.select().from(platformUserNfts)
+      .where(eq(sql`lower(${platformUserNfts.walletAddress})`, normalizeAddress(walletAddress)))
+      .orderBy(desc(platformUserNfts.mintedAt));
+  }
+  
+  async createPlatformUserNft(nft: InsertPlatformUserNft) {
+    const normalized = normalizeAddress(nft.walletAddress);
+    const [created] = await db.insert(platformUserNfts)
+      .values({ ...nft, walletAddress: normalized })
+      .returning();
+    return created;
+  }
+  
+  // Platform Achievement methods
+  async getPlatformAchievements() {
+    return await db.select().from(platformAchievements)
+      .orderBy(platformAchievements.tier, platformAchievements.name);
+  }
+  
+  async getPlatformUserAchievements(walletAddress: string) {
+    const results = await db.select({
+      id: platformUserAchievements.id,
+      walletAddress: platformUserAchievements.walletAddress,
+      achievementId: platformUserAchievements.achievementId,
+      completedAt: platformUserAchievements.completedAt,
+      claimedAt: platformUserAchievements.claimedAt,
+      progress: platformUserAchievements.progress,
+      achievement: platformAchievements
+    })
+      .from(platformUserAchievements)
+      .leftJoin(
+        platformAchievements, 
+        eq(platformUserAchievements.achievementId, platformAchievements.id)
+      )
+      .where(eq(sql`lower(${platformUserAchievements.walletAddress})`, normalizeAddress(walletAddress)));
+    return results;
+  }
+  
+  async updatePlatformUserAchievement(data: InsertPlatformUserAchievement) {
+    const normalized = normalizeAddress(data.walletAddress);
+    const [result] = await db.insert(platformUserAchievements)
+      .values({ ...data, walletAddress: normalized })
+      .onConflictDoUpdate({
+        target: [platformUserAchievements.walletAddress, platformUserAchievements.achievementId],
+        set: {
+          progress: data.progress,
+          isCompleted: data.isCompleted,
+          completedAt: data.completedAt,
+          claimedAt: data.claimedAt
+        }
+      })
+      .returning();
+    return result;
+  }
+  
+  // NFT Evolution methods
+  async getPlatformNftEvolutionLog(nftId: string) {
+    return await db.select().from(platformNftEvolutionLog)
+      .where(eq(platformNftEvolutionLog.nftId, nftId))
+      .orderBy(desc(platformNftEvolutionLog.createdAt));
+  }
+  
+  async logPlatformNftEvolution(data: InsertPlatformNftEvolutionLog) {
+    const [created] = await db.insert(platformNftEvolutionLog)
+      .values(data)
+      .returning();
+    return created;
+  }
+  
+  // CODEX Staking Pool methods
+  async getCodexStakingPools() {
+    return await db.select().from(codexStakingPools)
+      .orderBy(codexStakingPools.name);
+  }
+  
+  async getCodexStakingPoolById(id: string) {
+    const [pool] = await db.select().from(codexStakingPools)
+      .where(eq(codexStakingPools.id, id))
+      .limit(1);
+    return pool;
+  }
+  
+  // CODEX User Stake methods
+  async getCodexUserStakes(walletAddress: string) {
+    const results = await db.select({
+      id: codexUserStakes.id,
+      walletAddress: codexUserStakes.walletAddress,
+      poolId: codexUserStakes.poolId,
+      amount: codexUserStakes.amount,
+      rewardsEarned: codexUserStakes.rewardsEarned,
+      lastClaimDate: codexUserStakes.lastClaimDate,
+      startDate: codexUserStakes.startDate,
+      unlockDate: codexUserStakes.unlockDate,
+      isActive: codexUserStakes.isActive,
+      pool: codexStakingPools
+    })
+      .from(codexUserStakes)
+      .leftJoin(codexStakingPools, eq(codexUserStakes.poolId, codexStakingPools.id))
+      .where(eq(sql`lower(${codexUserStakes.walletAddress})`, normalizeAddress(walletAddress)))
+      .orderBy(desc(codexUserStakes.startDate));
+    return results;
+  }
+  
+  async createCodexUserStake(stake: InsertCodexUserStake) {
+    const normalized = normalizeAddress(stake.walletAddress);
+    const [created] = await db.insert(codexUserStakes)
+      .values({ ...stake, walletAddress: normalized })
+      .returning();
+    return created;
+  }
+  
+  async claimCodexStakeRewards(stakeId: string) {
+    const [updated] = await db.update(codexUserStakes)
+      .set({ 
+        rewardsEarned: '0',
+        lastClaimDate: new Date()
+      })
+      .where(eq(codexUserStakes.id, stakeId))
+      .returning();
+    return updated;
+  }
+  
+  async unstakeCodex(stakeId: string) {
+    const [stake] = await db.select().from(codexUserStakes)
+      .where(eq(codexUserStakes.id, stakeId))
+      .limit(1);
+    
+    if (!stake) {
+      return undefined;
+    }
+    
+    const now = new Date();
+    const unlockDate = new Date(stake.unlockDate);
+    
+    if (now < unlockDate) {
+      throw new Error('Stake is still locked. Cannot unstake before unlock date.');
+    }
+    
+    const [updated] = await db.update(codexUserStakes)
+      .set({ isActive: 'false' })
+      .where(eq(codexUserStakes.id, stakeId))
+      .returning();
+    return updated;
   }
 }
 
