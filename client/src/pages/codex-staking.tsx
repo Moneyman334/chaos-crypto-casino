@@ -331,13 +331,21 @@ export default function CodexStakingPage() {
                 {pools?.map((pool: any) => (
                   <Card
                     key={pool.id}
-                    className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 dark:from-blue-950/60 dark:to-cyan-950/60 border-blue-400/30 hover:border-blue-400/60 transition-all"
+                    className={`bg-gradient-to-br from-blue-900/40 to-cyan-900/40 dark:from-blue-950/60 dark:to-cyan-950/60 border-blue-400/30 hover:border-blue-400 transition-all cursor-pointer hover:shadow-lg hover:shadow-blue-500/20 ${selectedPoolId === pool.id ? 'border-blue-500 shadow-xl shadow-blue-500/30' : ''}`}
                     data-testid={`card-pool-${pool.id}`}
+                    onClick={() => {
+                      setSelectedPoolId(pool.id);
+                      // Scroll to stake form
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
                   >
                     <CardHeader>
                       <div className="flex items-center justify-between mb-2">
-                        <CardTitle className="text-white text-lg" data-testid={`text-pool-name-${pool.id}`}>
+                        <CardTitle className="text-white text-lg flex items-center gap-2" data-testid={`text-pool-name-${pool.id}`}>
                           {pool.name}
+                          {selectedPoolId === pool.id && (
+                            <Badge className="bg-green-500">Selected</Badge>
+                          )}
                         </CardTitle>
                         <Badge className="bg-gradient-to-r from-green-500 to-emerald-600 text-white text-lg px-3 py-1">
                           {pool.apr}% APR
@@ -375,6 +383,19 @@ export default function CodexStakingPage() {
                           </p>
                         </div>
                       </div>
+                      {isConnected && (
+                        <Button 
+                          className="w-full mt-4 bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedPoolId(pool.id);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
+                          data-testid={`button-select-pool-${pool.id}`}
+                        >
+                          {selectedPoolId === pool.id ? 'Selected - Scroll to Stake' : 'Select Pool & Stake'}
+                        </Button>
+                      )}
                     </CardContent>
                   </Card>
                 ))}
