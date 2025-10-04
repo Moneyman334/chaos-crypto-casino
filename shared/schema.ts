@@ -1801,3 +1801,240 @@ export type InsertSecurityAlert = z.infer<typeof insertSecurityAlertSchema>;
 export type SecurityAlert = typeof securityAlerts.$inferSelect;
 export type InsertTransactionLimit = z.infer<typeof insertTransactionLimitSchema>;
 export type TransactionLimit = typeof transactionLimits.$inferSelect;
+
+// ===== CODEX PLATFORM TOKEN & NFT ECOSYSTEM =====
+
+// Platform Token (CODEX) - ERC-20 Governance & Utility Token
+export const platformToken = pgTable("platform_token", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().default("CODEX"),
+  symbol: text("symbol").notNull().default("CDX"),
+  totalSupply: text("total_supply").notNull().default("1000000000"), // 1 billion tokens
+  decimals: text("decimals").notNull().default("18"),
+  contractAddress: text("contract_address"),
+  chainId: text("chain_id").notNull().default("0x1"), // Ethereum mainnet
+  deployedAt: timestamp("deployed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Token Holdings - Track user balances
+export const tokenHoldings = pgTable("token_holdings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  walletAddress: text("wallet_address").notNull(),
+  balance: text("balance").notNull().default("0"),
+  stakedBalance: text("staked_balance").notNull().default("0"),
+  rewardsEarned: text("rewards_earned").notNull().default("0"),
+  lastUpdated: timestamp("last_updated").notNull().defaultNow(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  walletLowerIdx: index("token_holdings_wallet_lower_idx").on(sql`lower(${table.walletAddress})`),
+  balanceIdx: index("token_holdings_balance_idx").on(table.balance),
+}));
+
+// Platform NFT Collections
+export const platformNftCollections = pgTable("platform_nft_collections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  symbol: text("symbol").notNull(),
+  description: text("description"),
+  type: text("type").notNull(), // founder, elite, genesis, achievement
+  contractAddress: text("contract_address"),
+  chainId: text("chain_id").notNull().default("0x1"),
+  totalSupply: text("total_supply").notNull(),
+  maxSupply: text("max_supply"),
+  baseUri: text("base_uri"),
+  royaltyPercentage: text("royalty_percentage").default("5"), // 5%
+  isDynamic: text("is_dynamic").notNull().default("false"), // Can evolve
+  isTransferable: text("is_transferable").notNull().default("true"), // Soulbound if false
+  deployedAt: timestamp("deployed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  typeIdx: index("platform_nft_collections_type_idx").on(table.type),
+  contractIdx: index("platform_nft_collections_contract_idx").on(table.contractAddress),
+}));
+
+// User NFTs - Individual token ownership
+export const platformUserNfts = pgTable("platform_user_nfts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  collectionId: varchar("collection_id").notNull().references(() => platformNftCollections.id),
+  walletAddress: text("wallet_address").notNull(),
+  tokenId: text("token_id").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  imageUrl: text("image_url"),
+  animationUrl: text("animation_url"),
+  externalUrl: text("external_url"),
+  attributes: jsonb("attributes"), // Standard NFT metadata attributes
+  dynamicAttributes: jsonb("dynamic_attributes"), // AI-powered evolving attributes
+  level: text("level").notNull().default("1"),
+  experience: text("experience").notNull().default("0"),
+  rarity: text("rarity").notNull().default("common"), // common, rare, epic, legendary, mythic
+  powerScore: text("power_score").notNull().default("0"), // Overall NFT strength
+  lastEvolutionAt: timestamp("last_evolution_at"),
+  mintedAt: timestamp("minted_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  collectionIdx: index("platform_user_nfts_collection_idx").on(table.collectionId),
+  walletLowerIdx: index("platform_user_nfts_wallet_lower_idx").on(sql`lower(${table.walletAddress})`),
+  tokenIdx: index("platform_user_nfts_token_idx").on(table.collectionId, table.tokenId),
+  rarityIdx: index("platform_user_nfts_rarity_idx").on(table.rarity),
+  levelIdx: index("platform_user_nfts_level_idx").on(table.level),
+}));
+
+// Living Achievement System - Revolutionary dynamic NFTs
+export const platformAchievements = pgTable("platform_achievements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  category: text("category").notNull(), // trading, staking, gaming, social, governance
+  tier: text("tier").notNull().default("bronze"), // bronze, silver, gold, platinum, diamond
+  requiredActions: jsonb("required_actions").notNull(), // Conditions to unlock
+  rewards: jsonb("rewards"), // Token rewards, power boosts, exclusive access
+  imageUrl: text("image_url"),
+  isActive: text("is_active").notNull().default("true"),
+  unlockCount: text("unlock_count").notNull().default("0"), // How many users unlocked
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  categoryIdx: index("platform_achievements_category_idx").on(table.category),
+  tierIdx: index("platform_achievements_tier_idx").on(table.tier),
+  activeIdx: index("platform_achievements_active_idx").on(table.isActive),
+}));
+
+// User Achievement Progress
+export const platformUserAchievements = pgTable("platform_user_achievements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  walletAddress: text("wallet_address").notNull(),
+  achievementId: varchar("achievement_id").notNull().references(() => platformAchievements.id),
+  nftId: varchar("nft_id").references(() => platformUserNfts.id), // Linked Living Achievement NFT
+  progress: jsonb("progress").notNull().default('{}'), // Current progress toward completion
+  isCompleted: text("is_completed").notNull().default("false"),
+  completedAt: timestamp("completed_at"),
+  claimedAt: timestamp("claimed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  walletAchievementIdx: index("platform_user_achievements_wallet_achievement_idx").on(table.walletAddress, table.achievementId),
+  walletLowerIdx: index("platform_user_achievements_wallet_lower_idx").on(sql`lower(${table.walletAddress})`),
+  completedIdx: index("platform_user_achievements_completed_idx").on(table.isCompleted),
+  nftIdx: index("platform_user_achievements_nft_idx").on(table.nftId),
+}));
+
+// NFT Evolution Log - Track how NFTs change over time
+export const platformNftEvolutionLog = pgTable("platform_nft_evolution_log", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  nftId: varchar("nft_id").notNull().references(() => platformUserNfts.id),
+  evolutionType: text("evolution_type").notNull(), // level_up, attribute_boost, rarity_upgrade, achievement_unlock
+  oldValue: jsonb("old_value"),
+  newValue: jsonb("new_value"),
+  trigger: text("trigger"), // What caused the evolution
+  aiAnalysis: text("ai_analysis"), // AI-generated insights
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  nftIdx: index("platform_nft_evolution_log_nft_idx").on(table.nftId),
+  typeIdx: index("platform_nft_evolution_log_type_idx").on(table.evolutionType),
+  createdAtIdx: index("platform_nft_evolution_log_created_at_idx").on(table.createdAt),
+}));
+
+// Staking Pools for CODEX Token
+export const codexStakingPools = pgTable("codex_staking_pools", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description"),
+  apr: text("apr").notNull(), // Annual Percentage Rate
+  lockPeriod: text("lock_period").notNull(), // In seconds
+  minStake: text("min_stake").notNull().default("100"),
+  maxStake: text("max_stake"),
+  totalStaked: text("total_staked").notNull().default("0"),
+  rewardsPool: text("rewards_pool").notNull().default("0"),
+  isActive: text("is_active").notNull().default("true"),
+  nftBonusMultiplier: text("nft_bonus_multiplier").default("1.0"), // NFT holders get bonus
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  activeIdx: index("codex_staking_pools_active_idx").on(table.isActive),
+  aprIdx: index("codex_staking_pools_apr_idx").on(table.apr),
+}));
+
+// User Stakes
+export const codexUserStakes = pgTable("codex_user_stakes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  walletAddress: text("wallet_address").notNull(),
+  poolId: varchar("pool_id").notNull().references(() => codexStakingPools.id),
+  amount: text("amount").notNull(),
+  rewardsEarned: text("rewards_earned").notNull().default("0"),
+  startDate: timestamp("start_date").notNull().defaultNow(),
+  unlockDate: timestamp("unlock_date").notNull(),
+  lastClaimDate: timestamp("last_claim_date"),
+  isActive: text("is_active").notNull().default("true"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  walletLowerIdx: index("codex_user_stakes_wallet_lower_idx").on(sql`lower(${table.walletAddress})`),
+  poolIdx: index("codex_user_stakes_pool_idx").on(table.poolId),
+  activeIdx: index("codex_user_stakes_active_idx").on(table.isActive),
+}));
+
+// Insert Schemas
+export const insertPlatformTokenSchema = createInsertSchema(platformToken).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertTokenHoldingSchema = createInsertSchema(tokenHoldings).omit({
+  id: true,
+  lastUpdated: true,
+  createdAt: true,
+});
+
+export const insertPlatformNftCollectionSchema = createInsertSchema(platformNftCollections).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertPlatformUserNftSchema = createInsertSchema(platformUserNfts).omit({
+  id: true,
+  mintedAt: true,
+  createdAt: true,
+});
+
+export const insertPlatformAchievementSchema = createInsertSchema(platformAchievements).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertPlatformUserAchievementSchema = createInsertSchema(platformUserAchievements).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertPlatformNftEvolutionLogSchema = createInsertSchema(platformNftEvolutionLog).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertCodexStakingPoolSchema = createInsertSchema(codexStakingPools).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertCodexUserStakeSchema = createInsertSchema(codexUserStakes).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Types
+export type PlatformToken = typeof platformToken.$inferSelect;
+export type InsertPlatformToken = z.infer<typeof insertPlatformTokenSchema>;
+export type TokenHolding = typeof tokenHoldings.$inferSelect;
+export type InsertTokenHolding = z.infer<typeof insertTokenHoldingSchema>;
+export type PlatformNftCollection = typeof platformNftCollections.$inferSelect;
+export type InsertPlatformNftCollection = z.infer<typeof insertPlatformNftCollectionSchema>;
+export type PlatformUserNft = typeof platformUserNfts.$inferSelect;
+export type InsertPlatformUserNft = z.infer<typeof insertPlatformUserNftSchema>;
+export type PlatformAchievement = typeof platformAchievements.$inferSelect;
+export type InsertPlatformAchievement = z.infer<typeof insertPlatformAchievementSchema>;
+export type PlatformUserAchievement = typeof platformUserAchievements.$inferSelect;
+export type InsertPlatformUserAchievement = z.infer<typeof insertPlatformUserAchievementSchema>;
+export type PlatformNftEvolutionLog = typeof platformNftEvolutionLog.$inferSelect;
+export type InsertPlatformNftEvolutionLog = z.infer<typeof insertPlatformNftEvolutionLogSchema>;
+export type CodexStakingPool = typeof codexStakingPools.$inferSelect;
+export type InsertCodexStakingPool = z.infer<typeof insertCodexStakingPoolSchema>;
+export type CodexUserStake = typeof codexUserStakes.$inferSelect;
+export type InsertCodexUserStake = z.infer<typeof insertCodexUserStakeSchema>;
