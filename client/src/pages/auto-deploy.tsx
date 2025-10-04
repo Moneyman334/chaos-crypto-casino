@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useWeb3 } from "@/hooks/use-web3";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Coins, Image, Rocket, Loader2, ExternalLink, CheckCircle2, AlertCircle, Zap } from "lucide-react";
 import { ethers } from "ethers";
 
@@ -25,6 +25,32 @@ export default function AutoDeployPage() {
   const { isConnected, account, network } = useWeb3();
   const [deployedAssets, setDeployedAssets] = useState<DeployedAsset[]>([]);
   const [isDeploying, setIsDeploying] = useState(false);
+
+  // Load saved deployments
+  const { data: savedContracts } = useQuery({
+    queryKey: [`/api/auto-deploy/contracts/${account}`],
+    enabled: !!account,
+  });
+
+  // Helper to generate valid Ethereum address (40 hex chars)
+  const generateValidAddress = (): string => {
+    const chars = '0123456789abcdef';
+    let address = '0x';
+    for (let i = 0; i < 40; i++) {
+      address += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return address;
+  };
+
+  // Helper to generate valid transaction hash (64 hex chars)
+  const generateValidTxHash = (): string => {
+    const chars = '0123456789abcdef';
+    let hash = '0x';
+    for (let i = 0; i < 64; i++) {
+      hash += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return hash;
+  };
 
   // Generate token configuration
   const generateTokenMutation = useMutation({
@@ -65,11 +91,20 @@ export default function AutoDeployPage() {
       deployerAddress: string;
       transactionHash: string;
       contractCode: string;
+      isDemo?: boolean;
     }) => {
       return apiRequest("/api/auto-deploy/record", {
         method: "POST",
         data,
       });
+    },
+    onSuccess: () => {
+      // Invalidate saved contracts query to refresh the list
+      if (account) {
+        queryClient.invalidateQueries({ 
+          queryKey: [`/api/auto-deploy/contracts/${account}`] 
+        });
+      }
     },
   });
 
@@ -126,35 +161,36 @@ export default function AutoDeployPage() {
       // In reality, you'd deploy using: await signer.sendTransaction({ data: bytecode })
       
       toast({
-        title: "Deployment Simulated",
-        description: "In production, this would deploy the actual contract. For now, showing demo deployment.",
+        title: "DEMO: Deployment Simulated",
+        description: "This is a demo deployment. For real blockchain deployment, upgrade to production mode.",
       });
 
-      // Simulate deployment
-      const mockContractAddress = `0x${Math.random().toString(16).slice(2, 42)}`;
-      const mockTxHash = `0x${Math.random().toString(16).slice(2)}`;
+      // Generate valid demo addresses
+      const demoContractAddress = generateValidAddress();
+      const demoTxHash = generateValidTxHash();
 
       // Record deployment
       await recordDeploymentMutation.mutateAsync({
-        contractAddress: mockContractAddress,
+        contractAddress: demoContractAddress,
         chainId: network?.chainId || "1",
         name: config.config.name,
         symbol: config.config.symbol,
         type: "token",
         deployerAddress: account,
-        transactionHash: mockTxHash,
+        transactionHash: demoTxHash,
         contractCode: config.contractCode,
+        isDemo: true,
       });
 
       // Update asset status
-      tempAsset.contractAddress = mockContractAddress;
-      tempAsset.transactionHash = mockTxHash;
+      tempAsset.contractAddress = demoContractAddress;
+      tempAsset.transactionHash = demoTxHash;
       tempAsset.status = "deployed";
       setDeployedAssets(prev => [tempAsset, ...prev.slice(1)]);
 
       toast({
-        title: "Token Deployed! 🎉",
-        description: `${config.config.name} deployed successfully at ${mockContractAddress.slice(0, 10)}...`,
+        title: "Token Deployed! 🎉 (DEMO)",
+        description: `${config.config.name} deployed successfully at ${demoContractAddress.slice(0, 10)}...`,
       });
     } catch (error: any) {
       console.error("Deployment error:", error);
@@ -206,35 +242,36 @@ export default function AutoDeployPage() {
       setDeployedAssets(prev => [tempAsset, ...prev.slice(1)]);
 
       toast({
-        title: "Deploying NFT Collection",
+        title: "DEMO: Deploying NFT Collection",
         description: `Deploying ${config.config.name} (${config.config.symbol})...`,
       });
 
-      // Simulate deployment (same as token)
-      const mockContractAddress = `0x${Math.random().toString(16).slice(2, 42)}`;
-      const mockTxHash = `0x${Math.random().toString(16).slice(2)}`;
+      // Generate valid demo addresses
+      const demoContractAddress = generateValidAddress();
+      const demoTxHash = generateValidTxHash();
 
       // Record deployment
       await recordDeploymentMutation.mutateAsync({
-        contractAddress: mockContractAddress,
+        contractAddress: demoContractAddress,
         chainId: network?.chainId || "1",
         name: config.config.name,
         symbol: config.config.symbol,
         type: "nft",
         deployerAddress: account,
-        transactionHash: mockTxHash,
+        transactionHash: demoTxHash,
         contractCode: config.contractCode,
+        isDemo: true,
       });
 
       // Update asset status
-      tempAsset.contractAddress = mockContractAddress;
-      tempAsset.transactionHash = mockTxHash;
+      tempAsset.contractAddress = demoContractAddress;
+      tempAsset.transactionHash = demoTxHash;
       tempAsset.status = "deployed";
       setDeployedAssets(prev => [tempAsset, ...prev.slice(1)]);
 
       toast({
-        title: "NFT Collection Deployed! 🎨",
-        description: `${config.config.name} deployed successfully at ${mockContractAddress.slice(0, 10)}...`,
+        title: "NFT Collection Deployed! 🎨 (DEMO)",
+        description: `${config.config.name} deployed successfully at ${demoContractAddress.slice(0, 10)}...`,
       });
     } catch (error: any) {
       console.error("Deployment error:", error);
@@ -273,11 +310,16 @@ export default function AutoDeployPage() {
               <Zap className="h-8 w-8 text-white" />
             </div>
           </div>
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-primary via-purple-500 to-accent bg-clip-text text-transparent drop-shadow-lg">
-            Auto-Deploy
-          </h1>
+          <div className="flex items-center justify-center space-x-3">
+            <h1 className="text-5xl font-bold bg-gradient-to-r from-primary via-purple-500 to-accent bg-clip-text text-transparent drop-shadow-lg">
+              Auto-Deploy
+            </h1>
+            <Badge variant="secondary" className="text-sm px-3 py-1">
+              DEMO MODE
+            </Badge>
+          </div>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            One-click token and NFT deployment to the blockchain. Your contracts, instantly live.
+            One-click token and NFT deployment simulator. Test contract creation risk-free!
           </p>
         </div>
 
@@ -382,7 +424,54 @@ export default function AutoDeployPage() {
           </Card>
         </div>
 
-        {/* Deployed Assets */}
+        {/* Saved Deployments from Database */}
+        {savedContracts && savedContracts.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Previously Deployed</CardTitle>
+              <CardDescription>Your saved deployments from the database</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {savedContracts.map((contract: any, index: number) => (
+                  <div
+                    key={contract.id}
+                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/5 transition-colors"
+                  >
+                    <div className="flex items-center space-x-4">
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                        contract.tags?.includes("token") 
+                          ? "bg-blue-500/10" 
+                          : "bg-purple-500/10"
+                      }`}>
+                        {contract.tags?.includes("token") ? (
+                          <Coins className="h-5 w-5 text-blue-500" />
+                        ) : (
+                          <Image className="h-5 w-5 text-purple-500" />
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <p className="font-medium">{contract.name}</p>
+                          {contract.tags?.includes("demo") && (
+                            <Badge variant="outline" className="text-xs">
+                              DEMO
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {contract.address.slice(0, 10)}...{contract.address.slice(-8)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Deployed Assets (Current Session) */}
         {deployedAssets.length > 0 && (
           <Card>
             <CardHeader>
@@ -477,16 +566,27 @@ export default function AutoDeployPage() {
         <Card className="bg-primary/5 border-primary/20">
           <CardContent className="pt-6">
             <div className="space-y-3 text-sm">
-              <p className="font-medium text-primary">📘 How It Works:</p>
+              <p className="font-medium text-primary">📘 DEMO MODE - How It Works:</p>
               <ol className="space-y-2 text-muted-foreground ml-4">
                 <li>1. Connect your MetaMask wallet</li>
                 <li>2. Click "Deploy Token" or "Deploy NFT"</li>
                 <li>3. System generates optimized smart contract code</li>
-                <li>4. MetaMask prompts you to confirm the deployment transaction</li>
-                <li>5. Contract is deployed to the blockchain and tracked in your dashboard</li>
+                <li>4. Demo deployment is simulated (no gas costs!)</li>
+                <li>5. Contract is tracked in your database for testing</li>
               </ol>
+              <div className="mt-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
+                  💡 DEMO MODE BENEFITS:
+                </p>
+                <ul className="text-xs text-amber-600/80 dark:text-amber-400/80 mt-2 space-y-1 ml-4">
+                  <li>• No gas fees - test unlimited deployments</li>
+                  <li>• Safe learning environment</li>
+                  <li>• All contracts saved to database</li>
+                  <li>• Generated code ready for real deployment</li>
+                </ul>
+              </div>
               <p className="text-xs text-muted-foreground mt-4">
-                ⚠️ Note: This is a demo version. In production, actual contract compilation and deployment would occur. Always audit smart contracts before mainnet deployment.
+                ⚡ Ready for production? Upgrade to enable real blockchain deployments with actual contract compilation and on-chain transactions.
               </p>
             </div>
           </CardContent>

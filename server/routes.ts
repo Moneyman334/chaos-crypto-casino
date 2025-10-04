@@ -6064,18 +6064,40 @@ contract ${defaultSymbol} is ERC721, Ownable {
     }
   });
 
+  // Get user's deployed contracts
+  app.get("/api/auto-deploy/contracts/:walletAddress", async (req, res) => {
+    try {
+      const walletAddress = ethereumAddressSchema.parse(req.params.walletAddress);
+      const contracts = await storage.getContractsByTags(['auto-deployed']);
+      
+      // Filter by wallet address in description
+      const userContracts = contracts.filter(c => 
+        c.description?.includes(walletAddress.toLowerCase())
+      );
+      
+      res.json(userContracts);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid wallet address" });
+      }
+      console.error("Failed to get deployed contracts:", error);
+      res.status(500).json({ error: "Failed to get deployed contracts" });
+    }
+  });
+
   // Record deployed contract
   app.post("/api/auto-deploy/record", async (req, res) => {
     try {
       const recordSchema = z.object({
-        contractAddress: ethereumAddressSchema,
+        contractAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Invalid contract address"),
         chainId: z.string(),
         name: z.string(),
         symbol: z.string(),
         type: z.enum(["token", "nft"]),
         deployerAddress: ethereumAddressSchema,
-        transactionHash: z.string(),
+        transactionHash: z.string().regex(/^0x[a-fA-F0-9]{64}$/, "Invalid transaction hash"),
         contractCode: z.string(),
+        isDemo: z.boolean().optional(),
       });
       
       const data = recordSchema.parse(req.body);
@@ -6088,8 +6110,8 @@ contract ${defaultSymbol} is ERC721, Ownable {
         abi: data.type === "token" 
           ? [{"inputs":[{"internalType":"address","name":"initialOwner","type":"address"}],"stateMutability":"nonpayable","type":"constructor"}]
           : [{"inputs":[{"internalType":"address","name":"initialOwner","type":"address"}],"stateMutability":"nonpayable","type":"constructor"}],
-        tags: [`auto-deployed`, data.type],
-        description: `Auto-deployed ${data.type} by ${data.deployerAddress}`,
+        tags: [`auto-deployed`, data.type, data.isDemo ? 'demo' : 'live'],
+        description: `Auto-deployed ${data.type} by ${data.deployerAddress.toLowerCase()}${data.isDemo ? ' (DEMO)' : ''}`,
         sourceCode: data.contractCode,
         compiler: "solc-0.8.20",
         isVerified: "false",
@@ -6104,7 +6126,7 @@ contract ${defaultSymbol} is ERC721, Ownable {
           symbol: data.symbol,
           decimals: "18",
           isVerified: "false",
-          totalSupply: "1000000000000000000000000", // 1M tokens with 18 decimals
+          totalSupply: "1000000000000000000000000",
         });
       }
       
