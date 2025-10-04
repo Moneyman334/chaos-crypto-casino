@@ -77,11 +77,17 @@ import {
   type PostHistory,
   type InsertPostHistory,
   products,
+  carts,
+  cartItems,
   orders,
   payments,
   paymentWebhooks,
   type Product,
   type InsertProduct,
+  type Cart,
+  type InsertCart,
+  type CartItem,
+  type InsertCartItem,
   type Order,
   type InsertOrder,
   type Payment,
@@ -101,7 +107,7 @@ import {
 import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
-import { eq, or, desc, sql } from "drizzle-orm";
+import { eq, or, and, desc, sql } from "drizzle-orm";
 
 // Address normalization utility
 function normalizeAddress(address: string): string {
@@ -329,6 +335,13 @@ export interface IStorage {
   createProduct(product: InsertProduct): Promise<Product>;
   updateProduct(id: string, updates: Partial<InsertProduct>): Promise<Product | undefined>;
   deleteProduct(id: string): Promise<boolean>;
+  
+  // Cart methods
+  getCartBySession(sessionId: string): Promise<any>;
+  addToCart(sessionId: string, productId: string, quantity: number): Promise<any>;
+  updateCartItem(sessionId: string, itemId: string, quantity: number): Promise<any>;
+  removeFromCart(sessionId: string, itemId: string): Promise<boolean>;
+  clearCart(sessionId: string): Promise<void>;
   
   // Order methods
   getOrder(id: string): Promise<Order | undefined>;
@@ -2278,6 +2291,100 @@ export class PostgreSQLStorage implements IStorage {
   async deleteProduct(id: string) {
     await db.delete(products).where(eq(products.id, id));
     return true;
+  }
+  
+  // Cart methods
+  async getCartBySession(sessionId: string) {
+    const [cart] = await db.select().from(carts)
+      .where(eq(carts.sessionId, sessionId))
+      .limit(1);
+    
+    if (!cart) {
+      return { items: [], total: 0 };
+    }
+    
+    const items = await db.select({
+      id: cartItems.id,
+      productId: cartItems.productId,
+      quantity: cartItems.quantity,
+      product: products
+    })
+      .from(cartItems)
+      .leftJoin(products, eq(cartItems.productId, products.id))
+      .where(eq(cartItems.cartId, cart.id));
+    
+    const total = items.reduce((sum, item) => {
+      if (item.product) {
+        return sum + (parseFloat(item.product.price) * item.quantity);
+      }
+      return sum;
+    }, 0);
+    
+    return { cart, items, total };
+  }
+  
+  async addToCart(sessionId: string, productId: string, quantity: number) {
+    let [cart] = await db.select().from(carts)
+      .where(eq(carts.sessionId, sessionId))
+      .limit(1);
+    
+    if (!cart) {
+      [cart] = await db.insert(carts).values({ sessionId }).returning();
+    }
+    
+    const [existingItem] = await db.select().from(cartItems)
+      .where(and(eq(cartItems.cartId, cart.id), eq(cartItems.productId, productId)))
+      .limit(1);
+    
+    if (existingItem) {
+      const newQuantity = existingItem.quantity + quantity;
+      const [updated] = await db.update(cartItems)
+        .set({ quantity: newQuantity })
+        .where(eq(cartItems.id, existingItem.id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db.insert(cartItems)
+        .values({ cartId: cart.id, productId, quantity })
+        .returning();
+      return created;
+    }
+  }
+  
+  async updateCartItem(sessionId: string, itemId: string, quantity: number) {
+    const [cart] = await db.select().from(carts)
+      .where(eq(carts.sessionId, sessionId))
+      .limit(1);
+    
+    if (!cart) return undefined;
+    
+    const [updated] = await db.update(cartItems)
+      .set({ quantity })
+      .where(and(eq(cartItems.id, itemId), eq(cartItems.cartId, cart.id)))
+      .returning();
+    return updated;
+  }
+  
+  async removeFromCart(sessionId: string, itemId: string) {
+    const [cart] = await db.select().from(carts)
+      .where(eq(carts.sessionId, sessionId))
+      .limit(1);
+    
+    if (!cart) return false;
+    
+    await db.delete(cartItems)
+      .where(and(eq(cartItems.id, itemId), eq(cartItems.cartId, cart.id)));
+    return true;
+  }
+  
+  async clearCart(sessionId: string) {
+    const [cart] = await db.select().from(carts)
+      .where(eq(carts.sessionId, sessionId))
+      .limit(1);
+    
+    if (cart) {
+      await db.delete(cartItems).where(eq(cartItems.cartId, cart.id));
+    }
   }
   
   // Order methods

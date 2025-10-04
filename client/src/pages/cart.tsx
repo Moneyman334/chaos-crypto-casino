@@ -57,7 +57,7 @@ export default function CartPage() {
 
   const cartItems = cart?.items || [];
   const total = cartItems.reduce((sum: number, item: any) => 
-    sum + (parseFloat(item.product?.price || 0) * item.quantity), 0
+    sum + (parseFloat(item.product?.price || 0) * (item.quantity || 1)), 0
   );
 
   if (cartItems.length === 0) {
@@ -111,9 +111,9 @@ export default function CartPage() {
                             size="sm"
                             onClick={() => updateQuantityMutation.mutate({
                               itemId: item.id,
-                              quantity: Math.max(1, item.quantity - 1)
+                              quantity: Math.max(1, (item.quantity || 1) - 1)
                             })}
-                            disabled={item.quantity <= 1}
+                            disabled={(item.quantity || 1) <= 1}
                             data-testid={`button-decrease-${item.id}`}
                           >
                             <Minus className="h-3 w-3" />
@@ -126,7 +126,7 @@ export default function CartPage() {
                             size="sm"
                             onClick={() => updateQuantityMutation.mutate({
                               itemId: item.id,
-                              quantity: item.quantity + 1
+                              quantity: (item.quantity || 1) + 1
                             })}
                             data-testid={`button-increase-${item.id}`}
                           >
@@ -135,7 +135,7 @@ export default function CartPage() {
                         </div>
                         <div className="flex items-center gap-4">
                           <span className="font-semibold text-lg" data-testid={`text-item-total-${item.id}`}>
-                            ${(parseFloat(item.product?.price || 0) * item.quantity).toFixed(2)}
+                            ${(parseFloat(item.product?.price || 0) * (item.quantity || 1)).toFixed(2)}
                           </span>
                           <Button
                             variant="ghost"

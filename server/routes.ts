@@ -1704,6 +1704,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Cart Routes
+  app.get("/api/cart", async (req, res) => {
+    try {
+      const sessionId = req.sessionID;
+      const cart = await storage.getCartBySession(sessionId);
+      res.json(cart || { items: [], total: 0 });
+    } catch (error) {
+      console.error("Failed to fetch cart:", error);
+      res.status(500).json({ error: "Failed to fetch cart" });
+    }
+  });
+
+  app.post("/api/cart/add", async (req, res) => {
+    try {
+      const itemSchema = z.object({
+        productId: z.string(),
+        quantity: z.number().int().positive().default(1)
+      });
+      const itemData = itemSchema.parse(req.body);
+      const sessionId = req.sessionID;
+      
+      const cartItem = await storage.addToCart(sessionId, itemData.productId, itemData.quantity);
+      res.json(cartItem);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid cart item data", details: error.errors });
+      }
+      console.error("Failed to add to cart:", error);
+      res.status(500).json({ error: "Failed to add to cart" });
+    }
+  });
+
+  app.patch("/api/cart/:itemId", async (req, res) => {
+    try {
+      const quantitySchema = z.object({
+        quantity: z.number().int().positive()
+      });
+      const { quantity } = quantitySchema.parse(req.body);
+      const sessionId = req.sessionID;
+      
+      const updated = await storage.updateCartItem(sessionId, req.params.itemId, quantity);
+      if (!updated) {
+        return res.status(404).json({ error: "Cart item not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid quantity", details: error.errors });
+      }
+      console.error("Failed to update cart item:", error);
+      res.status(500).json({ error: "Failed to update cart item" });
+    }
+  });
+
+  app.delete("/api/cart/:itemId", async (req, res) => {
+    try {
+      const sessionId = req.sessionID;
+      const success = await storage.removeFromCart(sessionId, req.params.itemId);
+      if (!success) {
+        return res.status(404).json({ error: "Cart item not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to remove from cart:", error);
+      res.status(500).json({ error: "Failed to remove from cart" });
+    }
+  });
+
+  app.delete("/api/cart/clear", async (req, res) => {
+    try {
+      const sessionId = req.sessionID;
+      await storage.clearCart(sessionId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to clear cart:", error);
+      res.status(500).json({ error: "Failed to clear cart" });
+    }
+  });
+  
   // Order Routes
   app.post("/api/orders/create", async (req, res) => {
     try {

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, decimal, timestamp, jsonb, index } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, decimal, timestamp, jsonb, integer, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -1266,6 +1266,30 @@ export const flashSales = pgTable("flash_sales", {
   endTimeIdx: index("flash_sales_end_time_idx").on(table.endTime),
 }));
 
+// Shopping Carts
+export const carts = pgTable("carts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: text("session_id").notNull().unique(),
+  customerWallet: text("customer_wallet"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  sessionIdx: index("carts_session_idx").on(table.sessionId),
+  customerWalletLowerIdx: index("carts_customer_wallet_lower_idx").on(sql`lower(${table.customerWallet})`),
+}));
+
+// Cart Items
+export const cartItems = pgTable("cart_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  cartId: varchar("cart_id").notNull().references(() => carts.id, { onDelete: "cascade" }),
+  productId: varchar("product_id").notNull().references(() => products.id),
+  quantity: integer("quantity").notNull().default(1),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  cartIdx: index("cart_items_cart_idx").on(table.cartId),
+  productIdx: index("cart_items_product_idx").on(table.productId),
+}));
+
 // Abandoned Carts
 export const abandonedCarts = pgTable("abandoned_carts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1517,6 +1541,17 @@ export const insertFlashSaleSchema = createInsertSchema(flashSales).omit({
   createdAt: true,
 });
 
+export const insertCartSchema = createInsertSchema(carts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCartItemSchema = createInsertSchema(cartItems).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertAbandonedCartSchema = createInsertSchema(abandonedCarts).omit({
   id: true,
   createdAt: true,
@@ -1562,6 +1597,10 @@ export type InsertProductVariant = z.infer<typeof insertProductVariantSchema>;
 export type ProductVariant = typeof productVariants.$inferSelect;
 export type InsertFlashSale = z.infer<typeof insertFlashSaleSchema>;
 export type FlashSale = typeof flashSales.$inferSelect;
+export type InsertCart = z.infer<typeof insertCartSchema>;
+export type Cart = typeof carts.$inferSelect;
+export type InsertCartItem = z.infer<typeof insertCartItemSchema>;
+export type CartItem = typeof cartItems.$inferSelect;
 export type InsertAbandonedCart = z.infer<typeof insertAbandonedCartSchema>;
 export type AbandonedCart = typeof abandonedCarts.$inferSelect;
 export type InsertCustomerTier = z.infer<typeof insertCustomerTierSchema>;
