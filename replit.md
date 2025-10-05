@@ -9,6 +9,12 @@ Preferred communication style: Simple, everyday language.
 ## UI/UX Decisions
 The platform features a "Divine Visual System" with a cosmic theme (purple/blue gradients, star effects, animated backgrounds), interactive elements (hover effects, 3D card tilts, parallax scrolling), a custom cosmic trail cursor, and glassmorphism. It uses shadcn/ui and Tailwind CSS for a consistent, accessible, and responsive design, adhering to WCAG AA standards.
 
+**Image Strategy**:
+- Casino Token Ecosystem (Medusa NFTs/Relics): Uses imported static assets from `attached_assets/` directory
+- CODEX Relics: Uses external placeholder images via picsum.photos with unique seeded URLs per class/tier combination (9 total relics)
+- CODEX NFTs: Type-safe rendering with proper TypeScript interfaces and fallback handling
+- All images display with proper loading states and responsive sizing
+
 ## Technical Implementations
 
 ### Frontend
