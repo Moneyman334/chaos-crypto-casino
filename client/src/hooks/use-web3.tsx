@@ -91,7 +91,10 @@ export function useWeb3() {
           try {
             const balanceBigInt = BigInt(balance);
             const decimals = BigInt(network.decimals || 18);
-            const divisor = BigInt(10) ** decimals;
+            let divisor = BigInt(1);
+            for (let i = 0; i < Number(decimals); i++) {
+              divisor = divisor * BigInt(10);
+            }
             const intPart = balanceBigInt / divisor;
             const remainder = balanceBigInt % divisor;
             const fractional = remainder.toString().padStart(Number(decimals), '0').slice(0, 4);
@@ -361,7 +364,10 @@ export function useWeb3() {
         try {
           const balanceBigInt = BigInt(balance);
           const decimals = BigInt(network.decimals || 18);
-          const divisor = BigInt(10) ** decimals;
+          let divisor = BigInt(1);
+          for (let i = 0; i < Number(decimals); i++) {
+            divisor = divisor * BigInt(10);
+          }
           const intPart = balanceBigInt / divisor;
           const remainder = balanceBigInt % divisor;
           const fractional = remainder.toString().padStart(Number(decimals), '0').slice(0, 4);
