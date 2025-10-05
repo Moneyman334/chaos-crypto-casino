@@ -43,33 +43,54 @@ const effectIcons: Record<string, any> = {
   bot_boost: Bot,
 };
 
+interface Relic {
+  id: string;
+  name: string;
+  description: string;
+  class: string;
+  tier: string;
+  imageUrl?: string;
+  effectType: string;
+  effectValue: string;
+  effectDescription: string;
+  acquisitionType: string;
+  acquisitionRequirements: any;
+}
+
+interface RelicInstance {
+  id: string;
+  relicId: string;
+  level: number;
+  powerScore: number;
+  isEquipped: string;
+  equipSlot?: string;
+  relic?: Relic;
+}
+
 export default function CodexRelicsPage() {
   const { account, isConnected } = useWeb3();
   const { toast } = useToast();
   const [selectedClass, setSelectedClass] = useState("chronicle");
   const [mainTab, setMainTab] = useState("catalog");
 
-  const { data: relics, isLoading: relicsLoading } = useQuery({
+  const { data: relics, isLoading: relicsLoading } = useQuery<Relic[]>({
     queryKey: ["/api/codex/relics"],
     enabled: true,
   });
 
-  const { data: userInstances, isLoading: instancesLoading } = useQuery({
+  const { data: userInstances, isLoading: instancesLoading } = useQuery<RelicInstance[]>({
     queryKey: [`/api/codex/relics/instances/${account}`],
     enabled: isConnected && !!account,
   });
 
-  const { data: equippedRelics, isLoading: equippedLoading } = useQuery({
+  const { data: equippedRelics, isLoading: equippedLoading } = useQuery<RelicInstance[]>({
     queryKey: [`/api/codex/relics/equipped/${account}`],
     enabled: isConnected && !!account,
   });
 
   const equipMutation = useMutation({
     mutationFn: async ({ instanceId, slot }: { instanceId: string; slot: string }) => {
-      return await apiRequest(`/api/codex/relics/equip`, {
-        method: "POST",
-        data: { instanceId, slot }
-      });
+      return await apiRequest("POST", `/api/codex/relics/equip`, { instanceId, slot });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/codex/relics/instances/${account}`] });
@@ -90,10 +111,7 @@ export default function CodexRelicsPage() {
 
   const unequipMutation = useMutation({
     mutationFn: async (instanceId: string) => {
-      return await apiRequest(`/api/codex/relics/unequip`, {
-        method: "POST",
-        data: { instanceId }
-      });
+      return await apiRequest("POST", `/api/codex/relics/unequip`, { instanceId });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/codex/relics/instances/${account}`] });
@@ -243,27 +261,39 @@ export default function CodexRelicsPage() {
                               } hover:border-purple-400/60 transition-all`}
                               data-testid={`card-relic-${relic.id}`}
                             >
-                              <CardHeader>
-                                <div className="flex items-start justify-between">
-                                  <div className="flex-1">
-                                    <div className="flex items-center gap-3 mb-2">
-                                      <ClassIcon className="w-6 h-6 text-purple-400" />
-                                      <CardTitle className="text-white text-xl" data-testid={`text-relic-name-${relic.id}`}>
-                                        {relic.name}
-                                      </CardTitle>
-                                      {owned && (
-                                        <CheckCircle2 className="w-5 h-5 text-green-400" data-testid={`icon-owned-${relic.id}`} />
-                                      )}
-                                    </div>
-                                    <CardDescription className="text-purple-200">
-                                      {relic.description}
-                                    </CardDescription>
+                              <div className="flex gap-4">
+                                {relic.imageUrl && (
+                                  <div className="w-32 h-32 flex-shrink-0">
+                                    <img
+                                      src={relic.imageUrl}
+                                      alt={relic.name}
+                                      className="w-full h-full object-cover rounded-l-lg"
+                                      data-testid={`img-relic-${relic.id}`}
+                                    />
                                   </div>
-                                  <Badge className={`bg-gradient-to-r ${tierColors[relic.tier.toLowerCase()] || tierColors.common} text-white`}>
-                                    {relic.tier}
-                                  </Badge>
-                                </div>
-                              </CardHeader>
+                                )}
+                                <div className="flex-1">
+                                  <CardHeader>
+                                    <div className="flex items-start justify-between">
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-3 mb-2">
+                                          <ClassIcon className="w-6 h-6 text-purple-400" />
+                                          <CardTitle className="text-white text-xl" data-testid={`text-relic-name-${relic.id}`}>
+                                            {relic.name}
+                                          </CardTitle>
+                                          {owned && (
+                                            <CheckCircle2 className="w-5 h-5 text-green-400" data-testid={`icon-owned-${relic.id}`} />
+                                          )}
+                                        </div>
+                                        <CardDescription className="text-purple-200">
+                                          {relic.description}
+                                        </CardDescription>
+                                      </div>
+                                      <Badge className={`bg-gradient-to-r ${tierColors[relic.tier.toLowerCase()] || tierColors.common} text-white`}>
+                                        {relic.tier}
+                                      </Badge>
+                                    </div>
+                                  </CardHeader>
                               <CardContent>
                                 <div className="space-y-4">
                                   <div className="flex items-start gap-2 p-3 bg-purple-800/30 rounded-lg">
@@ -321,6 +351,8 @@ export default function CodexRelicsPage() {
                                   )}
                                 </div>
                               </CardContent>
+                                </div>
+                              </div>
                             </Card>
                           );
                         })
@@ -480,9 +512,19 @@ export default function CodexRelicsPage() {
                                 isEquipped
                                   ? "from-green-900/40 to-emerald-900/40 border-green-400/50"
                                   : "from-indigo-900/40 to-purple-900/40 border-indigo-400/30"
-                              } hover:border-purple-400/60 transition-all`}
+                              } hover:border-purple-400/60 transition-all overflow-hidden`}
                               data-testid={`card-owned-relic-${instance.id}`}
                             >
+                              {relic?.imageUrl && (
+                                <div className="w-full h-48 relative overflow-hidden bg-gradient-to-br from-purple-600 to-indigo-600">
+                                  <img
+                                    src={relic.imageUrl}
+                                    alt={relic.name}
+                                    className="w-full h-full object-cover"
+                                    data-testid={`img-owned-relic-${instance.id}`}
+                                  />
+                                </div>
+                              )}
                               <CardHeader>
                                 <div className="flex items-start justify-between">
                                   <div className="flex-1">
