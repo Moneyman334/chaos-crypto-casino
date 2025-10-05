@@ -135,7 +135,7 @@ class AutoCompoundEngine {
       totalEarned: totalEarned.toString(),
       compoundCount: compoundCount.toString(),
       lastCompoundAt: new Date(),
-      effectiveApy: this.calculateEffectiveApy(stake.initialStake, newBalance, stake.stakedAt).toString()
+      effectiveApy: this.calculateEffectiveApy(stake.initialStake, newBalance.toString(), stake.stakedAt).toString()
     });
 
     // Create compound event
@@ -171,10 +171,10 @@ class AutoCompoundEngine {
     console.log("🛑 Stopping auto-compound engine...");
     
     // Clear all intervals
-    for (const [poolId, interval] of this.intervals.entries()) {
+    this.intervals.forEach((interval, poolId) => {
       clearInterval(interval);
       console.log(`  Stopped compounding for pool ${poolId}`);
-    }
+    });
     
     this.intervals.clear();
     this.isRunning = false;
@@ -186,9 +186,9 @@ class AutoCompoundEngine {
     console.log("🔄 Refreshing pool schedules...");
     
     // Stop all current intervals
-    for (const interval of this.intervals.values()) {
+    this.intervals.forEach((interval) => {
       clearInterval(interval);
-    }
+    });
     this.intervals.clear();
 
     // Restart with latest pool data
