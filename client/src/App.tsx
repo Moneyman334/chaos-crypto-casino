@@ -93,6 +93,7 @@ import { DemoModeProvider } from "@/hooks/use-demo-mode";
 import WalletNexusPage from "@/pages/wallet-nexus";
 import { WalletNexusProvider } from "@/lib/wallet-nexus";
 import BridgePage from "@/pages/bridge";
+import { ProtectedRoute } from "@/components/protected-route";
 
 function Router() {
   return (
@@ -123,12 +124,36 @@ function Router() {
       <Route path="/bot-config" component={BotConfigPage} />
       <Route path="/bot-subscription" component={BotSubscriptionPage} />
       <Route path="/play" component={GamePlayPage} />
-      <Route path="/social-automation" component={SocialAutomationPage} />
-      <Route path="/marketing" component={MarketingDashboardPage} />
-      <Route path="/marketing-overview" component={MarketingOverviewPage} />
-      <Route path="/command-center" component={CommandCenterPage} />
-      <Route path="/admin/discounts" component={AdminDiscountsPage} />
-      <Route path="/admin/flash-sales" component={AdminFlashSalesPage} />
+      <Route path="/social-automation">
+        <ProtectedRoute>
+          <SocialAutomationPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/marketing">
+        <ProtectedRoute>
+          <MarketingDashboardPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/marketing-overview">
+        <ProtectedRoute>
+          <MarketingOverviewPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/command-center">
+        <ProtectedRoute>
+          <CommandCenterPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/discounts">
+        <ProtectedRoute>
+          <AdminDiscountsPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/flash-sales">
+        <ProtectedRoute>
+          <AdminFlashSalesPage />
+        </ProtectedRoute>
+      </Route>
       <Route path="/subscriptions" component={SubscriptionsPage} />
       <Route path="/affiliate" component={AffiliateDashboardPage} />
       <Route path="/gift-cards" component={GiftCardsPage} />
@@ -168,7 +193,11 @@ function Router() {
       <Route path="/terms" component={TermsPage} />
       <Route path="/privacy" component={PrivacyPage} />
       <Route path="/faq" component={FAQPage} />
-      <Route path="/owner-analytics" component={OwnerAnalyticsPage} />
+      <Route path="/owner-analytics">
+        <ProtectedRoute>
+          <OwnerAnalyticsPage />
+        </ProtectedRoute>
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );

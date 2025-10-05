@@ -30,8 +30,8 @@ const transactionHashSchema = z.string()
 // Middleware to check if user is an owner
 const requireOwner = async (req: any, res: any, next: any) => {
   try {
-    // Get user ID from session or authorization header
-    const userId = req.session?.userId || req.headers['x-user-id'];
+    // Get user ID from session only (not from headers - security critical)
+    const userId = req.session?.userId;
     
     if (!userId) {
       return res.status(401).json({ error: "Authentication required" });
@@ -237,7 +237,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get current authenticated user status
   app.get("/api/auth/me", async (req, res) => {
     try {
-      const userId = req.session?.userId || req.headers['x-user-id'];
+      // Get user ID from session only (not from headers - security critical)
+      const userId = req.session?.userId;
       
       if (!userId) {
         return res.json({ authenticated: false, isOwner: false });
