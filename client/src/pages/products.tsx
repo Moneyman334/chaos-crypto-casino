@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Search, ShoppingCart, Heart, Star, Filter, Grid3x3, List } from "lucide-react";
 import { useWeb3 } from "@/hooks/use-web3";
 import { Link } from "wouter";
@@ -90,6 +90,34 @@ export default function Products() {
         variant: "destructive",
       });
     }
+  };
+
+  const addToCartMutation = useMutation({
+    mutationFn: async (productId: string) => {
+      const response = await apiRequest('POST', '/api/cart/add', {
+        productId,
+        quantity: 1,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/cart'] });
+      toast({
+        title: "Added to Cart",
+        description: "Product has been added to your cart",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to Add",
+        description: error.message || "Could not add item to cart",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleAddToCart = (productId: string) => {
+    addToCartMutation.mutate(productId);
   };
 
   return (
@@ -258,6 +286,7 @@ export default function Products() {
               key={product.id}
               product={product}
               onAddToWishlist={handleAddToWishlist}
+              onAddToCart={handleAddToCart}
             />
           ))}
         </div>
@@ -268,6 +297,7 @@ export default function Products() {
               key={product.id}
               product={product}
               onAddToWishlist={handleAddToWishlist}
+              onAddToCart={handleAddToCart}
             />
           ))}
         </div>
@@ -279,9 +309,10 @@ export default function Products() {
 interface ProductCardProps {
   product: Product;
   onAddToWishlist: (productId: string) => void;
+  onAddToCart: (productId: string) => void;
 }
 
-function ProductCard({ product, onAddToWishlist }: ProductCardProps) {
+function ProductCard({ product, onAddToWishlist, onAddToCart }: ProductCardProps) {
   const inStock = product.stock && parseInt(product.stock) > 0;
 
   return (
@@ -348,6 +379,7 @@ function ProductCard({ product, onAddToWishlist }: ProductCardProps) {
         <Button
           className="w-full"
           disabled={!inStock}
+          onClick={() => onAddToCart(product.id)}
           data-testid={`button-add-cart-${product.id}`}
         >
           <ShoppingCart className="h-4 w-4 mr-2" />
@@ -358,7 +390,7 @@ function ProductCard({ product, onAddToWishlist }: ProductCardProps) {
   );
 }
 
-function ProductListItem({ product, onAddToWishlist }: ProductCardProps) {
+function ProductListItem({ product, onAddToWishlist, onAddToCart }: ProductCardProps) {
   const inStock = product.stock && parseInt(product.stock) > 0;
 
   return (
@@ -423,6 +455,7 @@ function ProductListItem({ product, onAddToWishlist }: ProductCardProps) {
 
               <Button
                 disabled={!inStock}
+                onClick={() => onAddToCart(product.id)}
                 data-testid={`button-add-cart-list-${product.id}`}
               >
                 <ShoppingCart className="h-4 w-4 mr-2" />
