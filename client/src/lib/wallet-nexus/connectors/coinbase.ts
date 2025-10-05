@@ -1,6 +1,6 @@
 import { BaseWalletConnector } from './base';
 import { WalletInfo, TransactionRequest, WalletType } from '../types';
-import { getNetworkByChainId } from '@/lib/web3';
+import { getNetworkByChainId, WEI_PER_ETH } from '@/lib/web3';
 
 declare global {
   interface Window {
@@ -190,7 +190,7 @@ export class CoinbaseConnector extends BaseWalletConnector {
     const valueInWei = (() => {
       const [intPart, fracPart = '0'] = tx.value.split('.');
       const paddedFrac = fracPart.padEnd(18, '0').slice(0, 18);
-      const weiBigInt = BigInt(intPart) * BigInt(10 ** 18) + BigInt(paddedFrac);
+      const weiBigInt = BigInt(intPart) * WEI_PER_ETH + BigInt(paddedFrac);
       return '0x' + weiBigInt.toString(16);
     })();
 
