@@ -69,6 +69,7 @@ import TermsPage from "@/pages/terms";
 import PrivacyPage from "@/pages/privacy";
 import FAQPage from "@/pages/faq";
 import OwnerAnalyticsPage from "@/pages/owner-analytics";
+import EmpireOwnerDashboard from "@/pages/empire-owner-dashboard";
 import CodexTokenDashboard from "@/pages/codex-token-dashboard";
 import CodexNftsPage from "@/pages/codex-nfts";
 import CodexAchievementsPage from "@/pages/codex-achievements";
@@ -196,6 +197,11 @@ function Router() {
       <Route path="/owner-analytics">
         <ProtectedRoute>
           <OwnerAnalyticsPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/empire-owner">
+        <ProtectedRoute>
+          <EmpireOwnerDashboard />
         </ProtectedRoute>
       </Route>
       <Route component={NotFound} />

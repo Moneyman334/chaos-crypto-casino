@@ -17,6 +17,20 @@ import slowDown from "express-slow-down";
 import bcrypt from "bcrypt";
 import { getChainConfig, verifyTransaction, getAllSupportedChains } from "./blockchain-config";
 import { socialScheduler } from "./social-scheduler";
+import { db as dbClient } from "./storage";
+import { 
+  users, 
+  transactions, 
+  orders, 
+  autoCompoundStakes, 
+  botTrades, 
+  scheduledPosts, 
+  postHistory,
+  marketplaceListings,
+  discountCodes,
+  flashSales
+} from "@shared/schema";
+import { eq, and, sql, desc, lte, gte, or, isNull } from "drizzle-orm";
 
 // Ethereum address validation schema
 const ethereumAddressSchema = z.string()
@@ -5479,6 +5493,192 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Failed to fetch system health:", error);
       res.status(500).json({ error: "Failed to fetch system health" });
+    }
+  });
+
+  // Get comprehensive owner metrics (OWNER ONLY)
+  app.get("/api/owner/metrics", requireOwner, async (req, res) => {
+    try {
+      const now = new Date();
+      const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+      // Get platform statistics
+      const platformStats = await storage.getPlatformStatistics();
+
+      // Get user counts
+      const [totalUsers, newUsersThisMonth, premiumUsers] = await Promise.all([
+        dbClient.select({ count: sql<number>`count(*)::int` }).from(users),
+        dbClient.select({ count: sql<number>`count(*)::int` })
+          .from(users)
+          .where(sql`created_at >= ${oneMonthAgo}`),
+        dbClient.select({ count: sql<number>`count(*)::int` })
+          .from(users)
+          .where(eq(users.isOwner, "true"))
+      ]);
+
+      // Get transaction metrics
+      const [todayTransactions, todayVolume] = await Promise.all([
+        dbClient.select({ count: sql<number>`count(*)::int` })
+          .from(transactions)
+          .where(sql`timestamp >= ${oneDayAgo}`),
+        dbClient.select({ 
+          total: sql<string>`COALESCE(SUM(CAST(amount AS NUMERIC)), 0)::text` 
+        })
+          .from(transactions)
+          .where(sql`timestamp >= ${oneDayAgo}`)
+      ]);
+
+      // Get revenue metrics
+      const [monthlyRevenue, weeklyRevenue, totalProfit] = await Promise.all([
+        dbClient.select({ 
+          total: sql<string>`COALESCE(SUM(total_amount), 0)::text` 
+        })
+          .from(orders)
+          .where(and(
+            eq(orders.status, 'completed'),
+            sql`created_at >= ${oneMonthAgo}`
+          )),
+        dbClient.select({ 
+          total: sql<string>`COALESCE(SUM(total_amount), 0)::text` 
+        })
+          .from(orders)
+          .where(and(
+            eq(orders.status, 'completed'),
+            sql`created_at >= ${oneWeekAgo}`
+          )),
+        dbClient.select({ 
+          total: sql<string>`COALESCE(SUM(total_amount), 0)::text` 
+        })
+          .from(orders)
+          .where(eq(orders.status, 'completed'))
+      ]);
+
+      // Get auto-compound metrics
+      const [activeStakes, totalStaked, totalRewards] = await Promise.all([
+        dbClient.select({ count: sql<number>`count(*)::int` })
+          .from(autoCompoundStakes)
+          .where(eq(autoCompoundStakes.status, 'active')),
+        dbClient.select({ 
+          total: sql<string>`COALESCE(SUM(CAST(initial_stake AS NUMERIC)), 0)::text` 
+        })
+          .from(autoCompoundStakes)
+          .where(eq(autoCompoundStakes.status, 'active')),
+        dbClient.select({ 
+          total: sql<string>`COALESCE(SUM(CAST(total_rewards AS NUMERIC)), 0)::text` 
+        })
+          .from(autoCompoundStakes)
+      ]);
+
+      // Get trading bot metrics
+      const [totalTrades, botStats] = await Promise.all([
+        dbClient.select({ count: sql<number>`count(*)::int` })
+          .from(botTrades),
+        dbClient.select({
+          totalPnL: sql<string>`COALESCE(SUM(CAST(pnl AS NUMERIC)), 0)::text`,
+          winningTrades: sql<number>`COUNT(CASE WHEN CAST(pnl AS NUMERIC) > 0 THEN 1 END)::int`,
+          totalCount: sql<number>`COUNT(*)::int`
+        })
+          .from(botTrades)
+      ]);
+
+      const winRate = botStats[0]?.totalCount > 0 
+        ? (botStats[0].winningTrades / botStats[0].totalCount) * 100 
+        : 0;
+
+      // Get social automation metrics
+      const [scheduledPostsCount, publishedPostsCount, totalEngagement] = await Promise.all([
+        dbClient.select({ count: sql<number>`count(*)::int` })
+          .from(scheduledPosts)
+          .where(eq(scheduledPosts.status, 'scheduled')),
+        dbClient.select({ count: sql<number>`count(*)::int` })
+          .from(postHistory)
+          .where(eq(postHistory.status, 'published')),
+        dbClient.select({ 
+          total: sql<number>`COALESCE(SUM(CAST(likes AS INTEGER) + CAST(retweets AS INTEGER) + CAST(replies AS INTEGER)), 0)::int` 
+        })
+          .from(postHistory)
+          .where(eq(postHistory.status, 'published'))
+      ]);
+
+      // Get marketplace metrics
+      const [totalListings, activeSales, marketplaceVolume] = await Promise.all([
+        dbClient.select({ count: sql<number>`count(*)::int` })
+          .from(marketplaceListings),
+        dbClient.select({ count: sql<number>`count(*)::int` })
+          .from(marketplaceListings)
+          .where(eq(marketplaceListings.status, 'active')),
+        dbClient.select({ 
+          total: sql<string>`COALESCE(SUM(CAST(price AS NUMERIC)), 0)::text` 
+        })
+          .from(marketplaceListings)
+          .where(eq(marketplaceListings.status, 'sold'))
+      ]);
+
+      const totalRevenue = parseFloat(platformStats.totalRevenue || '0');
+      const totalProfitNum = parseFloat(totalProfit[0]?.total || '0');
+      const profitMargin = totalRevenue > 0 ? (totalProfitNum / totalRevenue) * 100 : 0;
+
+      // Calculate active users (users with stakes or recent transactions)
+      const activeUsersResult = await dbClient.select({ 
+        count: sql<number>`COUNT(DISTINCT user_id)::int` 
+      })
+        .from(autoCompoundStakes)
+        .where(eq(autoCompoundStakes.status, 'active'));
+
+      const metrics = {
+        financials: {
+          totalRevenue: totalRevenue,
+          monthlyRevenue: parseFloat(monthlyRevenue[0]?.total || '0'),
+          weeklyRevenue: parseFloat(weeklyRevenue[0]?.total || '0'),
+          totalProfit: totalProfitNum,
+          profitMargin: profitMargin
+        },
+        users: {
+          total: totalUsers[0]?.count || 0,
+          active: activeUsersResult[0]?.count || 0,
+          newThisMonth: newUsersThisMonth[0]?.count || 0,
+          premiumUsers: premiumUsers[0]?.count || 0
+        },
+        transactions: {
+          total: platformStats.totalTransactions || 0,
+          volume: parseFloat(platformStats.totalRevenue || '0'),
+          todayCount: todayTransactions[0]?.count || 0,
+          todayVolume: parseFloat(todayVolume[0]?.total || '0')
+        },
+        algorithms: {
+          autoCompound: {
+            status: 'Active',
+            poolsActive: activeStakes[0]?.count || 0,
+            totalStaked: parseFloat(totalStaked[0]?.total || '0'),
+            totalRewards: parseFloat(totalRewards[0]?.total || '0')
+          },
+          tradingBot: {
+            status: 'Active',
+            activeStrategies: 5,
+            totalTrades: totalTrades[0]?.count || 0,
+            profitLoss: parseFloat(botStats[0]?.totalPnL || '0'),
+            winRate: winRate
+          },
+          socialAutomation: {
+            status: 'Active',
+            postsScheduled: scheduledPostsCount[0]?.count || 0,
+            postsPublished: publishedPostsCount[0]?.count || 0,
+            engagement: totalEngagement[0]?.total || 0
+          }
+        },
+        marketplace: {
+          totalListings: totalListings[0]?.count || 0,
+          activeSales: activeSales[0]?.count || 0,
+          totalVolume: parseFloat(marketplaceVolume[0]?.total || '0')
+        }
+      };
+
+      res.json(metrics);
+    } catch (error) {
+      console.error("Failed to fetch owner metrics:", error);
+      res.status(500).json({ error: "Failed to fetch owner metrics" });
     }
   });
   
