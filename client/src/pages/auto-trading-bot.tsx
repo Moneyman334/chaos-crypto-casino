@@ -207,9 +207,9 @@ export default function AutoTradingBot() {
   });
 
   const isRunning = botStatus?.status === 'running';
-  const totalProfit = botStats?.totalProfit || 0;
+  const totalProfit = Number(botStats?.totalProfit) || 0;
   const totalTrades = botStats?.totalTrades || 0;
-  const winRate = botStats?.winRate || 0;
+  const winRate = Number(botStats?.winRate) || 0;
   const [showSubscription, setShowSubscription] = useState(true);
 
   return (
