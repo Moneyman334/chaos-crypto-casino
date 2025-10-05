@@ -141,7 +141,10 @@ import {
   type CodexRelicProgress,
   type InsertCodexRelicProgress,
   type CodexRelicEffect,
-  type InsertCodexRelicEffect
+  type InsertCodexRelicEffect,
+  marketplaceListings,
+  type MarketplaceListing,
+  type InsertMarketplaceListing
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/neon-http";
@@ -477,6 +480,17 @@ export interface IStorage {
   claimCodexRelic(relicId: string, walletAddress: string): Promise<CodexRelicInstance | undefined>;
   getCodexRelicEffects(walletAddress: string): Promise<CodexRelicEffect[]>;
   activateCodexRelicEffect(instanceId: string, walletAddress: string): Promise<CodexRelicEffect>;
+  
+  // Marketplace methods
+  getAllMarketplaceListings(): Promise<any[]>;
+  getActiveMarketplaceListings(): Promise<any[]>;
+  getMarketplaceListing(id: string): Promise<any | undefined>;
+  getSellerListings(sellerWallet: string): Promise<any[]>;
+  getBuyerPurchases(buyerWallet: string): Promise<any[]>;
+  createMarketplaceListing(listing: any): Promise<any>;
+  updateMarketplaceListing(id: string, updates: any): Promise<any | undefined>;
+  cancelMarketplaceListing(id: string, sellerWallet: string): Promise<any | undefined>;
+  purchaseMarketplaceListing(id: string, buyerWallet: string): Promise<any | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -3211,6 +3225,91 @@ export class PostgreSQLStorage implements IStorage {
       .returning();
     
     return effect;
+  }
+  
+  // ===== MARKETPLACE METHODS =====
+  
+  async getAllMarketplaceListings() {
+    return await db.select().from(marketplaceListings)
+      .orderBy(desc(marketplaceListings.createdAt));
+  }
+  
+  async getActiveMarketplaceListings() {
+    return await db.select().from(marketplaceListings)
+      .where(eq(marketplaceListings.status, 'active'))
+      .orderBy(desc(marketplaceListings.createdAt));
+  }
+  
+  async getMarketplaceListing(id: string) {
+    const [listing] = await db.select().from(marketplaceListings)
+      .where(eq(marketplaceListings.id, id))
+      .limit(1);
+    return listing;
+  }
+  
+  async getSellerListings(sellerWallet: string) {
+    const normalized = normalizeAddress(sellerWallet);
+    return await db.select().from(marketplaceListings)
+      .where(eq(marketplaceListings.sellerWallet, normalized))
+      .orderBy(desc(marketplaceListings.createdAt));
+  }
+  
+  async getBuyerPurchases(buyerWallet: string) {
+    const normalized = normalizeAddress(buyerWallet);
+    return await db.select().from(marketplaceListings)
+      .where(and(
+        eq(marketplaceListings.buyerWallet, normalized),
+        eq(marketplaceListings.status, 'sold')
+      ))
+      .orderBy(desc(marketplaceListings.soldAt as any));
+  }
+  
+  async createMarketplaceListing(listing: InsertMarketplaceListing) {
+    const normalized = normalizeAddress(listing.sellerWallet);
+    const [created] = await db.insert(marketplaceListings)
+      .values({
+        ...listing,
+        sellerWallet: normalized
+      })
+      .returning();
+    return created;
+  }
+  
+  async updateMarketplaceListing(id: string, updates: Partial<InsertMarketplaceListing>) {
+    const [updated] = await db.update(marketplaceListings)
+      .set(updates)
+      .where(eq(marketplaceListings.id, id))
+      .returning();
+    return updated;
+  }
+  
+  async cancelMarketplaceListing(id: string, sellerWallet: string) {
+    const normalized = normalizeAddress(sellerWallet);
+    const [cancelled] = await db.update(marketplaceListings)
+      .set({ status: 'cancelled' })
+      .where(and(
+        eq(marketplaceListings.id, id),
+        eq(marketplaceListings.sellerWallet, normalized),
+        eq(marketplaceListings.status, 'active')
+      ))
+      .returning();
+    return cancelled;
+  }
+  
+  async purchaseMarketplaceListing(id: string, buyerWallet: string) {
+    const normalized = normalizeAddress(buyerWallet);
+    const [purchased] = await db.update(marketplaceListings)
+      .set({
+        status: 'sold',
+        buyerWallet: normalized,
+        soldAt: new Date()
+      })
+      .where(and(
+        eq(marketplaceListings.id, id),
+        eq(marketplaceListings.status, 'active')
+      ))
+      .returning();
+    return purchased;
   }
 }
 
