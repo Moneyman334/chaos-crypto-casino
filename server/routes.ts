@@ -6324,7 +6324,7 @@ contract ${defaultSymbol} is ERC721, Ownable {
       if (!wallet || typeof wallet !== 'string') {
         return res.status(400).json({ error: "Wallet address required" });
       }
-      const listings = await storage.getSellerListings(wallet);
+      const listings = await storage.getSellerListings(wallet.toLowerCase());
       res.json(listings);
     } catch (error) {
       console.error("Failed to get seller listings:", error);
@@ -6339,7 +6339,7 @@ contract ${defaultSymbol} is ERC721, Ownable {
       if (!wallet || typeof wallet !== 'string') {
         return res.status(400).json({ error: "Wallet address required" });
       }
-      const purchases = await storage.getBuyerPurchases(wallet);
+      const purchases = await storage.getBuyerPurchases(wallet.toLowerCase());
       res.json(purchases);
     } catch (error) {
       console.error("Failed to get purchases:", error);
@@ -6364,6 +6364,7 @@ contract ${defaultSymbol} is ERC721, Ownable {
       const data = listingSchema.parse(req.body);
       const listing = await storage.createMarketplaceListing({
         ...data,
+        sellerWallet: data.sellerWallet.toLowerCase(),
         status: 'active',
       });
       
@@ -6388,7 +6389,7 @@ contract ${defaultSymbol} is ERC721, Ownable {
         return res.status(400).json({ error: "Seller wallet address required" });
       }
       
-      const listing = await storage.cancelMarketplaceListing(req.params.id, sellerWallet);
+      const listing = await storage.cancelMarketplaceListing(req.params.id, sellerWallet.toLowerCase());
       if (!listing) {
         return res.status(404).json({ error: "Listing not found or unauthorized" });
       }
@@ -6408,7 +6409,7 @@ contract ${defaultSymbol} is ERC721, Ownable {
         return res.status(400).json({ error: "Buyer wallet address required" });
       }
       
-      const listing = await storage.purchaseMarketplaceListing(req.params.id, buyerWallet);
+      const listing = await storage.purchaseMarketplaceListing(req.params.id, buyerWallet.toLowerCase());
       if (!listing) {
         return res.status(404).json({ error: "Listing not found or no longer available" });
       }
