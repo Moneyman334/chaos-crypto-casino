@@ -27,6 +27,35 @@ const ethereumAddressSchema = z.string()
 const transactionHashSchema = z.string()
   .regex(/^0x[a-fA-F0-9]{64}$/, "Invalid transaction hash format");
 
+// Middleware to check if user is an owner
+const requireOwner = async (req: any, res: any, next: any) => {
+  try {
+    // Get user ID from session or authorization header
+    const userId = req.session?.userId || req.headers['x-user-id'];
+    
+    if (!userId) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+
+    const user = await storage.getUser(userId);
+    
+    if (!user) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    if (user.isOwner !== "true") {
+      return res.status(403).json({ error: "Access denied. Owner privileges required." });
+    }
+
+    // Attach user to request for future use
+    req.user = user;
+    next();
+  } catch (error) {
+    console.error("Owner check failed:", error);
+    res.status(500).json({ error: "Authentication check failed" });
+  }
+};
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // API health check endpoint
   app.get("/api", (req, res) => {
@@ -202,6 +231,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.error("Failed to check username:", error);
       res.status(500).json({ error: "Failed to check username" });
+    }
+  });
+
+  // Get current authenticated user status
+  app.get("/api/auth/me", async (req, res) => {
+    try {
+      const userId = req.session?.userId || req.headers['x-user-id'];
+      
+      if (!userId) {
+        return res.json({ authenticated: false, isOwner: false });
+      }
+
+      const user = await storage.getUser(userId as string);
+      
+      if (!user) {
+        return res.json({ authenticated: false, isOwner: false });
+      }
+
+      const { password: _, ...userWithoutPassword } = user;
+      res.json({ 
+        authenticated: true,
+        isOwner: user.isOwner === "true",
+        user: userWithoutPassword
+      });
+
+    } catch (error) {
+      console.error("Failed to get auth status:", error);
+      res.status(500).json({ error: "Failed to get authentication status" });
     }
   });
 
@@ -3277,8 +3334,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Get discount codes
-  app.get("/api/discounts", async (req, res) => {
+  // Get discount codes (OWNER ONLY)
+  app.get("/api/discounts", requireOwner, async (req, res) => {
     try {
       const codes = await dbClient.select().from(discountCodes)
         .where(eq(discountCodes.isActive, "true"));
@@ -3353,8 +3410,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Create discount code (admin)
-  app.post("/api/discounts", async (req, res) => {
+  // Create discount code (OWNER ONLY)
+  app.post("/api/discounts", requireOwner, async (req, res) => {
     try {
       const schema = z.object({
         code: z.string().min(3),
@@ -4163,8 +4220,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create flash sale
-  app.post("/api/flash-sales", async (req, res) => {
+  // Create flash sale (OWNER ONLY)
+  app.post("/api/flash-sales", requireOwner, async (req, res) => {
     try {
       const schema = insertFlashSaleSchema;
       const data = schema.parse(req.body);
@@ -5389,8 +5446,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // ===== COMMAND CENTER / PLATFORM STATISTICS ROUTES =====
   
-  // Get platform statistics
-  app.get("/api/command-center/stats", async (req, res) => {
+  // Get platform statistics (OWNER ONLY)
+  app.get("/api/command-center/stats", requireOwner, async (req, res) => {
     try {
       // Aggregate stats from existing tables
       const stats = await storage.getPlatformStatistics();
@@ -5401,8 +5458,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Get recent platform activity feed
-  app.get("/api/command-center/activity", async (req, res) => {
+  // Get recent platform activity feed (OWNER ONLY)
+  app.get("/api/command-center/activity", requireOwner, async (req, res) => {
     try {
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
       const activity = await storage.getPlatformActivity(limit);
@@ -5413,8 +5470,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Get system health metrics
-  app.get("/api/command-center/health", async (req, res) => {
+  // Get system health metrics (OWNER ONLY)
+  app.get("/api/command-center/health", requireOwner, async (req, res) => {
     try {
       const health = await storage.getSystemHealth();
       res.json(health);

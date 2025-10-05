@@ -7,6 +7,8 @@ export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
+  isOwner: text("is_owner").notNull().default("false"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const wallets = pgTable("wallets", {
