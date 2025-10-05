@@ -23,6 +23,7 @@ import PersonalCollectionPage from "@/pages/personal-collection";
 import SentinelBotPage from "@/pages/sentinel-bot";
 import BotDashboardPage from "@/pages/bot-dashboard";
 import BotConfigPage from "@/pages/bot-config";
+import BotSubscriptionPage from "@/pages/bot-subscription";
 import GamePlayPage from "@/pages/game-play";
 import EmpireDashboard from "@/pages/empire-dashboard";
 import HouseVaultsPage from "@/pages/house-vaults";
@@ -120,6 +121,7 @@ function Router() {
       <Route path="/sentinel-bot" component={SentinelBotPage} />
       <Route path="/bot-dashboard" component={BotDashboardPage} />
       <Route path="/bot-config" component={BotConfigPage} />
+      <Route path="/bot-subscription" component={BotSubscriptionPage} />
       <Route path="/play" component={GamePlayPage} />
       <Route path="/social-automation" component={SocialAutomationPage} />
       <Route path="/marketing" component={MarketingDashboardPage} />
