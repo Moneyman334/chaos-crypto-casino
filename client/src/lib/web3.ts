@@ -144,8 +144,19 @@ export const networks: Record<string, any> = {
 };
 
 // Safe BigInt constants to avoid precision loss
-export const WEI_PER_ETH = 10n ** 18n; // 1 ETH = 10^18 wei
-export const WEI_PER_GWEI = 10n ** 9n; // 1 gwei = 10^9 wei
+// Calculate 10^18 using multiplication
+let weiPerEth = BigInt(1);
+for (let i = 0; i < 18; i++) {
+  weiPerEth = weiPerEth * BigInt(10);
+}
+export const WEI_PER_ETH = weiPerEth; // 1 ETH = 10^18 wei
+
+// Calculate 10^9 using multiplication
+let weiPerGwei = BigInt(1);
+for (let i = 0; i < 9; i++) {
+  weiPerGwei = weiPerGwei * BigInt(10);
+}
+export const WEI_PER_GWEI = weiPerGwei; // 1 gwei = 10^9 wei
 
 // MetaMask provider interface
 interface MetaMaskProvider {
@@ -190,7 +201,7 @@ export function weiToEth(wei: string): string {
     const remainder = weiBigInt % WEI_PER_ETH;
     const fractional = remainder.toString().padStart(18, '0');
     const trimmed = fractional.replace(/0+$/, '') || '0';
-    return remainder === 0n ? ethValue.toString() : `${ethValue.toString()}.${trimmed}`;
+    return remainder === BigInt(0) ? ethValue.toString() : `${ethValue.toString()}.${trimmed}`;
   } catch {
     return '0';
   }
@@ -225,7 +236,7 @@ export function weiToGwei(wei: string): string {
     const remainder = weiBigInt % WEI_PER_GWEI;
     const fractional = remainder.toString().padStart(9, '0');
     const trimmed = fractional.replace(/0+$/, '') || '0';
-    return remainder === 0n ? gweiValue.toString() : `${gweiValue.toString()}.${trimmed}`;
+    return remainder === BigInt(0) ? gweiValue.toString() : `${gweiValue.toString()}.${trimmed}`;
   } catch {
     return '0';
   }
@@ -627,7 +638,10 @@ export function parseTokenAmount(amount: string, decimals: number): bigint {
   try {
     const [intPart, fracPart = '0'] = amount.split('.');
     const paddedFrac = fracPart.padEnd(decimals, '0').slice(0, decimals);
-    const divisor = BigInt(10) ** BigInt(decimals);
+    let divisor = BigInt(1);
+    for (let i = 0; i < decimals; i++) {
+      divisor = divisor * BigInt(10);
+    }
     const integerPart = BigInt(intPart) * divisor;
     const fractionalPart = BigInt(paddedFrac);
     return integerPart + fractionalPart;
@@ -639,7 +653,10 @@ export function parseTokenAmount(amount: string, decimals: number): bigint {
 export function formatTokenBalance(amount: string, decimals: number, displayDecimals: number = 4): string {
   try {
     const amountBigInt = BigInt(amount);
-    const divisor = BigInt(10) ** BigInt(decimals);
+    let divisor = BigInt(1);
+    for (let i = 0; i < decimals; i++) {
+      divisor = divisor * BigInt(10);
+    }
     const intPart = amountBigInt / divisor;
     const remainder = amountBigInt % divisor;
     
