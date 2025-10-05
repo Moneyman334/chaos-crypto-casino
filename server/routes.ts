@@ -6290,6 +6290,136 @@ contract ${defaultSymbol} is ERC721, Ownable {
     }
   });
   
+  // ===== MARKETPLACE ROUTES =====
+  
+  // Get all marketplace listings
+  app.get("/api/marketplace/listings", async (req, res) => {
+    try {
+      const listings = await storage.getActiveMarketplaceListings();
+      res.json(listings);
+    } catch (error) {
+      console.error("Failed to get marketplace listings:", error);
+      res.status(500).json({ error: "Failed to get marketplace listings" });
+    }
+  });
+  
+  // Get listing by ID
+  app.get("/api/marketplace/listings/:id", async (req, res) => {
+    try {
+      const listing = await storage.getMarketplaceListing(req.params.id);
+      if (!listing) {
+        return res.status(404).json({ error: "Listing not found" });
+      }
+      res.json(listing);
+    } catch (error) {
+      console.error("Failed to get listing:", error);
+      res.status(500).json({ error: "Failed to get listing" });
+    }
+  });
+  
+  // Get seller's listings
+  app.get("/api/marketplace/my-listings", async (req, res) => {
+    try {
+      const { wallet } = req.query;
+      if (!wallet || typeof wallet !== 'string') {
+        return res.status(400).json({ error: "Wallet address required" });
+      }
+      const listings = await storage.getSellerListings(wallet);
+      res.json(listings);
+    } catch (error) {
+      console.error("Failed to get seller listings:", error);
+      res.status(500).json({ error: "Failed to get seller listings" });
+    }
+  });
+  
+  // Get buyer's purchases
+  app.get("/api/marketplace/my-purchases", async (req, res) => {
+    try {
+      const { wallet } = req.query;
+      if (!wallet || typeof wallet !== 'string') {
+        return res.status(400).json({ error: "Wallet address required" });
+      }
+      const purchases = await storage.getBuyerPurchases(wallet);
+      res.json(purchases);
+    } catch (error) {
+      console.error("Failed to get purchases:", error);
+      res.status(500).json({ error: "Failed to get purchases" });
+    }
+  });
+  
+  // Create marketplace listing
+  app.post("/api/marketplace/listings", async (req, res) => {
+    try {
+      const listingSchema = z.object({
+        itemType: z.enum(['nft', 'token', 'product']),
+        itemId: z.string(),
+        sellerWallet: ethereumAddressSchema,
+        priceEth: z.string(),
+        title: z.string(),
+        description: z.string().optional(),
+        imageUrl: z.string().optional(),
+        metadata: z.any().optional(),
+      });
+      
+      const data = listingSchema.parse(req.body);
+      const listing = await storage.createMarketplaceListing({
+        ...data,
+        status: 'active',
+      });
+      
+      res.status(201).json(listing);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid listing data", 
+          details: error.errors 
+        });
+      }
+      console.error("Failed to create listing:", error);
+      res.status(500).json({ error: "Failed to create listing" });
+    }
+  });
+  
+  // Cancel listing
+  app.post("/api/marketplace/listings/:id/cancel", async (req, res) => {
+    try {
+      const { sellerWallet } = req.body;
+      if (!sellerWallet) {
+        return res.status(400).json({ error: "Seller wallet address required" });
+      }
+      
+      const listing = await storage.cancelMarketplaceListing(req.params.id, sellerWallet);
+      if (!listing) {
+        return res.status(404).json({ error: "Listing not found or unauthorized" });
+      }
+      
+      res.json(listing);
+    } catch (error) {
+      console.error("Failed to cancel listing:", error);
+      res.status(500).json({ error: "Failed to cancel listing" });
+    }
+  });
+  
+  // Purchase listing
+  app.post("/api/marketplace/listings/:id/purchase", async (req, res) => {
+    try {
+      const { buyerWallet } = req.body;
+      if (!buyerWallet) {
+        return res.status(400).json({ error: "Buyer wallet address required" });
+      }
+      
+      const listing = await storage.purchaseMarketplaceListing(req.params.id, buyerWallet);
+      if (!listing) {
+        return res.status(404).json({ error: "Listing not found or no longer available" });
+      }
+      
+      res.json(listing);
+    } catch (error) {
+      console.error("Failed to purchase listing:", error);
+      res.status(500).json({ error: "Failed to purchase listing" });
+    }
+  });
+  
   const httpServer = createServer(app);
   return httpServer;
 }
