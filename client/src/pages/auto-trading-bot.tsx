@@ -30,6 +30,42 @@ import {
   Crown
 } from "lucide-react";
 
+interface BotStatus {
+  status: string;
+  isRunning?: boolean;
+  config?: {
+    tradingPair: string;
+    strategy: string;
+    demoMode: boolean;
+  };
+}
+
+interface BotStats {
+  totalProfit: string;
+  totalTrades: number;
+  winRate: string;
+  averageProfit?: string;
+}
+
+interface BotActivity {
+  id: string;
+  timestamp: string;
+  action: string;
+  details: string;
+  type?: string;
+}
+
+interface BotTrade {
+  id: string;
+  pair: string;
+  side: string;
+  amount: string;
+  price: string;
+  profit: string;
+  timestamp: string;
+  status?: string;
+}
+
 const TRADING_PAIRS = [
   { id: 'BTC-USD', name: 'Bitcoin', symbol: 'BTC' },
   { id: 'ETH-USD', name: 'Ethereum', symbol: 'ETH' },
@@ -61,22 +97,22 @@ export default function AutoTradingBot() {
   const { toast } = useToast();
   usePageTracking('/auto-trading-bot');
 
-  const { data: botStatus, isLoading: statusLoading } = useQuery({
+  const { data: botStatus, isLoading: statusLoading } = useQuery<BotStatus>({
     queryKey: ['/api/bot/status'],
     refetchInterval: 5000,
   });
 
-  const { data: botTrades = [] } = useQuery({
+  const { data: botTrades = [] } = useQuery<BotTrade[]>({
     queryKey: ['/api/bot/trades'],
     refetchInterval: 10000,
   });
 
-  const { data: botStats } = useQuery({
+  const { data: botStats } = useQuery<BotStats>({
     queryKey: ['/api/bot/stats'],
     refetchInterval: 10000,
   });
 
-  const { data: botActivity = [] } = useQuery({
+  const { data: botActivity = [] } = useQuery<BotActivity[]>({
     queryKey: ['/api/bot/activity'],
     refetchInterval: 2000,
   });
