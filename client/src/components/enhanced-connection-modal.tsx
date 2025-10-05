@@ -78,15 +78,6 @@ export default function EnhancedConnectionModal({
           isInstalled: hasCoinbase,
           color: 'bg-blue-500',
           onConnect: handleCoinbaseConnect
-        },
-        {
-          id: 'walletconnect',
-          name: 'WalletConnect',
-          description: 'Connect with 300+ mobile wallets',
-          icon: '📱',
-          isInstalled: true,
-          color: 'bg-purple-500',
-          onConnect: handleWalletConnect
         }
       ];
 
@@ -131,11 +122,6 @@ export default function EnhancedConnectionModal({
       setIsConnecting(false);
       setSelectedWallet(null);
     }
-  };
-
-  const handleWalletConnect = () => {
-    setShowQR(true);
-    setSelectedWallet('walletconnect');
   };
 
   const mobileDeepLink = `https://metamask.app.link/dapp/${window.location.host}${window.location.pathname}`;
