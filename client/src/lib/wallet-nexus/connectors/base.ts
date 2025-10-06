@@ -25,7 +25,10 @@ export abstract class BaseWalletConnector implements WalletConnector {
   }
 
   protected formatBalance(balance: bigint, decimals: number = 18): string {
-    const divisor = BigInt(10) ** BigInt(decimals);
+    let divisor = BigInt(1);
+    for (let i = 0; i < decimals; i++) {
+      divisor = divisor * BigInt(10);
+    }
     const intPart = balance / divisor;
     const remainder = balance % divisor;
     const fractional = remainder.toString().padStart(decimals, '0').slice(0, 4);
