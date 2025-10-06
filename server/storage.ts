@@ -162,7 +162,19 @@ import {
   type SecurityAlert,
   type InsertSecurityAlert,
   type PlatformAddress,
-  type InsertPlatformAddress
+  type InsertPlatformAddress,
+  forgeMaterials,
+  forgeRecipes,
+  forgeInventory,
+  forgeCraftingSessions,
+  type ForgeMaterial,
+  type InsertForgeMaterial,
+  type ForgeRecipe,
+  type InsertForgeRecipe,
+  type ForgeInventory,
+  type InsertForgeInventory,
+  type ForgeCraftingSession,
+  type InsertForgeCraftingSession
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/neon-http";
@@ -536,6 +548,24 @@ export interface IStorage {
   createYieldFarmPosition(position: InsertYieldFarmPosition): Promise<YieldFarmPosition>;
   updateYieldFarmPosition(id: string, updates: Partial<InsertYieldFarmPosition>): Promise<YieldFarmPosition | undefined>;
   deleteYieldFarmPosition(id: string): Promise<void>;
+  
+  // Forge System methods
+  getForgeMaterials(): Promise<ForgeMaterial[]>;
+  getForgeMaterialById(id: string): Promise<ForgeMaterial | undefined>;
+  getForgeRecipes(): Promise<ForgeRecipe[]>;
+  getForgeRecipeById(id: string): Promise<ForgeRecipe | undefined>;
+  getForgeRecipeByRelicId(relicId: string): Promise<ForgeRecipe | undefined>;
+  getForgeInventory(walletAddress: string): Promise<ForgeInventory[]>;
+  getForgeInventoryItem(walletAddress: string, materialId: string): Promise<ForgeInventory | undefined>;
+  updateForgeInventory(walletAddress: string, materialId: string, quantity: string): Promise<ForgeInventory>;
+  addForgeInventoryItem(walletAddress: string, materialId: string, quantity: string): Promise<ForgeInventory>;
+  removeForgeInventoryItem(walletAddress: string, materialId: string, quantity: string): Promise<ForgeInventory | undefined>;
+  getForgeCraftingSessions(walletAddress: string, status?: string): Promise<ForgeCraftingSession[]>;
+  getForgeCraftingSession(id: string): Promise<ForgeCraftingSession | undefined>;
+  createForgeCraftingSession(session: InsertForgeCraftingSession): Promise<ForgeCraftingSession>;
+  updateForgeCraftingSession(id: string, updates: Partial<InsertForgeCraftingSession>): Promise<ForgeCraftingSession | undefined>;
+  completeForgeCraft(sessionId: string, relicInstanceId: string): Promise<ForgeCraftingSession | undefined>;
+  failForgeCraft(sessionId: string, reason: string): Promise<ForgeCraftingSession | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -3708,6 +3738,216 @@ export class PostgreSQLStorage implements IStorage {
   async deleteYieldFarmPosition(id: string) {
     await db.delete(yieldFarmPositions)
       .where(eq(yieldFarmPositions.id, id));
+  }
+  
+  async getForgeMaterials() {
+    const materials = await db.select().from(forgeMaterials)
+      .where(eq(forgeMaterials.isActive, "true"))
+      .orderBy(forgeMaterials.rarity, forgeMaterials.type);
+    return materials;
+  }
+  
+  async getForgeMaterialById(id: string) {
+    const [material] = await db.select().from(forgeMaterials)
+      .where(eq(forgeMaterials.id, id));
+    return material;
+  }
+  
+  async getForgeRecipes() {
+    const recipes = await db.select().from(forgeRecipes)
+      .where(eq(forgeRecipes.isActive, "true"))
+      .orderBy(forgeRecipes.requiredLevel);
+    return recipes;
+  }
+  
+  async getForgeRecipeById(id: string) {
+    const [recipe] = await db.select().from(forgeRecipes)
+      .where(eq(forgeRecipes.id, id));
+    return recipe;
+  }
+  
+  async getForgeRecipeByRelicId(relicId: string) {
+    const [recipe] = await db.select().from(forgeRecipes)
+      .where(and(
+        eq(forgeRecipes.relicId, relicId),
+        eq(forgeRecipes.isActive, "true")
+      ));
+    return recipe;
+  }
+  
+  async getForgeInventory(walletAddress: string) {
+    const normalized = normalizeAddress(walletAddress);
+    const inventory = await db.select({
+      id: forgeInventory.id,
+      walletAddress: forgeInventory.walletAddress,
+      materialId: forgeInventory.materialId,
+      quantity: forgeInventory.quantity,
+      lastUpdated: forgeInventory.lastUpdated,
+      material: forgeMaterials
+    })
+    .from(forgeInventory)
+    .leftJoin(forgeMaterials, eq(forgeInventory.materialId, forgeMaterials.id))
+    .where(eq(sql`lower(${forgeInventory.walletAddress})`, normalized));
+    return inventory.map(row => ({
+      id: row.id,
+      walletAddress: row.walletAddress,
+      materialId: row.materialId,
+      quantity: row.quantity,
+      lastUpdated: row.lastUpdated
+    }));
+  }
+  
+  async getForgeInventoryItem(walletAddress: string, materialId: string) {
+    const normalized = normalizeAddress(walletAddress);
+    const [item] = await db.select().from(forgeInventory)
+      .where(and(
+        eq(sql`lower(${forgeInventory.walletAddress})`, normalized),
+        eq(forgeInventory.materialId, materialId)
+      ));
+    return item;
+  }
+  
+  async updateForgeInventory(walletAddress: string, materialId: string, quantity: string) {
+    const normalized = normalizeAddress(walletAddress);
+    const existing = await this.getForgeInventoryItem(walletAddress, materialId);
+    
+    if (existing) {
+      const [updated] = await db.update(forgeInventory)
+        .set({ quantity, lastUpdated: new Date() })
+        .where(and(
+          eq(sql`lower(${forgeInventory.walletAddress})`, normalized),
+          eq(forgeInventory.materialId, materialId)
+        ))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db.insert(forgeInventory)
+        .values({
+          walletAddress: normalized,
+          materialId,
+          quantity
+        })
+        .returning();
+      return created;
+    }
+  }
+  
+  async addForgeInventoryItem(walletAddress: string, materialId: string, quantity: string) {
+    const normalized = normalizeAddress(walletAddress);
+    const existing = await this.getForgeInventoryItem(walletAddress, materialId);
+    
+    if (existing) {
+      const newQuantity = (BigInt(existing.quantity) + BigInt(quantity)).toString();
+      return this.updateForgeInventory(walletAddress, materialId, newQuantity);
+    } else {
+      const [created] = await db.insert(forgeInventory)
+        .values({
+          walletAddress: normalized,
+          materialId,
+          quantity
+        })
+        .returning();
+      return created;
+    }
+  }
+  
+  async removeForgeInventoryItem(walletAddress: string, materialId: string, quantity: string) {
+    const normalized = normalizeAddress(walletAddress);
+    const existing = await this.getForgeInventoryItem(walletAddress, materialId);
+    
+    if (!existing) {
+      return undefined;
+    }
+    
+    const currentQty = BigInt(existing.quantity);
+    const removeQty = BigInt(quantity);
+    
+    if (currentQty < removeQty) {
+      return undefined;
+    }
+    
+    const newQuantity = (currentQty - removeQty).toString();
+    
+    if (newQuantity === "0") {
+      await db.delete(forgeInventory)
+        .where(and(
+          eq(sql`lower(${forgeInventory.walletAddress})`, normalized),
+          eq(forgeInventory.materialId, materialId)
+        ));
+      return existing;
+    } else {
+      return this.updateForgeInventory(walletAddress, materialId, newQuantity);
+    }
+  }
+  
+  async getForgeCraftingSessions(walletAddress: string, status?: string) {
+    const normalized = normalizeAddress(walletAddress);
+    let query = db.select().from(forgeCraftingSessions)
+      .where(eq(sql`lower(${forgeCraftingSessions.walletAddress})`, normalized));
+    
+    if (status) {
+      query = db.select().from(forgeCraftingSessions)
+        .where(and(
+          eq(sql`lower(${forgeCraftingSessions.walletAddress})`, normalized),
+          eq(forgeCraftingSessions.status, status)
+        ));
+    }
+    
+    const sessions = await query.orderBy(desc(forgeCraftingSessions.startedAt));
+    return sessions;
+  }
+  
+  async getForgeCraftingSession(id: string) {
+    const [session] = await db.select().from(forgeCraftingSessions)
+      .where(eq(forgeCraftingSessions.id, id));
+    return session;
+  }
+  
+  async createForgeCraftingSession(session: InsertForgeCraftingSession) {
+    const normalized = normalizeAddress(session.walletAddress);
+    const [created] = await db.insert(forgeCraftingSessions)
+      .values({
+        ...session,
+        walletAddress: normalized
+      })
+      .returning();
+    return created;
+  }
+  
+  async updateForgeCraftingSession(id: string, updates: Partial<InsertForgeCraftingSession>) {
+    const updateData = updates.walletAddress 
+      ? { ...updates, walletAddress: normalizeAddress(updates.walletAddress) }
+      : updates;
+    
+    const [updated] = await db.update(forgeCraftingSessions)
+      .set(updateData)
+      .where(eq(forgeCraftingSessions.id, id))
+      .returning();
+    return updated;
+  }
+  
+  async completeForgeCraft(sessionId: string, relicInstanceId: string) {
+    const [completed] = await db.update(forgeCraftingSessions)
+      .set({
+        status: "completed",
+        resultRelicInstanceId: relicInstanceId,
+        completedAt: new Date()
+      })
+      .where(eq(forgeCraftingSessions.id, sessionId))
+      .returning();
+    return completed;
+  }
+  
+  async failForgeCraft(sessionId: string, reason: string) {
+    const [failed] = await db.update(forgeCraftingSessions)
+      .set({
+        status: "failed",
+        failureReason: reason,
+        completedAt: new Date()
+      })
+      .where(eq(forgeCraftingSessions.id, sessionId))
+      .returning();
+    return failed;
   }
 }
 

@@ -6675,6 +6675,166 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== FORGE SYSTEM ROUTES =====
+  
+  // Get all forge materials
+  app.get("/api/forge/materials", async (req, res) => {
+    try {
+      const materials = await storage.getForgeMaterials();
+      res.json(materials);
+    } catch (error) {
+      console.error("Failed to fetch forge materials:", error);
+      res.status(500).json({ error: "Failed to fetch forge materials" });
+    }
+  });
+  
+  // Get all forge recipes
+  app.get("/api/forge/recipes", async (req, res) => {
+    try {
+      const recipes = await storage.getForgeRecipes();
+      res.json(recipes);
+    } catch (error) {
+      console.error("Failed to fetch forge recipes:", error);
+      res.status(500).json({ error: "Failed to fetch forge recipes" });
+    }
+  });
+  
+  // Get forge recipe for a specific relic
+  app.get("/api/forge/recipes/relic/:relicId", async (req, res) => {
+    try {
+      const recipe = await storage.getForgeRecipeByRelicId(req.params.relicId);
+      if (!recipe) {
+        return res.status(404).json({ error: "Recipe not found" });
+      }
+      res.json(recipe);
+    } catch (error) {
+      console.error("Failed to fetch forge recipe:", error);
+      res.status(500).json({ error: "Failed to fetch forge recipe" });
+    }
+  });
+  
+  // Get user's forge inventory
+  app.get("/api/forge/inventory/:walletAddress", async (req, res) => {
+    try {
+      const inventory = await storage.getForgeInventory(req.params.walletAddress);
+      res.json(inventory);
+    } catch (error) {
+      console.error("Failed to fetch forge inventory:", error);
+      res.status(500).json({ error: "Failed to fetch forge inventory" });
+    }
+  });
+  
+  // Start crafting a relic
+  app.post("/api/forge/craft", async (req, res) => {
+    try {
+      const craftSchema = z.object({
+        walletAddress: z.string(),
+        recipeId: z.string()
+      });
+      
+      const data = craftSchema.parse(req.body);
+      
+      const recipe = await storage.getForgeRecipeById(data.recipeId);
+      if (!recipe) {
+        return res.status(404).json({ error: "Recipe not found" });
+      }
+      
+      const materials = recipe.materials as Array<{ materialId: string; quantity: string }>;
+      for (const material of materials) {
+        const inventoryItem = await storage.getForgeInventoryItem(data.walletAddress, material.materialId);
+        if (!inventoryItem || BigInt(inventoryItem.quantity) < BigInt(material.quantity)) {
+          return res.status(400).json({ error: `Insufficient materials: ${material.materialId}` });
+        }
+      }
+      
+      for (const material of materials) {
+        await storage.removeForgeInventoryItem(data.walletAddress, material.materialId, material.quantity);
+      }
+      
+      const craftingTime = parseInt(recipe.craftingTime);
+      const completesAt = new Date(Date.now() + craftingTime * 1000);
+      
+      const session = await storage.createForgeCraftingSession({
+        walletAddress: data.walletAddress,
+        recipeId: data.recipeId,
+        cdxSpent: recipe.cdxCost,
+        materialsUsed: materials,
+        completesAt,
+        status: "in_progress"
+      });
+      
+      res.status(201).json(session);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid data", details: error.errors });
+      }
+      console.error("Failed to start crafting:", error);
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : "Failed to start crafting" 
+      });
+    }
+  });
+  
+  // Get user's crafting sessions
+  app.get("/api/forge/sessions/:walletAddress", async (req, res) => {
+    try {
+      const status = req.query.status as string | undefined;
+      const sessions = await storage.getForgeCraftingSessions(req.params.walletAddress, status);
+      res.json(sessions);
+    } catch (error) {
+      console.error("Failed to fetch crafting sessions:", error);
+      res.status(500).json({ error: "Failed to fetch crafting sessions" });
+    }
+  });
+  
+  // Complete a crafting session
+  app.post("/api/forge/complete/:sessionId", async (req, res) => {
+    try {
+      const session = await storage.getForgeCraftingSession(req.params.sessionId);
+      if (!session) {
+        return res.status(404).json({ error: "Crafting session not found" });
+      }
+      
+      if (session.status !== "in_progress") {
+        return res.status(400).json({ error: "Session is not in progress" });
+      }
+      
+      if (new Date() < new Date(session.completesAt)) {
+        return res.status(400).json({ error: "Crafting not yet complete" });
+      }
+      
+      const recipe = await storage.getForgeRecipeById(session.recipeId);
+      if (!recipe) {
+        return res.status(404).json({ error: "Recipe not found" });
+      }
+      
+      const successRate = parseInt(recipe.successRate);
+      const roll = Math.random() * 100;
+      
+      if (roll <= successRate) {
+        const relicInstance = await storage.createCodexRelicInstance({
+          relicId: recipe.relicId,
+          walletAddress: session.walletAddress,
+          isEquipped: "false",
+          level: "1",
+          experience: "0",
+          powerScore: "100"
+        });
+        
+        const completedSession = await storage.completeForgeCraft(req.params.sessionId, relicInstance.id);
+        res.json({ success: true, session: completedSession, relic: relicInstance });
+      } else {
+        const failedSession = await storage.failForgeCraft(req.params.sessionId, "Crafting failed");
+        res.json({ success: false, session: failedSession });
+      }
+    } catch (error) {
+      console.error("Failed to complete crafting:", error);
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : "Failed to complete crafting" 
+      });
+    }
+  });
+
   // ========================
   // AUTO-DEPLOY ROUTES
   // ========================
