@@ -46,7 +46,7 @@ interface NavigationProps {
 }
 
 const navigationItems = [
-  { path: "/", label: "Home", icon: Home },
+  { path: "/", label: "Home", icon: Home, featured: true },
   { path: "/empire", label: "Empire", icon: Crown, featured: true },
   { path: "/command-center", label: "Command Center", icon: Activity, featured: true },
   { path: "/codex-dashboard", label: "CODEX Dashboard", icon: Coins, featured: true },

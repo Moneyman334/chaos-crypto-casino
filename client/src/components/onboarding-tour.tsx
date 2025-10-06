@@ -75,13 +75,14 @@ const tourSteps: TourStep[] = [
 export default function OnboardingTour() {
   const [isOpen, setIsOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
 
   useEffect(() => {
     // Check if user has seen the tour
     const hasSeenTour = localStorage.getItem("codex_tour_completed");
     
-    if (!hasSeenTour) {
+    // Only show tour on home page to avoid interrupting other pages
+    if (!hasSeenTour && location === '/') {
       // Show tour after 1 second delay
       const timer = setTimeout(() => {
         setIsOpen(true);
@@ -89,7 +90,7 @@ export default function OnboardingTour() {
       
       return () => clearTimeout(timer);
     }
-  }, []);
+  }, [location]);
 
   const handleNext = () => {
     if (currentStep < tourSteps.length - 1) {
@@ -111,17 +112,13 @@ export default function OnboardingTour() {
   const handleComplete = () => {
     localStorage.setItem("codex_tour_completed", "true");
     setIsOpen(false);
-    
-    const action = tourSteps[currentStep].action;
-    if (action) {
-      setLocation(action.path);
-    }
+    // Don't auto-navigate - let user explore from home page
   };
 
   const handleAction = () => {
     const action = tourSteps[currentStep].action;
     if (action) {
-      setIsOpen(false);
+      handleClose(); // Mark tour as completed
       setLocation(action.path);
     }
   };
