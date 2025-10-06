@@ -112,6 +112,8 @@ import {
   platformNftEvolutionLog,
   codexStakingPools,
   codexUserStakes,
+  yieldFarmPools,
+  yieldFarmPositions,
   type PlatformToken,
   type InsertPlatformToken,
   type TokenHolding,
@@ -123,6 +125,10 @@ import {
   type PlatformAchievement,
   type InsertPlatformAchievement,
   type PlatformUserAchievement,
+  type YieldFarmPool,
+  type InsertYieldFarmPool,
+  type YieldFarmPosition,
+  type InsertYieldFarmPosition,
   type InsertPlatformUserAchievement,
   type PlatformNftEvolutionLog,
   type InsertPlatformNftEvolutionLog,
@@ -491,6 +497,20 @@ export interface IStorage {
   updateMarketplaceListing(id: string, updates: any): Promise<any | undefined>;
   cancelMarketplaceListing(id: string, sellerWallet: string): Promise<any | undefined>;
   purchaseMarketplaceListing(id: string, buyerWallet: string): Promise<any | undefined>;
+  
+  // Yield Farming methods
+  getAllYieldFarmPools(): Promise<YieldFarmPool[]>;
+  getActiveYieldFarmPools(): Promise<YieldFarmPool[]>;
+  getYieldFarmPool(id: string): Promise<YieldFarmPool | undefined>;
+  createYieldFarmPool(pool: InsertYieldFarmPool): Promise<YieldFarmPool>;
+  updateYieldFarmPool(id: string, updates: Partial<InsertYieldFarmPool>): Promise<YieldFarmPool | undefined>;
+  
+  getUserYieldFarmPositions(user: string): Promise<YieldFarmPosition[]>;
+  getYieldFarmPosition(id: string): Promise<YieldFarmPosition | undefined>;
+  getPoolPositions(poolId: string): Promise<YieldFarmPosition[]>;
+  createYieldFarmPosition(position: InsertYieldFarmPosition): Promise<YieldFarmPosition>;
+  updateYieldFarmPosition(id: string, updates: Partial<InsertYieldFarmPosition>): Promise<YieldFarmPosition | undefined>;
+  deleteYieldFarmPosition(id: string): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -3310,6 +3330,87 @@ export class PostgreSQLStorage implements IStorage {
       ))
       .returning();
     return purchased;
+  }
+  
+  // Yield Farming methods
+  async getAllYieldFarmPools() {
+    const pools = await db.select().from(yieldFarmPools)
+      .orderBy(desc(yieldFarmPools.createdAt));
+    return pools;
+  }
+  
+  async getActiveYieldFarmPools() {
+    const pools = await db.select().from(yieldFarmPools)
+      .where(eq(yieldFarmPools.status, 'active'))
+      .orderBy(desc(yieldFarmPools.createdAt));
+    return pools;
+  }
+  
+  async getYieldFarmPool(id: string) {
+    const [pool] = await db.select().from(yieldFarmPools)
+      .where(eq(yieldFarmPools.id, id));
+    return pool;
+  }
+  
+  async createYieldFarmPool(pool: InsertYieldFarmPool) {
+    const [created] = await db.insert(yieldFarmPools).values(pool).returning();
+    return created;
+  }
+  
+  async updateYieldFarmPool(id: string, updates: Partial<InsertYieldFarmPool>) {
+    const [updated] = await db.update(yieldFarmPools)
+      .set(updates)
+      .where(eq(yieldFarmPools.id, id))
+      .returning();
+    return updated;
+  }
+  
+  async getUserYieldFarmPositions(user: string) {
+    const normalized = normalizeAddress(user);
+    const positions = await db.select().from(yieldFarmPositions)
+      .where(eq(sql`lower(${yieldFarmPositions.user})`, normalized))
+      .orderBy(desc(yieldFarmPositions.depositDate));
+    return positions;
+  }
+  
+  async getYieldFarmPosition(id: string) {
+    const [position] = await db.select().from(yieldFarmPositions)
+      .where(eq(yieldFarmPositions.id, id));
+    return position;
+  }
+  
+  async getPoolPositions(poolId: string) {
+    const positions = await db.select().from(yieldFarmPositions)
+      .where(eq(yieldFarmPositions.poolId, poolId));
+    return positions;
+  }
+  
+  async createYieldFarmPosition(position: InsertYieldFarmPosition) {
+    const normalized = normalizeAddress(position.user);
+    const [created] = await db.insert(yieldFarmPositions)
+      .values({
+        ...position,
+        user: normalized
+      })
+      .returning();
+    return created;
+  }
+  
+  async updateYieldFarmPosition(id: string, updates: Partial<InsertYieldFarmPosition>) {
+    const updateData = updates.user 
+      ? { ...updates, user: normalizeAddress(updates.user) }
+      : updates;
+    
+    const [updated] = await db.update(yieldFarmPositions)
+      .set(updateData)
+      .where(eq(yieldFarmPositions.id, id))
+      .returning();
+    return updated;
+  }
+  
+  async deleteYieldFarmPosition(id: string) {
+    await db.delete(yieldFarmPositions)
+      .where(eq(yieldFarmPositions.id, id));
   }
 }
 
