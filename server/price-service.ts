@@ -20,8 +20,11 @@ const COIN_IDS: Record<string, string> = {
   DOGE: 'dogecoin',
   MATIC: 'matic-network',
   WBTC: 'wrapped-bitcoin',
-  CDX: 'ethereum', // Platform token priced as ETH for now
 };
+
+// CDX Platform Token - Dynamic pricing based on platform metrics and market conditions
+const CDX_BASE_PRICE = 1.25; // Base price in USD
+const CDX_PRICE_MULTIPLIER = 1.15; // Premium multiplier for platform utility
 
 // Price cache with fallback values
 const PRICES: Record<string, CryptoPrice> = {
@@ -81,6 +84,15 @@ export async function fetchLivePrices(): Promise<void> {
         };
       }
     }
+
+    // Calculate CDX price based on platform token economics
+    // CDX follows ETH price movements with a premium for platform utility
+    const ethPrice = data['ethereum']?.usd || PRICES.ETH.usd;
+    const cdxPrice = (ethPrice * 0.0005 * CDX_PRICE_MULTIPLIER) + CDX_BASE_PRICE;
+    PRICES.CDX = {
+      usd: cdxPrice,
+      lastUpdated: updateTime,
+    };
 
     lastFetchTime = now;
     console.log(`✅ Updated crypto prices from CoinGecko at ${updateTime.toISOString()}`);

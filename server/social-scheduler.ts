@@ -138,6 +138,77 @@ class SocialMediaScheduler {
                 error: result.error
               });
             }
+          } else if (account.platform === 'instagram') {
+            // Instagram API integration
+            if (!account.accessToken) {
+              console.log(`⚠️  Skipping post ${post.id} - missing Instagram credentials`);
+              await storage.updateScheduledPost(post.id, { status: 'failed' });
+              await storage.createPostHistory({
+                userId: post.userId,
+                accountId: post.accountId,
+                scheduledPostId: post.id,
+                content: post.content,
+                platform: account.platform,
+                status: 'failed',
+                error: 'Missing Instagram access token'
+              });
+              continue;
+            }
+
+            try {
+              // Instagram Graph API - Post creation
+              const instagramResponse = await fetch(
+                `https://graph.instagram.com/v18.0/${account.accountName}/media`,
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    caption: post.content,
+                    access_token: account.accessToken,
+                  }),
+                }
+              );
+
+              if (instagramResponse.ok) {
+                const instagramData = await instagramResponse.json();
+                console.log(`✅ Successfully posted to Instagram: ${post.id}`);
+                
+                await storage.updateScheduledPost(post.id, { status: 'published' });
+                await storage.createPostHistory({
+                  userId: post.userId,
+                  accountId: post.accountId,
+                  scheduledPostId: post.id,
+                  content: post.content,
+                  platform: account.platform,
+                  externalPostId: instagramData.id,
+                  status: 'success'
+                });
+                
+                await storage.updateSocialAccount(account.id, {
+                  lastPostedAt: new Date()
+                });
+
+                if (post.postType === 'auto') {
+                  console.log('🔄 Auto-post successful, scheduling next auto-post in 3 hours...');
+                  await this.createAutoScheduledPost(post.accountId, post.userId);
+                }
+              } else {
+                const errorData = await instagramResponse.json();
+                throw new Error(errorData.error?.message || 'Instagram API error');
+              }
+            } catch (error: any) {
+              console.log(`❌ Failed to post to Instagram: ${post.id} - ${error.message}`);
+              await storage.updateScheduledPost(post.id, { status: 'failed' });
+              await storage.createPostHistory({
+                userId: post.userId,
+                accountId: post.accountId,
+                scheduledPostId: post.id,
+                content: post.content,
+                platform: account.platform,
+                status: 'failed',
+                error: error.message
+              });
+            }
           } else {
             console.log(`⚠️  Unsupported platform: ${account.platform}`);
             await storage.updateScheduledPost(post.id, { status: 'failed' });
@@ -163,7 +234,7 @@ class SocialMediaScheduler {
         return;
       }
 
-      const messages = [
+      const twitterMessages = [
         '🚀 CODEX - THE DOMINANT BLOCKCHAIN PLATFORM with 55+ production features! Join the revolution. #Web3 #Crypto #Blockchain',
         '💎 Experience divine auto-compound yields on CODEX. Your investments working 24/7! #DeFi #CryptoInvesting',
         '🎮 House Vaults live on CODEX! Become the house and earn from casino profits. #CryptoGaming #PassiveIncome',
@@ -173,6 +244,19 @@ class SocialMediaScheduler {
         '💫 Create tokens and NFTs instantly with CODEX smart contract generators. #TokenCreator #NFTCreator',
         '🎯 Join thousands building their empire on CODEX - THE DOMINANT PLATFORM. #CryptoCommunity #Web3Gaming'
       ];
+
+      const instagramMessages = [
+        '🚀 Build your crypto empire with CODEX - 55+ features, unlimited possibilities!\n\n#CODEX #Web3 #Crypto #Blockchain #DeFi',
+        '💎 Auto-compound your earnings 24/7 on CODEX. The future of passive income is here!\n\n#CryptoInvesting #PassiveIncome #DeFi',
+        '🎮 Become the house! House Vaults on CODEX let you earn from casino profits.\n\n#CryptoGaming #CasinoProfits #Web3Gaming',
+        '⚡ AI-powered trading bot executing strategies while you sleep. Welcome to CODEX!\n\n#CryptoTrading #AutomatedTrading #AI',
+        '🌟 Divine visuals meet cutting-edge blockchain technology on CODEX.\n\n#NFT #CryptoArt #DigitalArt',
+        '🔥 Multi-chain support: ETH, BTC, SOL, and more - all in one platform!\n\n#MultiChain #CryptoWallet #Web3',
+        '💫 Launch your token or NFT in minutes with our smart contract generators.\n\n#TokenCreator #NFTCreator #SmartContracts',
+        '🎯 Join the empire revolution! CODEX - where innovation meets opportunity.\n\n#CryptoCommunity #Web3 #Blockchain'
+      ];
+
+      const messages = account.platform === 'instagram' ? instagramMessages : twitterMessages;
 
       const randomMessage = messages[Math.floor(Math.random() * messages.length)];
       
