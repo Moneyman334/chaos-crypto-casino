@@ -29,9 +29,6 @@ The backend is an Express.js and TypeScript REST API with modular routes. It use
 
 **Owner/Admin Protection System**: A secure authentication system protects owner-only routes and dashboards. The `requireOwner` middleware verifies session-based authentication (no header spoofing) and checks the user's `isOwner` database flag. Protected routes include Command Center, Marketing Dashboards, Social Automation, Admin Discounts, Admin Flash Sales, Owner Analytics, and Platform Revenue Dashboard. The frontend `ProtectedRoute` component enforces access control by checking `/api/auth/me` and redirecting unauthorized users to the home page.
 
-**VIP Membership System** (schema defined, pending database migration): Four-tier premium membership system (Free, Silver, Gold, Platinum) with progressive benefits including marketplace/trading/withdrawal fee discounts, priority support, early pool access, exclusive pools, increased trading limits, bonus APY on staking, and referral bonus multipliers. Platform fee tracking system records all revenue sources with VIP discount calculations.
-
-**Platform Fee Collection**: Comprehensive tracking of all platform revenue streams through `platform_fees` table (pending migration). Records marketplace fees, trading fees, withdrawal fees, and subscription revenue with detailed source attribution, VIP tier discount application, and crypto/fiat amount tracking.
 
 ## Feature Specifications
 
