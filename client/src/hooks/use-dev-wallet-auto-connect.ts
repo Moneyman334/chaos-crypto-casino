@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useDemoMode } from './use-demo-mode';
 import { useWalletNexus } from '@/lib/wallet-nexus';
 import { useQuery } from '@tanstack/react-query';
+import { apiRequest, queryClient } from '@/lib/queryClient';
 
 interface UserWallet {
   id: string;
@@ -20,6 +21,7 @@ export function useDevWalletAutoConnect() {
   const { isDemoMode, enableDemoMode } = useDemoMode();
   const { wallets, isInitialized } = useWalletNexus();
   const [hasAttemptedConnect, setHasAttemptedConnect] = useState(false);
+  const [needsReload, setNeedsReload] = useState(false);
 
   // Fetch user's actual wallet from database
   const { data: userWallets } = useQuery<UserWallet[]>({
@@ -43,32 +45,40 @@ export function useDevWalletAutoConnect() {
       // Check if auto-connect is enabled in preferences
       if (preferences && preferences.autoConnectEnabled !== 'true') {
         console.log('ℹ️ Auto-connect disabled in user preferences');
+        setHasAttemptedConnect(true);
+        return;
+      }
+
+      // Check if wallet is already connected - avoid reload loop
+      if (wallets.size > 0) {
+        console.log('✅ DEV MODE: Wallet already connected');
+        setHasAttemptedConnect(true);
         return;
       }
 
       setHasAttemptedConnect(true);
 
       try {
-        // Check if wallet is already connected
-        if (wallets.size > 0) {
-          console.log('✅ DEV MODE: Wallet already connected');
-          return;
+        // Try to use lastWalletId if available
+        let targetWallet = userWallets?.find(w => w.id === preferences?.lastWalletId);
+        
+        // Fallback to first wallet if lastWalletId not found
+        if (!targetWallet) {
+          targetWallet = userWallets?.[0];
         }
 
-        // Get user's actual wallet address from database
-        const userWallet = userWallets?.[0];
-        if (userWallet?.address) {
-          console.log('🔗 DEV MODE: Auto-connecting with your wallet:', userWallet.address);
+        if (targetWallet?.address) {
+          console.log('🔗 DEV MODE: Auto-connecting with your wallet:', targetWallet.address);
           
           // Create a demo session with the user's REAL address
           const realWalletInfo = {
-            id: `metamask_${userWallet.address}`,
+            id: `metamask_${targetWallet.address}`,
             type: 'metamask' as const,
             name: 'MetaMask (Dev)',
-            address: userWallet.address,
+            address: targetWallet.address,
             chainType: 'evm' as const,
             chainId: '0x1',
-            balance: userWallet.balance || '0',
+            balance: targetWallet.balance || '0',
             nativeSymbol: 'ETH',
             isConnected: true,
             isPrimary: true,
@@ -84,13 +94,22 @@ export function useDevWalletAutoConnect() {
           
           localStorage.setItem('codex_wallet_nexus_demo_session', JSON.stringify(session));
           
+          // Persist lastWalletId to backend
+          try {
+            await apiRequest('PATCH', '/api/preferences', {
+              lastWalletId: targetWallet.id
+            });
+            await queryClient.invalidateQueries({ queryKey: ['/api/preferences'] });
+          } catch (error) {
+            console.log('ℹ️ Failed to persist lastWalletId:', error);
+          }
+          
           // Enable demo mode to use this session
           if (!isDemoMode) {
             enableDemoMode();
+            // Only reload if we just enabled demo mode and wallet was not connected
+            setNeedsReload(true);
           }
-          
-          // Trigger a page reload to pick up the new session
-          window.location.reload();
         } else {
           console.log('ℹ️ No user wallet found in database');
         }
@@ -101,6 +120,14 @@ export function useDevWalletAutoConnect() {
 
     autoConnect();
   }, [isDemoMode, enableDemoMode, wallets, hasAttemptedConnect, isInitialized, userWallets, preferences]);
+
+  // Separate effect for reload to avoid dependency loop
+  useEffect(() => {
+    if (needsReload && isDemoMode) {
+      console.log('🔄 Reloading to apply wallet connection...');
+      window.location.reload();
+    }
+  }, [needsReload, isDemoMode]);
 
   return { isDemoMode, isConnected: wallets.size > 0 };
 }

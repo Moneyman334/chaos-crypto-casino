@@ -383,6 +383,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // User Preferences routes
+  app.get("/api/preferences/default", async (req, res) => {
+    // Public endpoint to get default preferences for unauthenticated users
+    const isDev = process.env.NODE_ENV === 'development';
+    res.json({
+      autoLoginEnabled: isDev ? 'true' : 'false',
+      autoConnectEnabled: isDev ? 'true' : 'false',
+    });
+  });
+
   app.get("/api/preferences", requireAuth, async (req, res) => {
     try {
       const userId = req.session?.userId as string;
@@ -409,34 +418,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/preferences", requireAuth, async (req, res) => {
     try {
       const userId = req.session?.userId as string;
+      
+      // Validate and normalize boolean strings
       const updateSchema = z.object({
-        autoLoginEnabled: z.string().optional(),
-        autoConnectEnabled: z.string().optional(),
-        lastWalletId: z.string().optional(),
+        autoLoginEnabled: z.union([
+          z.literal('true'),
+          z.literal('false'),
+          z.boolean().transform(b => b ? 'true' : 'false')
+        ]).optional(),
+        autoConnectEnabled: z.union([
+          z.literal('true'),
+          z.literal('false'),
+          z.boolean().transform(b => b ? 'true' : 'false')
+        ]).optional(),
+        lastWalletId: z.string().nullable().optional(),
       });
       
       const updates = updateSchema.parse(req.body);
       
       let preferences = await storage.getUserPreferences(userId);
       if (!preferences) {
-        // Create if doesn't exist
+        // Create if doesn't exist with defaults
+        const isDev = process.env.NODE_ENV === 'development';
         preferences = await storage.createUserPreferences({
           userId,
-          ...updates,
+          autoLoginEnabled: updates.autoLoginEnabled ?? (isDev ? 'true' : 'false'),
+          autoConnectEnabled: updates.autoConnectEnabled ?? (isDev ? 'true' : 'false'),
+          lastWalletId: updates.lastWalletId ?? null,
         });
       } else {
-        // Update existing
+        // Update existing - only update fields that are provided
         preferences = await storage.updateUserPreferences(userId, updates);
       }
       
       res.json(preferences);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: error.errors });
+        return res.status(400).json({ 
+          error: 'Invalid request data', 
+          details: error.errors 
+        });
       }
       console.error("Failed to update preferences:", error);
       res.status(500).json({ 
-        error: process.env.NODE_ENV === 'production' ? 'Internal server error' : error.message 
+        error: process.env.NODE_ENV === 'production' 
+          ? 'Failed to update preferences' 
+          : error.message 
       });
     }
   });

@@ -15,6 +15,7 @@ interface UserPreferences {
 
 export function useDevAutoLogin() {
   const [hasAttemptedLogin, setHasAttemptedLogin] = useState(false);
+  const [defaultPreference, setDefaultPreference] = useState<boolean | null>(null);
   
   const { data: authData, isLoading: authLoading } = useQuery<AuthResponse>({
     queryKey: ['/api/auth/me'],
@@ -23,10 +24,30 @@ export function useDevAutoLogin() {
   });
 
   // Fetch user preferences if authenticated
-  const { data: preferences } = useQuery<UserPreferences>({
+  const { data: preferences, isLoading: prefsLoading } = useQuery<UserPreferences>({
     queryKey: ['/api/preferences'],
     enabled: authData?.authenticated === true,
   });
+
+  // Fetch default preference for unauthenticated users
+  useEffect(() => {
+    const fetchDefault = async () => {
+      if (authData?.authenticated || defaultPreference !== null) {
+        return;
+      }
+      
+      try {
+        const response = await apiRequest('GET', '/api/preferences/default', {});
+        const data = await response.json();
+        setDefaultPreference(data.autoLoginEnabled === 'true');
+      } catch {
+        // Default to true in dev mode if endpoint doesn't exist
+        setDefaultPreference(import.meta.env.DEV);
+      }
+    };
+    
+    fetchDefault();
+  }, [authData, defaultPreference]);
 
   useEffect(() => {
     const autoLogin = async () => {
@@ -42,6 +63,22 @@ export function useDevAutoLogin() {
 
       // Only proceed in development mode
       if (!import.meta.env.DEV) {
+        return;
+      }
+
+      // Wait for default preference to be loaded for unauthenticated users
+      if (defaultPreference === null) {
+        return;
+      }
+
+      // Check preference: if user is authenticated, use stored preference; otherwise use default
+      const shouldAutoLogin = authData?.authenticated 
+        ? preferences?.autoLoginEnabled === 'true'
+        : defaultPreference;
+
+      if (!shouldAutoLogin) {
+        console.log('ℹ️ DEV MODE: Auto-login disabled by user preference');
+        setHasAttemptedLogin(true);
         return;
       }
 
@@ -64,11 +101,13 @@ export function useDevAutoLogin() {
     };
 
     autoLogin();
-  }, [authData, authLoading, hasAttemptedLogin]);
+  }, [authData, authLoading, hasAttemptedLogin, preferences, defaultPreference]);
 
   return { 
     isAuthenticated: authData?.authenticated, 
     isOwner: authData?.isOwner,
-    autoLoginEnabled: preferences?.autoLoginEnabled === 'true'
+    autoLoginEnabled: authData?.authenticated 
+      ? preferences?.autoLoginEnabled === 'true'
+      : defaultPreference ?? false
   };
 }
