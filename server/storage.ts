@@ -1,6 +1,8 @@
 import { 
   type User, 
   type InsertUser,
+  type UserPreferences,
+  type InsertUserPreferences,
   type Wallet,
   type InsertWallet,
   type Transaction,
@@ -28,6 +30,7 @@ import {
   type NftOwnership,
   type InsertNftOwnership,
   users,
+  userPreferences,
   wallets,
   transactions,
   networkInfo,
@@ -197,6 +200,11 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  
+  // User Preferences methods
+  getUserPreferences(userId: string): Promise<UserPreferences | undefined>;
+  createUserPreferences(preferences: InsertUserPreferences): Promise<UserPreferences>;
+  updateUserPreferences(userId: string, updates: Partial<InsertUserPreferences>): Promise<UserPreferences | undefined>;
   
   // Wallet methods
   getWalletByAddress(address: string): Promise<Wallet | undefined>;
@@ -1363,6 +1371,25 @@ export class PostgreSQLStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const result = await db.insert(users).values(insertUser).returning();
+    return result[0];
+  }
+
+  // User Preferences methods
+  async getUserPreferences(userId: string): Promise<UserPreferences | undefined> {
+    const result = await db.select().from(userPreferences).where(eq(userPreferences.userId, userId));
+    return result[0];
+  }
+
+  async createUserPreferences(preferences: InsertUserPreferences): Promise<UserPreferences> {
+    const result = await db.insert(userPreferences).values(preferences).returning();
+    return result[0];
+  }
+
+  async updateUserPreferences(userId: string, updates: Partial<InsertUserPreferences>): Promise<UserPreferences | undefined> {
+    const result = await db.update(userPreferences)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(userPreferences.userId, userId))
+      .returning();
     return result[0];
   }
 

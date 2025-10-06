@@ -357,9 +357,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User Preferences routes
+  app.get("/api/preferences", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session?.userId as string;
+      let preferences = await storage.getUserPreferences(userId);
+      
+      // Create default preferences if they don't exist
+      if (!preferences) {
+        preferences = await storage.createUserPreferences({
+          userId,
+          autoLoginEnabled: process.env.NODE_ENV === 'development' ? "true" : "false",
+          autoConnectEnabled: process.env.NODE_ENV === 'development' ? "true" : "false",
+        });
+      }
+      
+      res.json(preferences);
+    } catch (error: any) {
+      console.error("Failed to get preferences:", error);
+      res.status(500).json({ 
+        error: process.env.NODE_ENV === 'production' ? 'Internal server error' : error.message 
+      });
+    }
+  });
+
+  app.patch("/api/preferences", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session?.userId as string;
+      const updateSchema = z.object({
+        autoLoginEnabled: z.string().optional(),
+        autoConnectEnabled: z.string().optional(),
+        lastWalletId: z.string().optional(),
+      });
+      
+      const updates = updateSchema.parse(req.body);
+      
+      let preferences = await storage.getUserPreferences(userId);
+      if (!preferences) {
+        // Create if doesn't exist
+        preferences = await storage.createUserPreferences({
+          userId,
+          ...updates,
+        });
+      } else {
+        // Update existing
+        preferences = await storage.updateUserPreferences(userId, updates);
+      }
+      
+      res.json(preferences);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      console.error("Failed to update preferences:", error);
+      res.status(500).json({ 
+        error: process.env.NODE_ENV === 'production' ? 'Internal server error' : error.message 
+      });
+    }
+  });
+
   // DEV ONLY: Auto-login as owner (only works in development mode)
   app.post("/api/auth/dev-login-owner", async (req, res) => {
-    try {
+    try{
       // Only allow in development mode
       if (process.env.NODE_ENV !== 'development') {
         return res.status(403).json({ error: "This endpoint is only available in development mode" });
