@@ -511,6 +511,9 @@ export default function Settings() {
                   const data = await response.json();
                   
                   if (data.success) {
+                    // Invalidate auth cache to force refresh
+                    await queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
+                    
                     toast({
                       title: "✅ Logged in as Owner!",
                       description: "Refreshing page to load owner dashboards...",

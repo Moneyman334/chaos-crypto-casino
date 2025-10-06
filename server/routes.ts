@@ -6082,7 +6082,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .from(autoCompoundStakes)
           .where(eq(autoCompoundStakes.status, 'active')),
         dbClient.select({ 
-          total: sql<string>`COALESCE(SUM(CAST(total_rewards AS NUMERIC)), 0)::text` 
+          total: sql<string>`COALESCE(SUM(CAST(total_earned AS NUMERIC)), 0)::text` 
         })
           .from(autoCompoundStakes)
       ]);

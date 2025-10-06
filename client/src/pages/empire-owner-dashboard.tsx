@@ -3,6 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Link } from "wouter";
 import { 
   TrendingUp, 
   DollarSign, 
@@ -15,7 +17,9 @@ import {
   Crown,
   Wallet,
   ShoppingCart,
-  Bot
+  Bot,
+  AlertCircle,
+  Code
 } from "lucide-react";
 
 interface OwnerMetrics {
@@ -76,18 +80,127 @@ interface ActivityItem {
   metadata?: any;
 }
 
+interface AuthStatus {
+  authenticated: boolean;
+  isOwner: boolean;
+  user?: any;
+}
+
 export default function EmpireOwnerDashboard() {
-  const { data: metrics, isLoading } = useQuery<OwnerMetrics>({
+  // Check authentication first
+  const { data: authStatus, isLoading: authLoading } = useQuery<AuthStatus>({
+    queryKey: ["/api/auth/me"],
+  });
+
+  // Only fetch metrics if user is authenticated as owner
+  const { data: metrics, isLoading: metricsLoading } = useQuery<OwnerMetrics>({
     queryKey: ["/api/owner/metrics"],
+    enabled: authStatus?.isOwner === true,
     refetchInterval: 30000,
   });
 
   const { data: activity, isLoading: activityLoading } = useQuery<ActivityItem[]>({
     queryKey: ["/api/command-center/activity"],
-    refetchInterval: 10000, // Refresh every 10 seconds for live feed
+    enabled: authStatus?.isOwner === true,
+    refetchInterval: 10000,
   });
 
-  if (isLoading) {
+  // Show loading only while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-900/20 via-blue-900/20 to-black p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-center h-96">
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto" />
+              <p className="text-gray-400">Checking access...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show login prompt if not authenticated as owner
+  if (!authStatus?.isOwner) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-900/20 via-blue-900/20 to-black p-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <Card className="bg-black/60 backdrop-blur-xl border-orange-500/30 max-w-2xl">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-gradient-to-br from-orange-600 to-red-600 rounded-xl">
+                    <AlertCircle className="w-8 h-8 text-white" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-2xl">Owner Access Required</CardTitle>
+                    <CardDescription className="text-base">
+                      This dashboard is only accessible to platform owners
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <div className="p-4 bg-gradient-to-r from-orange-900/20 to-red-900/20 rounded-lg border border-orange-500/20">
+                    <h3 className="font-semibold text-orange-400 mb-2 flex items-center gap-2">
+                      <Code className="w-5 h-5" />
+                      Developer Quick Login
+                    </h3>
+                    <p className="text-sm text-gray-400 mb-4">
+                      Go to Settings and use the "Login as Owner" button to access this dashboard.
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <p className="text-gray-400 text-sm">
+                      After logging in as owner, you'll have access to:
+                    </p>
+                    <ul className="space-y-2 text-sm text-gray-300">
+                      <li className="flex items-center gap-2">
+                        <Crown className="w-4 h-4 text-purple-400" />
+                        Empire Owner Dashboard - Complete metrics overview
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <BarChart3 className="w-4 h-4 text-blue-400" />
+                        Platform Analytics - Revenue and user statistics
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <Activity className="w-4 h-4 text-green-400" />
+                        Command Center - Real-time monitoring
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <Zap className="w-4 h-4 text-yellow-400" />
+                        Marketing & Social Automation tools
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <Link href="/settings">
+                    <Button className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white" data-testid="button-go-to-settings">
+                      <Code className="w-4 h-4 mr-2" />
+                      Go to Settings
+                    </Button>
+                  </Link>
+                  <Link href="/">
+                    <Button variant="outline" className="border-purple-500/30" data-testid="button-go-home">
+                      Return Home
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading while metrics are loading (after auth check passed)
+  if (metricsLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-900/20 via-blue-900/20 to-black p-8">
         <div className="max-w-7xl mx-auto">

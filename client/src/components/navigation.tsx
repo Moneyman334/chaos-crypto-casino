@@ -387,10 +387,10 @@ export default function Navigation({ onConnect, onDisconnect }: NavigationProps)
               )}
             </div>
 
-            {/* Mobile Menu Toggle */}
+            {/* Mobile Menu Toggle - Always visible */}
             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
               <SheetTrigger asChild>
-                <Button variant="outline" size="sm" className="lg:hidden" data-testid="nav-mobile-menu-toggle">
+                <Button variant="outline" size="sm" data-testid="nav-mobile-menu-toggle">
                   <Menu className="h-4 w-4" />
                 </Button>
               </SheetTrigger>
