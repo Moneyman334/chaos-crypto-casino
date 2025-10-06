@@ -8,6 +8,7 @@ import { useWalletNexus } from '@/lib/wallet-nexus';
 import { WalletConnectionModal } from '@/components/wallet-nexus/ConnectionModal';
 import { WalletCard } from '@/components/wallet-nexus/WalletCard';
 import { usePageTracking } from '@/hooks/use-analytics';
+import { formatCryptoBalance } from '@/lib/utils';
 
 export default function WalletNexusPage() {
   usePageTracking('/wallet-nexus');
@@ -52,12 +53,12 @@ export default function WalletNexusPage() {
   };
 
   const totalBalanceDisplay = () => {
-    if (allWallets.length === 0) return '0.00';
+    if (allWallets.length === 0) return '0.0000';
     const total = allWallets.reduce((sum, w) => {
       const balance = parseFloat(w.balance || '0');
       return sum + balance;
     }, 0);
-    return total.toFixed(4);
+    return formatCryptoBalance(total, 4);
   };
 
   return (

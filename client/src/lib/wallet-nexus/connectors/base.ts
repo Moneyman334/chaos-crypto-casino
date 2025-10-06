@@ -1,4 +1,5 @@
 import { WalletConnector, WalletType, WalletInfo, TransactionRequest } from '../types';
+import { formatBalanceFromWei } from '@/lib/utils';
 
 export abstract class BaseWalletConnector implements WalletConnector {
   abstract type: WalletType;
@@ -25,13 +26,6 @@ export abstract class BaseWalletConnector implements WalletConnector {
   }
 
   protected formatBalance(balance: bigint, decimals: number = 18): string {
-    let divisor = BigInt(1);
-    for (let i = 0; i < decimals; i++) {
-      divisor = divisor * BigInt(10);
-    }
-    const intPart = balance / divisor;
-    const remainder = balance % divisor;
-    const fractional = remainder.toString().padStart(decimals, '0').slice(0, 4);
-    return `${intPart.toString()}.${fractional.replace(/0+$/, '') || '0'}`;
+    return formatBalanceFromWei(balance, decimals, 4);
   }
 }
