@@ -2230,6 +2230,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const data = paymentSchema.parse(req.body);
+      const nowPaymentsApiKey = process.env.NOWPAYMENTS_API_KEY;
+      
+      if (!nowPaymentsApiKey) {
+        console.warn('[NOWPayments] API key not configured, creating fallback payment record');
+        const payment = await storage.createPayment({
+          orderId: data.orderId,
+          paymentMethod: 'nowpayments',
+          provider: 'nowpayments',
+          amount: data.amount,
+          currency: data.currency,
+          status: 'waiting',
+          providerResponse: {
+            pay_currency: data.crypto,
+            created_at: new Date().toISOString(),
+            fallback_mode: true
+          } as any
+        });
+
+        await storage.updateOrder(data.orderId, {
+          status: 'awaiting_payment'
+        });
+
+        return res.json(payment);
+      }
+
+      const nowPaymentsInvoice = await fetch('https://api.nowpayments.io/v1/invoice', {
+        method: 'POST',
+        headers: {
+          'x-api-key': nowPaymentsApiKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          price_amount: parseFloat(data.amount),
+          price_currency: data.currency.toLowerCase(),
+          pay_currency: data.crypto.toLowerCase(),
+          order_id: data.orderId,
+          order_description: `Order ${data.orderId}`,
+          ipn_callback_url: `${process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000'}/api/payments/nowpayments/webhook`,
+          success_url: `${process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000'}/checkout/success`,
+          cancel_url: `${process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000'}/checkout`
+        })
+      });
+
+      if (!nowPaymentsInvoice.ok) {
+        const errorText = await nowPaymentsInvoice.text();
+        console.error('[NOWPayments] Invoice creation failed:', errorText);
+        throw new Error(`NOWPayments API error: ${nowPaymentsInvoice.status}`);
+      }
+
+      const invoiceData = await nowPaymentsInvoice.json();
+      console.log('[NOWPayments] Invoice created:', invoiceData.id);
       
       const payment = await storage.createPayment({
         orderId: data.orderId,
@@ -2238,17 +2289,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         amount: data.amount,
         currency: data.currency,
         status: 'waiting',
-        providerResponse: {
-          pay_currency: data.crypto,
-          created_at: new Date().toISOString()
-        } as any
+        providerResponse: invoiceData as any
       });
 
       await storage.updateOrder(data.orderId, {
         status: 'awaiting_payment'
       });
 
-      res.json(payment);
+      res.json({
+        ...payment,
+        invoice_url: invoiceData.invoice_url,
+        invoice_id: invoiceData.id
+      });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ 
@@ -2261,6 +2313,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  app.post("/api/payments/nowpayments/webhook", async (req, res) => {
+    try {
+      const ipnSecret = process.env.NOWPAYMENTS_IPN_SECRET;
+      const receivedSignature = req.headers['x-nowpayments-sig'] as string;
+      
+      if (ipnSecret && receivedSignature) {
+        const crypto = await import('crypto');
+        const hmac = crypto.createHmac('sha512', ipnSecret);
+        hmac.update(JSON.stringify(req.body));
+        const calculatedSignature = hmac.digest('hex');
+        
+        if (calculatedSignature !== receivedSignature) {
+          console.error('[NOWPayments] Invalid webhook signature');
+          return res.status(401).json({ error: 'Invalid signature' });
+        }
+      }
+
+      const webhookData = req.body;
+      console.log('[NOWPayments] Webhook received:', webhookData.payment_status);
+
+      await storage.createPaymentWebhook({
+        provider: 'nowpayments',
+        eventType: webhookData.payment_status || 'unknown',
+        payload: webhookData as any,
+        processed: 'false'
+      });
+
+      if (webhookData.payment_status === 'finished' || webhookData.payment_status === 'confirmed') {
+        const payments = await storage.getPaymentsByOrder(webhookData.order_id);
+        
+        if (payments && payments.length > 0) {
+          const payment = payments[0];
+          
+          await storage.updatePayment(payment.id, {
+            status: 'confirmed',
+            confirmedAt: new Date(),
+            providerResponse: webhookData as any
+          });
+
+          await storage.updateOrder(webhookData.order_id, {
+            status: 'completed'
+          });
+
+          console.log('[NOWPayments] Payment confirmed for order:', webhookData.order_id);
+        }
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error('[NOWPayments] Webhook processing error:', error);
+      res.status(500).json({ error: 'Webhook processing failed' });
+    }
+  });
+
   app.get("/api/payments/order/:orderId", async (req, res) => {
     try {
       const payments = await storage.getPaymentsByOrder(req.params.orderId);
