@@ -69,13 +69,30 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         body: JSON.stringify(credentials),
       });
     },
-    onSuccess: () => {
+    onSuccess: async (data: any) => {
       toast({
         title: "Success!",
-        description: "Account created! Please login.",
+        description: "Account created successfully! Welcome aboard.",
       });
-      // Switch to login tab
-      setLoginUsername(registerUsername);
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      onClose();
+      
+      // Check if user is owner and redirect accordingly
+      try {
+        const userResponse = await fetch("/api/auth/me", { credentials: "include" });
+        const userData = await userResponse.json();
+        
+        if (userData.isOwner) {
+          // Redirect owner directly to Empire Owner Dashboard
+          window.location.href = "/empire-owner";
+        } else {
+          // Regular users just reload the current page
+          window.location.reload();
+        }
+      } catch (error) {
+        // Fallback to reload if check fails
+        window.location.reload();
+      }
     },
     onError: (error: any) => {
       toast({
@@ -203,11 +220,11 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     onChange={(e) => setRegisterPassword(e.target.value)}
                     className="pl-10 bg-black/40 border-purple-500/30 focus:border-purple-500"
                     required
-                    minLength={6}
+                    minLength={8}
                     data-testid="input-register-password"
                   />
                 </div>
-                <p className="text-xs text-gray-500">Minimum 6 characters</p>
+                <p className="text-xs text-gray-500">Minimum 8 characters</p>
               </div>
 
               <Button
