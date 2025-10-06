@@ -2265,3 +2265,106 @@ export type CodexRelicProgress = typeof codexRelicProgress.$inferSelect;
 export type InsertCodexRelicProgress = z.infer<typeof insertCodexRelicProgressSchema>;
 export type CodexRelicEffect = typeof codexRelicEffects.$inferSelect;
 export type InsertCodexRelicEffect = z.infer<typeof insertCodexRelicEffectSchema>;
+
+// ===== FORGE SYSTEM =====
+// Craft and upgrade relics using materials and CDX tokens
+
+// Crafting Materials Catalog
+export const forgeMaterials = pgTable("forge_materials", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  type: text("type").notNull(), // essence, fragment, crystal, core
+  rarity: text("rarity").notNull(), // common, rare, epic, legendary, mythic
+  imageUrl: text("image_url"),
+  cdxValue: text("cdx_value").notNull(), // CDX equivalent value
+  isActive: text("is_active").notNull().default("true"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  typeIdx: index("forge_materials_type_idx").on(table.type),
+  rarityIdx: index("forge_materials_rarity_idx").on(table.rarity),
+  activeIdx: index("forge_materials_active_idx").on(table.isActive),
+}));
+
+// Forge Recipes - How to craft relics
+export const forgeRecipes = pgTable("forge_recipes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  relicId: varchar("relic_id").notNull().references(() => codexRelics.id),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  cdxCost: text("cdx_cost").notNull(), // CDX tokens required
+  materials: jsonb("materials").notNull(), // [{materialId, quantity}, ...]
+  craftingTime: text("crafting_time").notNull().default("3600"), // seconds
+  successRate: text("success_rate").notNull().default("100"), // 0-100
+  requiredLevel: text("required_level").notNull().default("1"), // User level requirement
+  isActive: text("is_active").notNull().default("true"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  relicIdx: index("forge_recipes_relic_idx").on(table.relicId),
+  activeIdx: index("forge_recipes_active_idx").on(table.isActive),
+  levelIdx: index("forge_recipes_level_idx").on(table.requiredLevel),
+}));
+
+// User Material Inventory
+export const forgeInventory = pgTable("forge_inventory", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  walletAddress: text("wallet_address").notNull(),
+  materialId: varchar("material_id").notNull().references(() => forgeMaterials.id),
+  quantity: text("quantity").notNull().default("0"),
+  lastUpdated: timestamp("last_updated").defaultNow(),
+}, (table) => ({
+  walletLowerIdx: index("forge_inventory_wallet_lower_idx").on(sql`lower(${table.walletAddress})`),
+  materialIdx: index("forge_inventory_material_idx").on(table.materialId),
+  walletMaterialIdx: index("forge_inventory_wallet_material_idx").on(table.walletAddress, table.materialId),
+}));
+
+// Crafting Sessions - Active and completed crafts
+export const forgeCraftingSessions = pgTable("forge_crafting_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  walletAddress: text("wallet_address").notNull(),
+  recipeId: varchar("recipe_id").notNull().references(() => forgeRecipes.id),
+  status: text("status").notNull().default("in_progress"), // in_progress, completed, failed
+  cdxSpent: text("cdx_spent").notNull(),
+  materialsUsed: jsonb("materials_used").notNull(), // [{materialId, quantity}, ...]
+  resultRelicInstanceId: varchar("result_relic_instance_id").references(() => codexRelicInstances.id),
+  startedAt: timestamp("started_at").defaultNow(),
+  completesAt: timestamp("completes_at").notNull(),
+  completedAt: timestamp("completed_at"),
+  failureReason: text("failure_reason"),
+}, (table) => ({
+  walletLowerIdx: index("forge_crafting_wallet_lower_idx").on(sql`lower(${table.walletAddress})`),
+  statusIdx: index("forge_crafting_status_idx").on(table.status),
+  recipeIdx: index("forge_crafting_recipe_idx").on(table.recipeId),
+  walletStatusIdx: index("forge_crafting_wallet_status_idx").on(table.walletAddress, table.status),
+}));
+
+// Insert Schemas
+export const insertForgeMaterialSchema = createInsertSchema(forgeMaterials).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertForgeRecipeSchema = createInsertSchema(forgeRecipes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertForgeInventorySchema = createInsertSchema(forgeInventory).omit({
+  id: true,
+  lastUpdated: true,
+});
+
+export const insertForgeCraftingSessionSchema = createInsertSchema(forgeCraftingSessions).omit({
+  id: true,
+  startedAt: true,
+});
+
+// Types
+export type ForgeMaterial = typeof forgeMaterials.$inferSelect;
+export type InsertForgeMaterial = z.infer<typeof insertForgeMaterialSchema>;
+export type ForgeRecipe = typeof forgeRecipes.$inferSelect;
+export type InsertForgeRecipe = z.infer<typeof insertForgeRecipeSchema>;
+export type ForgeInventory = typeof forgeInventory.$inferSelect;
+export type InsertForgeInventory = z.infer<typeof insertForgeInventorySchema>;
+export type ForgeCraftingSession = typeof forgeCraftingSessions.$inferSelect;
+export type InsertForgeCraftingSession = z.infer<typeof insertForgeCraftingSessionSchema>;
