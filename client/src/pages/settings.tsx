@@ -483,6 +483,66 @@ export default function Settings() {
           </Card>
         </div>
 
+        {/* Developer Login Section */}
+        <Card className="bg-gradient-to-br from-orange-900/20 to-red-900/20 border-orange-500/30">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <Code className="h-5 w-5 text-orange-400" />
+              <div>
+                <CardTitle>Developer Access</CardTitle>
+                <CardDescription>Quick owner login for development</CardDescription>
+              </div>
+              <Badge variant="outline" className="border-orange-500/50 text-orange-400 ml-auto">
+                DEV MODE
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-400 mb-4">
+              Click the button below to log in as the platform owner and access all admin dashboards.
+            </p>
+            <Button
+              onClick={async () => {
+                try {
+                  const response = await fetch('/api/auth/dev-login-owner', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                  });
+                  const data = await response.json();
+                  
+                  if (data.success) {
+                    toast({
+                      title: "✅ Logged in as Owner!",
+                      description: "Refreshing page to load owner dashboards...",
+                    });
+                    setTimeout(() => window.location.reload(), 1000);
+                  } else {
+                    toast({
+                      title: "Error",
+                      description: data.error || "Failed to log in",
+                      variant: "destructive",
+                    });
+                  }
+                } catch (error) {
+                  toast({
+                    title: "Error",
+                    description: "Failed to connect to server",
+                    variant: "destructive",
+                  });
+                }
+              }}
+              className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white"
+              data-testid="button-dev-login-owner"
+            >
+              <Code className="h-4 w-4 mr-2" />
+              Login as Owner
+            </Button>
+            <p className="text-xs text-gray-500 mt-3">
+              After logging in, visit: /empire-owner-dashboard or /owner-analytics
+            </p>
+          </CardContent>
+        </Card>
+
         {/* Action Buttons */}
         <div className="flex gap-4">
           <Button
