@@ -34,5 +34,33 @@ export async function seedPlatformAddresses(storage: IStorage) {
     }
   }
   
+  // Automatically seed all house vault addresses
+  try {
+    const vaults = await storage.getAllHouseVaults();
+    console.log(`📦 Found ${vaults.length} house vaults to whitelist`);
+    
+    for (const vault of vaults) {
+      try {
+        const exists = await storage.isPlatformAddress(vault.vaultAddress);
+        if (!exists) {
+          await storage.addPlatformAddress({
+            address: vault.vaultAddress,
+            label: `${vault.name} Contract`,
+            category: "vault",
+            description: `House vault for ${vault.tier} tier staking (${vault.apy}% APY)`,
+            addedBy: "system"
+          });
+          console.log(`✅ Added vault address: ${vault.name} (${vault.vaultAddress.slice(0, 10)}...)`);
+        } else {
+          console.log(`⏭️  Vault address already exists: ${vault.name}`);
+        }
+      } catch (error) {
+        console.error(`Failed to seed vault address ${vault.name}:`, error);
+      }
+    }
+  } catch (error) {
+    console.error("Failed to fetch house vaults for seeding:", error);
+  }
+  
   console.log("✅ Platform address seeding complete");
 }
