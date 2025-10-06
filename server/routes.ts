@@ -6093,7 +6093,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .from(botTrades),
         dbClient.select({
           totalPnL: sql<string>`COALESCE(SUM(CAST(pnl AS NUMERIC)), 0)::text`,
-          winningTrades: sql<number>`COUNT(CASE WHEN CAST(pnl AS NUMERIC) > 0 THEN 1 END)::int`,
+          winningTrades: sql<number>`COUNT(CASE WHEN CAST(pnl AS NUMERIC) > 0 THEN 1 ELSE NULL END)::int`,
           totalCount: sql<number>`COUNT(*)::int`
         })
           .from(botTrades)
