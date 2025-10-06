@@ -109,5 +109,34 @@ export const demoData = {
     tier: "Diamond",
     nextTierPoints: 15000,
     lifetime: 28392
-  }
+  },
+
+  demoWallets: [
+    {
+      id: "metamask-0x742d35cc6634c0532925a3b844bc9e7595f0beb1",
+      type: "metamask" as const,
+      name: "MetaMask",
+      address: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1",
+      chainType: "evm" as const,
+      chainId: "0x1",
+      balance: "3.4521",
+      nativeSymbol: "ETH",
+      isConnected: true,
+      isPrimary: true,
+      lastUsed: Date.now()
+    },
+    {
+      id: "coinbase-0x8ba1f109551bd432803012645ac136ddd64dba72",
+      type: "coinbase" as const,
+      name: "Coinbase Wallet",
+      address: "0x8ba1f109551bD432803012645Ac136ddd64DBA72",
+      chainType: "evm" as const,
+      chainId: "0x89",
+      balance: "1245.89",
+      nativeSymbol: "MATIC",
+      isConnected: true,
+      isPrimary: false,
+      lastUsed: Date.now() - 3600000
+    }
+  ]
 };

@@ -12,6 +12,7 @@ import { getConnector } from './connectors';
 import { useToast } from '@/hooks/use-toast';
 
 const STORAGE_KEY = 'codex_wallet_nexus_session';
+const DEMO_STORAGE_KEY = 'codex_wallet_nexus_demo_session';
 
 type WalletNexusContextType = WalletNexusState & WalletNexusActions;
 
@@ -35,7 +36,9 @@ export function WalletNexusProvider({ children }: { children: ReactNode }) {
 
   const loadSession = useCallback(async () => {
     try {
-      const storedSession = localStorage.getItem(STORAGE_KEY);
+      const isDemoMode = localStorage.getItem('codex_demo_mode') === 'true';
+      const storageKey = isDemoMode ? DEMO_STORAGE_KEY : STORAGE_KEY;
+      const storedSession = localStorage.getItem(storageKey);
       if (storedSession) {
         const session: WalletSession = JSON.parse(storedSession);
         const walletsMap = new Map<string, WalletInfo>();
@@ -87,6 +90,8 @@ export function WalletNexusProvider({ children }: { children: ReactNode }) {
 
   const saveSession = useCallback((wallets: Map<string, WalletInfo>, primaryWalletId: string | null, totalBalanceUSD: string) => {
     try {
+      const isDemoMode = localStorage.getItem('codex_demo_mode') === 'true';
+      const storageKey = isDemoMode ? DEMO_STORAGE_KEY : STORAGE_KEY;
       const session: WalletSession = {
         wallets: Array.from(wallets.values()),
         primaryWalletId,
@@ -95,7 +100,7 @@ export function WalletNexusProvider({ children }: { children: ReactNode }) {
         lastActivity: Date.now(),
       };
 
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+      localStorage.setItem(storageKey, JSON.stringify(session));
     } catch (error) {
       console.error('Failed to save wallet session:', error);
     }
@@ -109,7 +114,7 @@ export function WalletNexusProvider({ children }: { children: ReactNode }) {
       const walletInfo = await connector.connect();
 
       const existingWallet = state.wallets.get(walletInfo.id);
-      const isPrimary = state.wallets.size === 0 || existingWallet?.isPrimary;
+      const isPrimary = state.wallets.size === 0 || (existingWallet?.isPrimary ?? false);
 
       const updatedWallet: WalletInfo = {
         ...walletInfo,
