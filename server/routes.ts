@@ -331,6 +331,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // DEV ONLY: Auto-login as owner (only works in development mode)
+  app.post("/api/auth/dev-login-owner", async (req, res) => {
+    try {
+      // Only allow in development mode
+      if (process.env.NODE_ENV !== 'development') {
+        return res.status(403).json({ error: "This endpoint is only available in development mode" });
+      }
+
+      // Find the owner user
+      const ownerUser = await storage.getUserByUsername("empire_owner");
+      
+      if (!ownerUser) {
+        return res.status(404).json({ error: "Owner account not found" });
+      }
+
+      // Create session for the owner
+      req.session.userId = ownerUser.id;
+      
+      // Return user without password
+      const { password: _, ...userWithoutPassword } = ownerUser;
+      res.json({
+        success: true,
+        message: "Auto-logged in as owner (DEV MODE)",
+        user: userWithoutPassword
+      });
+
+    } catch (error) {
+      console.error("Dev auto-login failed:", error);
+      res.status(500).json({ error: "Auto-login failed" });
+    }
+  });
+
   // Get transactions for a wallet address (enhanced with pagination and filtering)
   app.get("/api/transactions/:address", async (req, res) => {
     try {
