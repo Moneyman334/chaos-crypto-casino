@@ -107,45 +107,52 @@ export function WalletNexusProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const connectWallet = useCallback(async (type: WalletType): Promise<WalletInfo> => {
-    updateState({ isConnecting: true, error: null });
+    setState(prev => ({ ...prev, isConnecting: true, error: null }));
 
     try {
       const connector = getConnector(type);
       const walletInfo = await connector.connect();
 
-      const existingWallet = state.wallets.get(walletInfo.id);
-      const isPrimary = state.wallets.size === 0 || (existingWallet?.isPrimary ?? false);
+      let updatedWallet: WalletInfo;
+      let newPrimaryId: string | null;
 
-      const updatedWallet: WalletInfo = {
-        ...walletInfo,
-        isPrimary,
-        lastUsed: Date.now(),
-      };
+      setState(prev => {
+        const existingWallet = prev.wallets.get(walletInfo.id);
+        const isPrimary = prev.wallets.size === 0 || (existingWallet?.isPrimary ?? false);
 
-      const newWallets = new Map(state.wallets);
-      newWallets.set(walletInfo.id, updatedWallet);
+        updatedWallet = {
+          ...walletInfo,
+          isPrimary,
+          lastUsed: Date.now(),
+        };
 
-      const newPrimaryId = isPrimary ? walletInfo.id : state.primaryWalletId;
+        const newWallets = new Map(prev.wallets);
+        newWallets.set(walletInfo.id, updatedWallet);
 
-      updateState({
-        wallets: newWallets,
-        primaryWalletId: newPrimaryId,
-        isConnecting: false,
+        newPrimaryId = isPrimary ? walletInfo.id : prev.primaryWalletId;
+
+        saveSession(newWallets, newPrimaryId, prev.totalBalanceUSD);
+
+        return {
+          ...prev,
+          wallets: newWallets,
+          primaryWalletId: newPrimaryId,
+          isConnecting: false,
+        };
       });
-
-      saveSession(newWallets, newPrimaryId, state.totalBalanceUSD);
 
       toast({
         title: 'Wallet Connected',
         description: `${walletInfo.name} connected successfully`,
       });
 
-      return updatedWallet;
+      return updatedWallet!;
     } catch (error: any) {
-      updateState({
+      setState(prev => ({
+        ...prev,
         isConnecting: false,
         error: error.message,
-      });
+      }));
 
       toast({
         title: 'Connection Failed',
@@ -155,44 +162,56 @@ export function WalletNexusProvider({ children }: { children: ReactNode }) {
 
       throw error;
     }
-  }, [state.wallets, state.primaryWalletId, state.totalBalanceUSD, saveSession, toast]);
+  }, [saveSession, toast]);
 
   const disconnectWallet = useCallback(async (walletId: string): Promise<void> => {
+    let walletName: string;
+
     try {
-      const wallet = state.wallets.get(walletId);
-      if (!wallet) {
-        throw new Error('Wallet not found');
-      }
-
-      const connector = getConnector(wallet.type);
-      await connector.disconnect(walletId);
-
-      const newWallets = new Map(state.wallets);
-      newWallets.delete(walletId);
-
-      let newPrimaryId = state.primaryWalletId;
-      if (state.primaryWalletId === walletId) {
-        const firstWallet = Array.from(newWallets.values())[0];
-        newPrimaryId = firstWallet?.id || null;
-        
-        if (firstWallet) {
-          newWallets.set(firstWallet.id, {
-            ...firstWallet,
-            isPrimary: true,
-          });
+      setState(prev => {
+        const wallet = prev.wallets.get(walletId);
+        if (!wallet) {
+          throw new Error('Wallet not found');
         }
-      }
-
-      updateState({
-        wallets: newWallets,
-        primaryWalletId: newPrimaryId,
+        walletName = wallet.name;
+        return prev;
       });
 
-      saveSession(newWallets, newPrimaryId, state.totalBalanceUSD);
+      const wallet = state.wallets.get(walletId);
+      if (wallet) {
+        const connector = getConnector(wallet.type);
+        await connector.disconnect(walletId);
+      }
+
+      setState(prev => {
+        const newWallets = new Map(prev.wallets);
+        newWallets.delete(walletId);
+
+        let newPrimaryId = prev.primaryWalletId;
+        if (prev.primaryWalletId === walletId) {
+          const firstWallet = Array.from(newWallets.values())[0];
+          newPrimaryId = firstWallet?.id || null;
+          
+          if (firstWallet) {
+            newWallets.set(firstWallet.id, {
+              ...firstWallet,
+              isPrimary: true,
+            });
+          }
+        }
+
+        saveSession(newWallets, newPrimaryId, prev.totalBalanceUSD);
+
+        return {
+          ...prev,
+          wallets: newWallets,
+          primaryWalletId: newPrimaryId,
+        };
+      });
 
       toast({
         title: 'Wallet Disconnected',
-        description: `${wallet.name} disconnected successfully`,
+        description: `${walletName!} disconnected successfully`,
       });
     } catch (error: any) {
       toast({
@@ -202,30 +221,32 @@ export function WalletNexusProvider({ children }: { children: ReactNode }) {
       });
       throw error;
     }
-  }, [state.wallets, state.primaryWalletId, state.totalBalanceUSD, saveSession, toast]);
+  }, [saveSession, toast]);
 
   const disconnectAll = useCallback(async (): Promise<void> => {
     try {
-      const disconnectPromises = Array.from(state.wallets.keys()).map(walletId => {
-        const wallet = state.wallets.get(walletId);
-        if (wallet) {
-          const connector = getConnector(wallet.type);
-          return connector.disconnect(walletId).catch(err => {
-            console.error(`Failed to disconnect ${walletId}:`, err);
-          });
-        }
-        return Promise.resolve();
+      const walletsToDisconnect = Array.from(state.wallets.entries());
+      
+      const disconnectPromises = walletsToDisconnect.map(([walletId, wallet]) => {
+        const connector = getConnector(wallet.type);
+        return connector.disconnect(walletId).catch(err => {
+          console.error(`Failed to disconnect ${walletId}:`, err);
+        });
       });
 
       await Promise.all(disconnectPromises);
 
-      updateState({
+      setState({
         wallets: new Map(),
         primaryWalletId: null,
+        isInitialized: true,
+        isConnecting: false,
         totalBalanceUSD: '0',
+        error: null,
       });
 
       localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(DEMO_STORAGE_KEY);
 
       toast({
         title: 'All Wallets Disconnected',
@@ -239,38 +260,47 @@ export function WalletNexusProvider({ children }: { children: ReactNode }) {
       });
       throw error;
     }
-  }, [state.wallets, toast]);
+  }, [toast]);
 
   const setPrimaryWallet = useCallback((walletId: string): void => {
-    const wallet = state.wallets.get(walletId);
-    if (!wallet) {
-      throw new Error('Wallet not found');
-    }
+    setState(prev => {
+      const wallet = prev.wallets.get(walletId);
+      if (!wallet) {
+        throw new Error('Wallet not found');
+      }
 
-    const newWallets = new Map(state.wallets);
-    
-    newWallets.forEach((w, id) => {
-      newWallets.set(id, {
-        ...w,
-        isPrimary: id === walletId,
+      const newWallets = new Map(prev.wallets);
+      
+      newWallets.forEach((w, id) => {
+        newWallets.set(id, {
+          ...w,
+          isPrimary: id === walletId,
+        });
       });
-    });
 
-    updateState({
-      wallets: newWallets,
-      primaryWalletId: walletId,
-    });
+      saveSession(newWallets, walletId, prev.totalBalanceUSD);
 
-    saveSession(newWallets, walletId, state.totalBalanceUSD);
+      toast({
+        title: 'Primary Wallet Updated',
+        description: `${wallet.name} is now your primary wallet`,
+      });
 
-    toast({
-      title: 'Primary Wallet Updated',
-      description: `${wallet.name} is now your primary wallet`,
+      return {
+        ...prev,
+        wallets: newWallets,
+        primaryWalletId: walletId,
+      };
     });
-  }, [state.wallets, state.totalBalanceUSD, saveSession, toast]);
+  }, [saveSession, toast]);
 
   const switchChain = useCallback(async (walletId: string, chainId: string): Promise<void> => {
-    const wallet = state.wallets.get(walletId);
+    let wallet: WalletInfo | undefined;
+    
+    setState(prev => {
+      wallet = prev.wallets.get(walletId);
+      return prev;
+    });
+
     if (!wallet) {
       throw new Error('Wallet not found');
     }
@@ -279,14 +309,23 @@ export function WalletNexusProvider({ children }: { children: ReactNode }) {
       const connector = getConnector(wallet.type);
       await connector.switchChain(walletId, chainId);
 
-      const newWallets = new Map(state.wallets);
-      newWallets.set(walletId, {
-        ...wallet,
-        chainId,
-      });
+      setState(prev => {
+        const newWallets = new Map(prev.wallets);
+        const currentWallet = newWallets.get(walletId);
+        if (currentWallet) {
+          newWallets.set(walletId, {
+            ...currentWallet,
+            chainId,
+          });
+        }
 
-      updateState({ wallets: newWallets });
-      saveSession(newWallets, state.primaryWalletId, state.totalBalanceUSD);
+        saveSession(newWallets, prev.primaryWalletId, prev.totalBalanceUSD);
+
+        return {
+          ...prev,
+          wallets: newWallets,
+        };
+      });
 
       toast({
         title: 'Chain Switched',
@@ -300,11 +339,13 @@ export function WalletNexusProvider({ children }: { children: ReactNode }) {
       });
       throw error;
     }
-  }, [state.wallets, state.primaryWalletId, state.totalBalanceUSD, saveSession, toast]);
+  }, [saveSession, toast]);
 
   const refreshBalances = useCallback(async (): Promise<void> => {
     try {
-      const updatePromises = Array.from(state.wallets.entries()).map(async ([id, wallet]) => {
+      const walletsToRefresh = Array.from(state.wallets.entries());
+      
+      const updatePromises = walletsToRefresh.map(async ([id, wallet]) => {
         try {
           const connector = getConnector(wallet.type);
           const balance = await connector.getBalance(id);
@@ -317,26 +358,38 @@ export function WalletNexusProvider({ children }: { children: ReactNode }) {
 
       const results = await Promise.all(updatePromises);
 
-      const newWallets = new Map(state.wallets);
-      results.forEach(({ id, balance }) => {
-        const wallet = newWallets.get(id);
-        if (wallet && balance) {
-          newWallets.set(id, {
-            ...wallet,
-            balance,
-          });
-        }
-      });
+      setState(prev => {
+        const newWallets = new Map(prev.wallets);
+        results.forEach(({ id, balance }) => {
+          const wallet = newWallets.get(id);
+          if (wallet && balance) {
+            newWallets.set(id, {
+              ...wallet,
+              balance,
+            });
+          }
+        });
 
-      updateState({ wallets: newWallets });
-      saveSession(newWallets, state.primaryWalletId, state.totalBalanceUSD);
+        saveSession(newWallets, prev.primaryWalletId, prev.totalBalanceUSD);
+
+        return {
+          ...prev,
+          wallets: newWallets,
+        };
+      });
     } catch (error) {
       console.error('Failed to refresh balances:', error);
     }
-  }, [state.wallets, state.primaryWalletId, state.totalBalanceUSD, saveSession]);
+  }, [saveSession]);
 
   const refreshWallet = useCallback(async (walletId: string): Promise<void> => {
-    const wallet = state.wallets.get(walletId);
+    let wallet: WalletInfo | undefined;
+    
+    setState(prev => {
+      wallet = prev.wallets.get(walletId);
+      return prev;
+    });
+
     if (!wallet) {
       throw new Error('Wallet not found');
     }
@@ -345,19 +398,28 @@ export function WalletNexusProvider({ children }: { children: ReactNode }) {
       const connector = getConnector(wallet.type);
       const balance = await connector.getBalance(walletId);
 
-      const newWallets = new Map(state.wallets);
-      newWallets.set(walletId, {
-        ...wallet,
-        balance,
-      });
+      setState(prev => {
+        const newWallets = new Map(prev.wallets);
+        const currentWallet = newWallets.get(walletId);
+        if (currentWallet) {
+          newWallets.set(walletId, {
+            ...currentWallet,
+            balance,
+          });
+        }
 
-      updateState({ wallets: newWallets });
-      saveSession(newWallets, state.primaryWalletId, state.totalBalanceUSD);
+        saveSession(newWallets, prev.primaryWalletId, prev.totalBalanceUSD);
+
+        return {
+          ...prev,
+          wallets: newWallets,
+        };
+      });
     } catch (error) {
       console.error(`Failed to refresh wallet ${walletId}:`, error);
       throw error;
     }
-  }, [state.wallets, state.primaryWalletId, state.totalBalanceUSD, saveSession]);
+  }, [saveSession]);
 
   const getWallet = useCallback((walletId: string): WalletInfo | undefined => {
     return state.wallets.get(walletId);
@@ -381,17 +443,29 @@ export function WalletNexusProvider({ children }: { children: ReactNode }) {
   }, [state.wallets]);
 
   const signMessage = useCallback(async (walletId: string, message: string): Promise<string> => {
-    const wallet = state.wallets.get(walletId);
+    let wallet: WalletInfo | undefined;
+    
+    setState(prev => {
+      wallet = prev.wallets.get(walletId);
+      return prev;
+    });
+
     if (!wallet) {
       throw new Error('Wallet not found');
     }
 
     const connector = getConnector(wallet.type);
     return await connector.signMessage(walletId, message);
-  }, [state.wallets]);
+  }, []);
 
   const sendTransaction = useCallback(async (walletId: string, tx: TransactionRequest): Promise<string> => {
-    const wallet = state.wallets.get(walletId);
+    let wallet: WalletInfo | undefined;
+    
+    setState(prev => {
+      wallet = prev.wallets.get(walletId);
+      return prev;
+    });
+
     if (!wallet) {
       throw new Error('Wallet not found');
     }
@@ -404,7 +478,7 @@ export function WalletNexusProvider({ children }: { children: ReactNode }) {
     }, 3000);
 
     return txHash;
-  }, [state.wallets, refreshWallet]);
+  }, [refreshWallet]);
 
   useEffect(() => {
     loadSession();
