@@ -7,7 +7,7 @@ import crypto from "crypto";
 export const SECURITY_CONFIG = {
   // Rate limiting tiers
   RATE_LIMITS: {
-    STRICT: { windowMs: 15 * 60 * 1000, max: 10 }, // Auth endpoints
+    STRICT: { windowMs: 15 * 60 * 1000, max: 50 }, // Auth endpoints - Increased for login flexibility
     MODERATE: { windowMs: 15 * 60 * 1000, max: 100 }, // General API
     RELAXED: { windowMs: 15 * 60 * 1000, max: 500 }, // Public data
     TRADING: { windowMs: 1 * 60 * 1000, max: 60 }, // Trading endpoints - 60 per minute
