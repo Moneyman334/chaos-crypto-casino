@@ -5378,6 +5378,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Platform Address Management
+  app.get("/api/security/platform-addresses", async (req, res) => {
+    try {
+      const category = req.query.category as string | undefined;
+      const addresses = await storage.getPlatformAddresses(category);
+      res.json(addresses);
+    } catch (error) {
+      console.error("Failed to fetch platform addresses:", error);
+      res.status(500).json({ error: "Failed to fetch platform addresses" });
+    }
+  });
+  
+  app.post("/api/security/platform-addresses", async (req, res) => {
+    try {
+      const schema = z.object({
+        address: z.string(),
+        label: z.string(),
+        category: z.string(),
+        description: z.string().optional(),
+        addedBy: z.string().optional(),
+      });
+      
+      const data = schema.parse(req.body);
+      const platformAddress = await storage.addPlatformAddress(data);
+      
+      res.status(201).json({ 
+        success: true, 
+        platformAddress,
+        message: `Platform address ${data.label} added successfully`
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid platform address data", 
+          details: error.errors 
+        });
+      }
+      console.error("Failed to add platform address:", error);
+      res.status(500).json({ error: "Failed to add platform address" });
+    }
+  });
+  
   // ===== TRADING PLATFORM ROUTES =====
   
   // In-memory storage for trading orders

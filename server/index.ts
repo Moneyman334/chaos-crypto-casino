@@ -117,6 +117,14 @@ app.use((req, res, next) => {
     process.exit(1);
   }
 
+  // Seed platform addresses
+  const { seedPlatformAddresses } = await import("./platform-addresses-seed");
+  try {
+    await seedPlatformAddresses(storage);
+  } catch (error) {
+    console.error("Failed to seed platform addresses:", error);
+  }
+
   const server = await registerRoutes(app);
   
   // Start auto-compound engine
