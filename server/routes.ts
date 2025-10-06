@@ -183,6 +183,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         password: hashedPassword
       });
 
+      // Create session for the newly registered user (auto-login)
+      req.session.userId = user.id;
+
       // Return user without password
       const { password: _, ...userWithoutPassword } = user;
       res.status(201).json({
@@ -226,6 +229,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "Invalid credentials" });
       }
 
+      // Create session for the user
+      req.session.userId = user.id;
+      
       // Return user without password
       const { password: _, ...userWithoutPassword } = user;
       res.json({
