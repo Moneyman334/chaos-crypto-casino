@@ -37,8 +37,8 @@ The backend is an Express.js and TypeScript REST API with modular routes. It use
 - **Codex Wallet Nexus**: A multi-wallet management system supporting unlimited simultaneous wallet connections (MetaMask, Coinbase Wallet), a unified interface, primary wallet designation, session persistence, balance aggregation, and multi-chain support (EVM chains).
 - **CODEX ECOSYSTEM**: A complete platform token economy including a platform token (CDX), four NFT collections, four staking pools with NFT holder multipliers, eight AI-powered dynamic Living Achievements, and a Relics System with 9 soulbound artifacts providing passive ecosystem boosts. It includes 25+ API endpoints and 5 frontend pages.
 - **Multi-Chain Wallet Integration**: Primarily MetaMask for connections, account data, balances, and transaction signing.
-- **Advanced Wallet Security Protection**: Features a Transaction Validation Engine, Velocity Limits, Emergency Lockdown Mode, Fraud Detection, Blacklist/Whitelist, Spending Limits, and AI Sentinel Monitoring.
-- **Smart Contract Generators**: Production-ready ERC-20 token and ERC-721/721A/1155 NFT creators with IPFS integration.
+- **Advanced Wallet Security Protection**: Database-persisted security system with Transaction Validation Engine, Velocity Limits, Emergency Lockdown Mode, Fraud Detection, Persistent Blacklist/Whitelist (PostgreSQL-backed with case-insensitive address normalization), Spending Limits, and AI Sentinel Monitoring. Security alerts are automatically pruned (max 100 per wallet). Trusted/blocked addresses persist across server restarts.
+- **Smart Contract Generators**: Production-ready ERC-20 token and ERC-721/721A/1155 NFT creators with IPFS placeholders. Note: Full IPFS integration requires external service setup (e.g., Pinata, NFT.Storage, or Infura IPFS) - currently uses placeholder URIs `ipfs://YOUR_CID/`.
 - **Multi-Cryptocurrency Support**: Deposits for BTC, ETH, SOL, LTC, DOGE, and universal payments for 300+ cryptocurrencies via NOWPayments.
 - **Marketplace System**: Complete peer-to-peer marketplace for trading NFTs, Tokens, and Products with REST API, database support, and secure transaction handling.
 
