@@ -6678,6 +6678,281 @@ contract ${defaultSymbol} is ERC721, Ownable {
       res.status(500).json({ error: "Failed to purchase listing" });
     }
   });
+
+  // ============================================================================
+  // YIELD FARMING ROUTES
+  // ============================================================================
+
+  // Get all farm pools
+  app.get("/api/yield-farming/pools", async (req, res) => {
+    try {
+      const pools = await storage.getActiveYieldFarmPools();
+      
+      // Calculate updated rewards for all positions
+      const updatedPools = await Promise.all(pools.map(async (pool) => {
+        const positions = await storage.getPoolPositions(pool.id);
+        const totalDeposits = positions.reduce((sum, pos) => sum + parseFloat(pos.amount), 0);
+        
+        return {
+          ...pool,
+          tvl: totalDeposits.toString()
+        };
+      }));
+      
+      res.json(updatedPools);
+    } catch (error) {
+      console.error("Failed to fetch farm pools:", error);
+      res.status(500).json({ error: "Failed to fetch farm pools" });
+    }
+  });
+
+  // Get user positions
+  app.get("/api/yield-farming/positions/:user", async (req, res) => {
+    try {
+      const positions = await storage.getUserYieldFarmPositions(req.params.user);
+      
+      // Update rewards for each position
+      const now = new Date();
+      const updatedPositions = await Promise.all(positions.map(async (position) => {
+        const pool = await storage.getYieldFarmPool(position.poolId);
+        if (!pool) return position;
+        
+        // Calculate time-based rewards
+        const lastUpdate = position.lastRewardUpdate || position.depositDate;
+        const timeDiff = (now.getTime() - new Date(lastUpdate).getTime()) / 1000; // seconds
+        const yearSeconds = 365 * 24 * 60 * 60;
+        
+        // Calculate new rewards
+        const apy = parseFloat(pool.apy);
+        const amount = parseFloat(position.amount);
+        const newRewards = (amount * apy / 100) * (timeDiff / yearSeconds);
+        const totalRewards = parseFloat(position.rewards) + newRewards;
+        
+        // Update position with new rewards
+        await storage.updateYieldFarmPosition(position.id, {
+          rewards: totalRewards.toString(),
+          lastRewardUpdate: now
+        });
+        
+        return {
+          ...position,
+          rewards: totalRewards.toString()
+        };
+      }));
+      
+      res.json(updatedPositions);
+    } catch (error) {
+      console.error("Failed to fetch user positions:", error);
+      res.status(500).json({ error: "Failed to fetch user positions" });
+    }
+  });
+
+  // Deposit to farm
+  app.post("/api/yield-farming/deposit", async (req, res) => {
+    try {
+      const depositSchema = z.object({
+        poolId: z.string(),
+        user: z.string(),
+        amount: z.string(),
+      });
+
+      const data = depositSchema.parse(req.body);
+      
+      // Get pool to validate
+      const pool = await storage.getYieldFarmPool(data.poolId);
+      if (!pool || pool.status !== 'active') {
+        return res.status(400).json({ error: "Pool not available" });
+      }
+      
+      // Create position
+      const position = await storage.createYieldFarmPosition({
+        poolId: data.poolId,
+        user: data.user,
+        amount: data.amount,
+        rewards: "0",
+        autoCompound: "false",
+        harvestCount: "0",
+        totalRewardsEarned: "0"
+      });
+      
+      // Update pool TVL
+      const positions = await storage.getPoolPositions(data.poolId);
+      const totalTvl = positions.reduce((sum, pos) => sum + parseFloat(pos.amount), 0);
+      await storage.updateYieldFarmPool(data.poolId, {
+        tvl: totalTvl.toString()
+      });
+      
+      res.status(201).json(position);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid deposit data", 
+          details: error.errors 
+        });
+      }
+      console.error("Failed to deposit:", error);
+      res.status(500).json({ error: "Failed to deposit" });
+    }
+  });
+
+  // Withdraw from farm
+  app.post("/api/yield-farming/withdraw", async (req, res) => {
+    try {
+      const withdrawSchema = z.object({
+        positionId: z.string(),
+        user: z.string(),
+        amount: z.string(),
+      });
+
+      const data = withdrawSchema.parse(req.body);
+      
+      // Get position
+      const position = await storage.getYieldFarmPosition(data.positionId);
+      if (!position) {
+        return res.status(404).json({ error: "Position not found" });
+      }
+      
+      // Verify user
+      if (position.user.toLowerCase() !== data.user.toLowerCase()) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+      
+      const withdrawAmount = parseFloat(data.amount);
+      const currentAmount = parseFloat(position.amount);
+      
+      if (withdrawAmount > currentAmount) {
+        return res.status(400).json({ error: "Insufficient balance" });
+      }
+      
+      // If withdrawing everything, delete position
+      if (withdrawAmount >= currentAmount) {
+        await storage.deleteYieldFarmPosition(data.positionId);
+      } else {
+        // Update position amount
+        await storage.updateYieldFarmPosition(data.positionId, {
+          amount: (currentAmount - withdrawAmount).toString()
+        });
+      }
+      
+      // Update pool TVL
+      const pool = await storage.getYieldFarmPool(position.poolId);
+      if (pool) {
+        const positions = await storage.getPoolPositions(position.poolId);
+        const totalTvl = positions.reduce((sum, pos) => sum + parseFloat(pos.amount), 0);
+        await storage.updateYieldFarmPool(position.poolId, {
+          tvl: totalTvl.toString()
+        });
+      }
+      
+      res.json({ 
+        success: true, 
+        withdrawnAmount: withdrawAmount,
+        rewards: position.rewards 
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid withdrawal data", 
+          details: error.errors 
+        });
+      }
+      console.error("Failed to withdraw:", error);
+      res.status(500).json({ error: "Failed to withdraw" });
+    }
+  });
+
+  // Harvest rewards
+  app.post("/api/yield-farming/harvest", async (req, res) => {
+    try {
+      const harvestSchema = z.object({
+        positionId: z.string(),
+        user: z.string(),
+      });
+
+      const data = harvestSchema.parse(req.body);
+      
+      // Get position
+      const position = await storage.getYieldFarmPosition(data.positionId);
+      if (!position) {
+        return res.status(404).json({ error: "Position not found" });
+      }
+      
+      // Verify user
+      if (position.user.toLowerCase() !== data.user.toLowerCase()) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+      
+      const rewards = parseFloat(position.rewards);
+      if (rewards <= 0) {
+        return res.status(400).json({ error: "No rewards to harvest" });
+      }
+      
+      // Update position
+      const newHarvestCount = parseInt(position.harvestCount) + 1;
+      const newTotalEarned = parseFloat(position.totalRewardsEarned) + rewards;
+      
+      await storage.updateYieldFarmPosition(data.positionId, {
+        rewards: "0",
+        harvestCount: newHarvestCount.toString(),
+        totalRewardsEarned: newTotalEarned.toString()
+      });
+      
+      res.json({ 
+        success: true, 
+        harvested: rewards,
+        totalEarned: newTotalEarned
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid harvest data", 
+          details: error.errors 
+        });
+      }
+      console.error("Failed to harvest:", error);
+      res.status(500).json({ error: "Failed to harvest" });
+    }
+  });
+
+  // Toggle auto-compound
+  app.post("/api/yield-farming/auto-compound", async (req, res) => {
+    try {
+      const autoCompoundSchema = z.object({
+        positionId: z.string(),
+        user: z.string(),
+        enabled: z.boolean(),
+      });
+
+      const data = autoCompoundSchema.parse(req.body);
+      
+      // Get position
+      const position = await storage.getYieldFarmPosition(data.positionId);
+      if (!position) {
+        return res.status(404).json({ error: "Position not found" });
+      }
+      
+      // Verify user
+      if (position.user.toLowerCase() !== data.user.toLowerCase()) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+      
+      // Update auto-compound setting
+      await storage.updateYieldFarmPosition(data.positionId, {
+        autoCompound: data.enabled.toString()
+      });
+      
+      res.json({ success: true, autoCompound: data.enabled });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid auto-compound data", 
+          details: error.errors 
+        });
+      }
+      console.error("Failed to update auto-compound:", error);
+      res.status(500).json({ error: "Failed to update auto-compound" });
+    }
+  });
   
   const httpServer = createServer(app);
   return httpServer;
