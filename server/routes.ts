@@ -4952,12 +4952,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // ===== SECURITY / WALLET ROUTES =====
   
-  // In-memory storage for security policies (temporary until database is fixed)
+  // In-memory storage for security policies and transaction limits (non-persistent features)
   const securityPolicies = new Map<string, any>();
-  const trustedAddresses = new Map<string, Set<string>>();
-  const blockedAddresses = new Map<string, Set<string>>();
   const transactionLimits = new Map<string, any>();
-  const securityAlerts = new Map<string, any[]>();
   
   // Get wallet security policy
   app.get("/api/security/policy/:walletAddress", async (req, res) => {
@@ -5033,29 +5030,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       const { address, label } = schema.parse(req.body);
-      const key = walletAddress.toLowerCase();
       
-      if (!trustedAddresses.has(key)) {
-        trustedAddresses.set(key, new Set());
-      }
+      // Add to database
+      await storage.addTrustedAddress({
+        walletAddress,
+        trustedAddress: address,
+        label: label || null
+      });
       
-      trustedAddresses.get(key)!.add(address.toLowerCase());
-      
-      // Create alert
-      const alert = {
-        id: Date.now().toString(),
+      // Create security alert
+      await storage.createSecurityAlert({
+        walletAddress,
         type: 'whitelist_add',
         severity: 'low',
         title: 'Address Whitelisted',
         description: `${address.slice(0, 10)}... added to trusted addresses`,
         metadata: { address, label },
-        isRead: false,
-        createdAt: new Date(),
-      };
-      
-      const alerts = securityAlerts.get(key) || [];
-      alerts.unshift(alert);
-      securityAlerts.set(key, alerts.slice(0, 50));
+        isRead: "false"
+      });
       
       res.json({ success: true, address, label });
     } catch (error) {
@@ -5068,7 +5060,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/security/whitelist/:walletAddress", async (req, res) => {
     try {
       const { walletAddress } = req.params;
-      const addresses = Array.from(trustedAddresses.get(walletAddress.toLowerCase()) || []);
+      const trustedAddressList = await storage.getTrustedAddresses(walletAddress);
+      const addresses = trustedAddressList.map(ta => ta.trustedAddress);
       res.json(addresses);
     } catch (error) {
       console.error("Failed to fetch trusted addresses:", error);
@@ -5086,29 +5079,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       const { address, reason } = schema.parse(req.body);
-      const key = walletAddress.toLowerCase();
       
-      if (!blockedAddresses.has(key)) {
-        blockedAddresses.set(key, new Set());
-      }
-      
-      blockedAddresses.get(key)!.add(address.toLowerCase());
+      // Add to database
+      await storage.addBlockedAddress({
+        walletAddress,
+        blockedAddress: address,
+        reason: reason || null
+      });
       
       // Create high severity alert
-      const alert = {
-        id: Date.now().toString(),
+      await storage.createSecurityAlert({
+        walletAddress,
         type: 'blacklist_add',
         severity: 'high',
         title: 'Address Blocked',
         description: `${address.slice(0, 10)}... has been blocked`,
         metadata: { address, reason },
-        isRead: false,
-        createdAt: new Date(),
-      };
-      
-      const alerts = securityAlerts.get(key) || [];
-      alerts.unshift(alert);
-      securityAlerts.set(key, alerts.slice(0, 50));
+        isRead: "false"
+      });
       
       res.json({ success: true, address, reason });
     } catch (error) {
@@ -5182,8 +5170,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // BLACKLIST CHECK
-      if (blockedAddresses.get(fromKey)?.has(toKey)) {
+      // BLACKLIST CHECK - Use database-backed storage
+      const blockedAddressList = await storage.getBlockedAddresses(from);
+      const isBlocked = blockedAddressList.some(ba => ba.blockedAddress.toLowerCase() === toKey);
+      
+      if (isBlocked) {
         blocked = true;
         alerts.push({
           id: (Date.now() + 2).toString(),
@@ -5221,8 +5212,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         warnings.push(`High-value transaction requires approval (>${requireApproval} ETH)`);
       }
       
-      // WHITELIST CHECK
-      const isTrusted = trustedAddresses.get(fromKey)?.has(toKey);
+      // WHITELIST CHECK - Use database-backed storage
+      const trustedAddressList = await storage.getTrustedAddresses(from);
+      const isTrusted = trustedAddressList.some(ta => ta.trustedAddress.toLowerCase() === toKey);
+      
       if (!isTrusted && !blocked) {
         warnings.push(`Recipient address is not in your trusted list`);
       }

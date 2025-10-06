@@ -150,7 +150,16 @@ import {
   type InsertCodexRelicEffect,
   marketplaceListings,
   type MarketplaceListing,
-  type InsertMarketplaceListing
+  type InsertMarketplaceListing,
+  trustedAddresses,
+  blockedAddresses,
+  securityAlerts,
+  type TrustedAddress,
+  type InsertTrustedAddress,
+  type BlockedAddress,
+  type InsertBlockedAddress,
+  type SecurityAlert,
+  type InsertSecurityAlert
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/neon-http";
@@ -178,6 +187,16 @@ export interface IStorage {
   getWalletByAddress(address: string): Promise<Wallet | undefined>;
   createWallet(wallet: InsertWallet): Promise<Wallet>;
   updateWallet(address: string, updates: Partial<InsertWallet>): Promise<Wallet | undefined>;
+  
+  // Wallet Security methods
+  getTrustedAddresses(walletAddress: string): Promise<TrustedAddress[]>;
+  addTrustedAddress(trustedAddress: InsertTrustedAddress): Promise<TrustedAddress>;
+  removeTrustedAddress(walletAddress: string, trustedAddress: string): Promise<boolean>;
+  getBlockedAddresses(walletAddress: string): Promise<BlockedAddress[]>;
+  addBlockedAddress(blockedAddress: InsertBlockedAddress): Promise<BlockedAddress>;
+  removeBlockedAddress(walletAddress: string, blockedAddress: string): Promise<boolean>;
+  getSecurityAlerts(walletAddress: string): Promise<SecurityAlert[]>;
+  createSecurityAlert(alert: InsertSecurityAlert): Promise<SecurityAlert>;
   
   // Transaction methods
   getTransactionsByAddress(address: string): Promise<Transaction[]>;
@@ -525,6 +544,9 @@ export class MemStorage implements IStorage {
   private contractCalls: Map<string, ContractCall>;
   private contractEventSubs: Map<string, ContractEventSub>;
   private contractEvents: Map<string, ContractEvent>;
+  private trustedAddresses: Map<string, TrustedAddress>;
+  private blockedAddresses: Map<string, BlockedAddress>;
+  private securityAlerts: Map<string, SecurityAlert>;
 
   constructor() {
     this.users = new Map();
@@ -538,6 +560,9 @@ export class MemStorage implements IStorage {
     this.contractCalls = new Map();
     this.contractEventSubs = new Map();
     this.contractEvents = new Map();
+    this.trustedAddresses = new Map();
+    this.blockedAddresses = new Map();
+    this.securityAlerts = new Map();
   }
 
   // Health check for MemStorage (always passes)
@@ -597,6 +622,100 @@ export class MemStorage implements IStorage {
     };
     this.wallets.set(wallet.id, updatedWallet);
     return updatedWallet;
+  }
+
+  // Wallet Security methods
+  async getTrustedAddresses(walletAddress: string): Promise<TrustedAddress[]> {
+    const normalizedAddress = normalizeAddress(walletAddress);
+    return Array.from(this.trustedAddresses.values())
+      .filter(ta => normalizeAddress(ta.walletAddress) === normalizedAddress)
+      .sort((a, b) => new Date(b.addedAt!).getTime() - new Date(a.addedAt!).getTime());
+  }
+
+  async addTrustedAddress(insertTrustedAddress: InsertTrustedAddress): Promise<TrustedAddress> {
+    const id = randomUUID();
+    const trustedAddress: TrustedAddress = {
+      id,
+      walletAddress: normalizeAddress(insertTrustedAddress.walletAddress),
+      trustedAddress: normalizeAddress(insertTrustedAddress.trustedAddress),
+      label: insertTrustedAddress.label || null,
+      addedAt: new Date()
+    };
+    this.trustedAddresses.set(id, trustedAddress);
+    return trustedAddress;
+  }
+
+  async removeTrustedAddress(walletAddress: string, trustedAddress: string): Promise<boolean> {
+    const normalizedWallet = normalizeAddress(walletAddress);
+    const normalizedTrusted = normalizeAddress(trustedAddress);
+    const toRemove = Array.from(this.trustedAddresses.entries()).find(([_, ta]) => 
+      normalizeAddress(ta.walletAddress) === normalizedWallet &&
+      normalizeAddress(ta.trustedAddress) === normalizedTrusted
+    );
+    if (toRemove) {
+      this.trustedAddresses.delete(toRemove[0]);
+      return true;
+    }
+    return false;
+  }
+
+  async getBlockedAddresses(walletAddress: string): Promise<BlockedAddress[]> {
+    const normalizedAddress = normalizeAddress(walletAddress);
+    return Array.from(this.blockedAddresses.values())
+      .filter(ba => normalizeAddress(ba.walletAddress) === normalizedAddress)
+      .sort((a, b) => new Date(b.blockedAt!).getTime() - new Date(a.blockedAt!).getTime());
+  }
+
+  async addBlockedAddress(insertBlockedAddress: InsertBlockedAddress): Promise<BlockedAddress> {
+    const id = randomUUID();
+    const blockedAddress: BlockedAddress = {
+      id,
+      walletAddress: normalizeAddress(insertBlockedAddress.walletAddress),
+      blockedAddress: normalizeAddress(insertBlockedAddress.blockedAddress),
+      reason: insertBlockedAddress.reason || null,
+      blockedAt: new Date()
+    };
+    this.blockedAddresses.set(id, blockedAddress);
+    return blockedAddress;
+  }
+
+  async removeBlockedAddress(walletAddress: string, blockedAddress: string): Promise<boolean> {
+    const normalizedWallet = normalizeAddress(walletAddress);
+    const normalizedBlocked = normalizeAddress(blockedAddress);
+    const toRemove = Array.from(this.blockedAddresses.entries()).find(([_, ba]) => 
+      normalizeAddress(ba.walletAddress) === normalizedWallet &&
+      normalizeAddress(ba.blockedAddress) === normalizedBlocked
+    );
+    if (toRemove) {
+      this.blockedAddresses.delete(toRemove[0]);
+      return true;
+    }
+    return false;
+  }
+
+  async getSecurityAlerts(walletAddress: string): Promise<SecurityAlert[]> {
+    const normalizedAddress = normalizeAddress(walletAddress);
+    return Array.from(this.securityAlerts.values())
+      .filter(alert => normalizeAddress(alert.walletAddress) === normalizedAddress)
+      .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime())
+      .slice(0, 100);
+  }
+
+  async createSecurityAlert(insertAlert: InsertSecurityAlert): Promise<SecurityAlert> {
+    const id = randomUUID();
+    const alert: SecurityAlert = {
+      id,
+      walletAddress: normalizeAddress(insertAlert.walletAddress),
+      type: insertAlert.type,
+      severity: insertAlert.severity || "medium",
+      title: insertAlert.title,
+      description: insertAlert.description || null,
+      metadata: insertAlert.metadata || null,
+      isRead: "false",
+      createdAt: new Date()
+    };
+    this.securityAlerts.set(id, alert);
+    return alert;
   }
 
   // Transaction methods
@@ -983,6 +1102,104 @@ export class PostgreSQLStorage implements IStorage {
       .set(updateData)
       .where(sql`lower(${wallets.address}) = ${normalizedAddress}`)
       .returning();
+    return result[0];
+  }
+
+  // Wallet Security methods
+  async getTrustedAddresses(walletAddress: string): Promise<TrustedAddress[]> {
+    const normalizedAddress = normalizeAddress(walletAddress);
+    const result = await db.select().from(trustedAddresses)
+      .where(sql`lower(${trustedAddresses.walletAddress}) = ${normalizedAddress}`)
+      .orderBy(desc(trustedAddresses.addedAt));
+    return result;
+  }
+
+  async addTrustedAddress(insertTrustedAddress: InsertTrustedAddress): Promise<TrustedAddress> {
+    const data = {
+      walletAddress: normalizeAddress(insertTrustedAddress.walletAddress),
+      trustedAddress: normalizeAddress(insertTrustedAddress.trustedAddress),
+      label: insertTrustedAddress.label || null
+    };
+    const result = await db.insert(trustedAddresses).values(data).returning();
+    return result[0];
+  }
+
+  async removeTrustedAddress(walletAddress: string, trustedAddress: string): Promise<boolean> {
+    const normalizedWallet = normalizeAddress(walletAddress);
+    const normalizedTrusted = normalizeAddress(trustedAddress);
+    const result = await db.delete(trustedAddresses)
+      .where(and(
+        sql`lower(${trustedAddresses.walletAddress}) = ${normalizedWallet}`,
+        sql`lower(${trustedAddresses.trustedAddress}) = ${normalizedTrusted}`
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  async getBlockedAddresses(walletAddress: string): Promise<BlockedAddress[]> {
+    const normalizedAddress = normalizeAddress(walletAddress);
+    const result = await db.select().from(blockedAddresses)
+      .where(sql`lower(${blockedAddresses.walletAddress}) = ${normalizedAddress}`)
+      .orderBy(desc(blockedAddresses.blockedAt));
+    return result;
+  }
+
+  async addBlockedAddress(insertBlockedAddress: InsertBlockedAddress): Promise<BlockedAddress> {
+    const data = {
+      walletAddress: normalizeAddress(insertBlockedAddress.walletAddress),
+      blockedAddress: normalizeAddress(insertBlockedAddress.blockedAddress),
+      reason: insertBlockedAddress.reason || null
+    };
+    const result = await db.insert(blockedAddresses).values(data).returning();
+    return result[0];
+  }
+
+  async removeBlockedAddress(walletAddress: string, blockedAddress: string): Promise<boolean> {
+    const normalizedWallet = normalizeAddress(walletAddress);
+    const normalizedBlocked = normalizeAddress(blockedAddress);
+    const result = await db.delete(blockedAddresses)
+      .where(and(
+        sql`lower(${blockedAddresses.walletAddress}) = ${normalizedWallet}`,
+        sql`lower(${blockedAddresses.blockedAddress}) = ${normalizedBlocked}`
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  async getSecurityAlerts(walletAddress: string): Promise<SecurityAlert[]> {
+    const normalizedAddress = normalizeAddress(walletAddress);
+    const result = await db.select().from(securityAlerts)
+      .where(sql`lower(${securityAlerts.walletAddress}) = ${normalizedAddress}`)
+      .orderBy(desc(securityAlerts.createdAt))
+      .limit(100);
+    return result;
+  }
+
+  async createSecurityAlert(insertAlert: InsertSecurityAlert): Promise<SecurityAlert> {
+    // First, check if we need to prune old alerts (keep last 100 per wallet)
+    const normalizedAddress = normalizeAddress(insertAlert.walletAddress);
+    const existingAlerts = await db.select().from(securityAlerts)
+      .where(sql`lower(${securityAlerts.walletAddress}) = ${normalizedAddress}`)
+      .orderBy(desc(securityAlerts.createdAt));
+    
+    // Delete oldest alerts if we have more than 100
+    if (existingAlerts.length >= 100) {
+      const alertsToDelete = existingAlerts.slice(99); // Keep newest 99, delete the rest
+      for (const alert of alertsToDelete) {
+        await db.delete(securityAlerts).where(eq(securityAlerts.id, alert.id));
+      }
+    }
+    
+    const data = {
+      walletAddress: normalizedAddress,
+      type: insertAlert.type,
+      severity: insertAlert.severity || "medium",
+      title: insertAlert.title,
+      description: insertAlert.description || null,
+      metadata: insertAlert.metadata || null,
+      isRead: insertAlert.isRead || "false"
+    };
+    const result = await db.insert(securityAlerts).values(data).returning();
     return result[0];
   }
 
