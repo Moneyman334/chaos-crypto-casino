@@ -118,7 +118,10 @@ function Router() {
       <Route path="/orders" component={OrdersPage} />
       <Route path="/token-creator" component={TokenCreatorPage} />
       <Route path="/nft-creator" component={NFTCreatorPage} />
-      <Route path="/casino-token-ecosystem" component={CasinoTokenEcosystemPage} />
+      <Route
+        path="/casino-token-ecosystem"
+        component={CasinoTokenEcosystemPage}
+      />
       <Route path="/personal-collection" component={PersonalCollectionPage} />
       <Route path="/auto-deploy" component={AutoDeployPage} />
       <Route path="/trade" component={TradePage} />
@@ -214,13 +217,13 @@ function Router() {
 function AppContent() {
   const [showConnectionModal, setShowConnectionModal] = useState(false);
   const { connectWallet, disconnectWallet, chainId } = useWeb3();
-  
+
   // DEV MODE: Configurable auto-login (can be controlled via preferences)
   useDevAutoLogin();
-  
+
   // DEV MODE: Configurable auto-wallet connect (can be controlled via preferences)
   useDevWalletAutoConnect();
-  
+
   // Initialize wallet session management with activity tracking
   useWalletSession();
 
@@ -249,38 +252,38 @@ function AppContent() {
           <CosmicCursor />
           <Toaster />
           <LaunchBanner />
-          <Navigation 
+          <Navigation
             onConnect={handleConnect}
             onDisconnect={handleDisconnect}
           />
-          
+
           {/* Wallet Health Monitor & Network Status */}
           <div className="fixed top-20 right-4 z-40 hidden md:flex flex-col gap-2">
             <WalletHealthMonitor />
             <NetworkStatus />
           </div>
-          
+
           {/* Wallet Activity Indicator */}
           <WalletActivityIndicator />
-          
+
           <Router />
-          
+
           {/* Footer */}
           <Footer />
-        
-        {/* Enhanced Connection Modal */}
-        <EnhancedConnectionModal
-          isOpen={showConnectionModal}
-          onClose={() => setShowConnectionModal(false)}
-          onConnectMetaMask={handleConnectMetaMask}
-          selectedNetwork={chainId}
-        />
 
-        {/* Empire Oracle - Available on all pages */}
-        <EmpireOracle />
-        
-        {/* Onboarding Tour for new users */}
-        <OnboardingTour />
+          {/* Enhanced Connection Modal */}
+          <EnhancedConnectionModal
+            isOpen={showConnectionModal}
+            onClose={() => setShowConnectionModal(false)}
+            onConnectMetaMask={handleConnectMetaMask}
+            selectedNetwork={chainId}
+          />
+
+          {/* Empire Oracle - Available on all pages */}
+          <EmpireOracle />
+
+          {/* Onboarding Tour for new users */}
+          <OnboardingTour />
         </div>
       </TooltipProvider>
     </ErrorBoundary>
