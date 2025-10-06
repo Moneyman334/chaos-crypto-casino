@@ -6,9 +6,21 @@ import { Button } from "@/components/ui/button";
 import { useUserPreferences } from "@/hooks/use-user-preferences";
 import { useAnalytics, usePageTracking } from "@/hooks/use-analytics";
 import { useToast } from "@/hooks/use-toast";
-import { Settings as SettingsIcon, TrendingUp, Shield, Monitor, Star, Trash2 } from "lucide-react";
+import { Settings as SettingsIcon, TrendingUp, Shield, Monitor, Star, Trash2, Code } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+
+interface DBUserPreferences {
+  id: string;
+  userId: string;
+  autoLoginEnabled: string;
+  autoConnectEnabled: string;
+  lastWalletId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
 
 const tradingPairs = [
   'BTC-USD', 'ETH-USD', 'SOL-USD', 'MATIC-USD', 
@@ -22,6 +34,33 @@ export default function Settings() {
   const { toast } = useToast();
   
   const insights = getInsights();
+
+  // Fetch API-backed user preferences
+  const { data: dbPreferences } = useQuery<DBUserPreferences>({
+    queryKey: ['/api/preferences'],
+  });
+
+  // Mutation to update API-backed preferences
+  const updateDBPreferences = useMutation({
+    mutationFn: async (updates: Partial<DBUserPreferences>) => {
+      const response = await apiRequest('PATCH', '/api/preferences', updates);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/preferences'] });
+      toast({
+        title: "Preferences Updated",
+        description: "Your development preferences have been saved",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update preferences",
+        variant: "destructive",
+      });
+    },
+  });
 
   const handleResetPreferences = () => {
     resetPreferences();
@@ -285,6 +324,61 @@ export default function Settings() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Development Preferences (API-backed) */}
+          {import.meta.env.DEV && (
+            <Card className="bg-slate-900/50 border-green-500/20 backdrop-blur-sm" data-testid="card-dev-preferences">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Code className="h-5 w-5 text-green-400" />
+                  <CardTitle className="text-white">Development Preferences</CardTitle>
+                  <Badge variant="outline" className="bg-green-500/20 text-green-400 border-green-500/30">
+                    DEV
+                  </Badge>
+                </div>
+                <CardDescription>Configure auto-login and wallet auto-connect (dev only)</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-gray-200">Auto-Login (Owner)</Label>
+                    <p className="text-sm text-gray-400">Automatically login as owner in dev mode</p>
+                  </div>
+                  <Switch
+                    checked={dbPreferences?.autoLoginEnabled === 'true'}
+                    onCheckedChange={(checked) => {
+                      updateDBPreferences.mutate({ autoLoginEnabled: checked ? 'true' : 'false' });
+                      trackAction('toggle_auto_login', 'dev_preferences', { enabled: checked });
+                    }}
+                    data-testid="switch-auto-login"
+                  />
+                </div>
+
+                <Separator className="bg-green-500/20" />
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-gray-200">Auto-Connect Wallet</Label>
+                    <p className="text-sm text-gray-400">Automatically connect your wallet in dev mode</p>
+                  </div>
+                  <Switch
+                    checked={dbPreferences?.autoConnectEnabled === 'true'}
+                    onCheckedChange={(checked) => {
+                      updateDBPreferences.mutate({ autoConnectEnabled: checked ? 'true' : 'false' });
+                      trackAction('toggle_auto_wallet_connect', 'dev_preferences', { enabled: checked });
+                    }}
+                    data-testid="switch-auto-wallet-connect"
+                  />
+                </div>
+
+                <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                  <p className="text-xs text-green-400">
+                    ℹ️ Changes take effect on next page reload. These settings are stored in the database and persist across sessions.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Favorite Trading Pairs */}
           <Card className="bg-slate-900/50 border-purple-500/20 backdrop-blur-sm" data-testid="card-favorite-pairs">

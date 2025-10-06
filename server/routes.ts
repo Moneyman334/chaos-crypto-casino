@@ -69,6 +69,31 @@ const ethereumAddressSchema = z.string()
 const transactionHashSchema = z.string()
   .regex(/^0x[a-fA-F0-9]{64}$/, "Invalid transaction hash format");
 
+// Middleware to check if user is authenticated
+const requireAuth = async (req: any, res: any, next: any) => {
+  try {
+    // Get user ID from session only (not from headers - security critical)
+    const userId = req.session?.userId;
+    
+    if (!userId) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+
+    const user = await storage.getUser(userId);
+    
+    if (!user) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    // Attach user to request for future use
+    req.user = user;
+    next();
+  } catch (error) {
+    console.error("Auth middleware error:", error);
+    res.status(500).json({ error: "Authentication failed" });
+  }
+};
+
 // Middleware to check if user is an owner
 const requireOwner = async (req: any, res: any, next: any) => {
   try {
