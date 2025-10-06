@@ -24,7 +24,7 @@ export function useDevAutoLogin() {
         
         try {
           console.log('🔐 DEV MODE: Attempting auto-login as owner...');
-          const response = await apiRequest('POST', '/api/auth/dev-login-owner');
+          const response = await apiRequest('POST', '/api/auth/dev-login-owner', {});
           const data = await response.json();
           
           if (data.success) {
@@ -33,7 +33,7 @@ export function useDevAutoLogin() {
             await queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
           }
         } catch (error) {
-          console.log('ℹ️ Dev auto-login not available or disabled');
+          console.log('ℹ️ Dev auto-login not available or disabled', error);
         }
       }
     };
