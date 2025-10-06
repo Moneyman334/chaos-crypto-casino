@@ -4832,16 +4832,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let totalValue = 0;
       let activePositions = 0;
 
-      // Aggregate staking positions if method exists
+      // Aggregate staking positions from auto-compound pools
       try {
-        if (typeof storage.getUserStakingPositions === 'function') {
-          const stakingPositions = await storage.getUserStakingPositions(walletAddress);
-          for (const pos of stakingPositions) {
-            totalInvested += parseFloat(pos.amount);
+        const stakingPositions = await storage.getUserStakes(walletAddress);
+        for (const pos of stakingPositions) {
+          totalInvested += parseFloat(pos.amount);
+          if (pos.rewards) {
             totalValue += parseFloat(pos.amount) + parseFloat(pos.rewards);
             totalEarned += parseFloat(pos.rewards);
-            if (pos.status === 'active') activePositions++;
+          } else {
+            totalValue += parseFloat(pos.amount);
           }
+          if (pos.autoCompound === 'true') activePositions++;
         }
       } catch (e) {
         // Staking data may not be available
@@ -4850,11 +4852,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Aggregate from wallet balance if available
       try {
-        const wallets = await storage.getWalletsByAddress(walletAddress);
-        for (const wallet of wallets) {
-          if (wallet.balance) {
-            totalValue += parseFloat(wallet.balance);
-          }
+        const wallet = await storage.getWalletByAddress(walletAddress);
+        if (wallet && wallet.balance) {
+          totalValue += parseFloat(wallet.balance);
         }
       } catch (e) {
         // Wallet data may not be available
@@ -4915,10 +4915,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get recent orders
       try {
-        const orders = await storage.getOrders();
-        const userOrders = orders
-          .filter(o => o.customerWallet?.toLowerCase() === walletAddress.toLowerCase())
-          .slice(0, 3);
+        const orders = await storage.getOrdersByWallet(walletAddress);
+        const userOrders = orders.slice(0, 3);
         
         for (const order of userOrders) {
           activities.push({
@@ -7039,11 +7037,11 @@ contract ${defaultSymbol} is ERC721, Ownable {
   app.get("/api/auto-deploy/contracts/:walletAddress", async (req, res) => {
     try {
       const walletAddress = ethereumAddressSchema.parse(req.params.walletAddress);
-      const contracts = await storage.getContractsByTags(['auto-deployed']);
+      const allContracts = await storage.getContracts();
       
-      // Filter by wallet address in description
-      const userContracts = contracts.filter(c => 
-        c.description?.includes(walletAddress.toLowerCase())
+      // Filter by auto-deployed tag and wallet address in description
+      const userContracts = allContracts.filter(c => 
+        c.tags?.includes('auto-deployed') && c.description?.includes(walletAddress.toLowerCase())
       );
       
       res.json(userContracts);
