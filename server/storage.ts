@@ -200,6 +200,7 @@ export interface IStorage {
   
   // Wallet methods
   getWalletByAddress(address: string): Promise<Wallet | undefined>;
+  getWalletsByUserId(userId: string): Promise<Wallet[]>;
   createWallet(wallet: InsertWallet): Promise<Wallet>;
   updateWallet(address: string, updates: Partial<InsertWallet>): Promise<Wallet | undefined>;
   
@@ -660,6 +661,12 @@ export class MemStorage implements IStorage {
     };
     this.wallets.set(wallet.id, updatedWallet);
     return updatedWallet;
+  }
+
+  async getWalletsByUserId(userId: string): Promise<Wallet[]> {
+    return Array.from(this.wallets.values()).filter(
+      (wallet) => wallet.userId === userId
+    );
   }
 
   // Wallet Security methods
@@ -1173,6 +1180,12 @@ export class PostgreSQLStorage implements IStorage {
       .where(sql`lower(${wallets.address}) = ${normalizedAddress}`)
       .returning();
     return result[0];
+  }
+
+  async getWalletsByUserId(userId: string): Promise<Wallet[]> {
+    const result = await db.select().from(wallets)
+      .where(eq(wallets.userId, userId));
+    return result;
   }
 
   // Wallet Security methods

@@ -770,6 +770,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all wallets for the current user
+  app.get("/api/wallets", async (req, res) => {
+    try {
+      const userId = req.session?.userId;
+      
+      if (!userId) {
+        return res.json([]); // Return empty array if not authenticated
+      }
+
+      const wallets = await storage.getWalletsByUserId(userId);
+      res.json(wallets || []);
+    } catch (error) {
+      console.error("Failed to get wallets:", error);
+      res.status(500).json({ error: "Failed to get wallets" });
+    }
+  });
+
   // Get network information
   app.get("/api/networks", async (req, res) => {
     try {
