@@ -5255,10 +5255,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // WHITELIST CHECK - Use database-backed storage
+      // First check if this is a platform address (auto-trusted)
+      const isPlatform = await storage.isPlatformAddress(to);
       const trustedAddressList = await storage.getTrustedAddresses(from);
       const isTrusted = trustedAddressList.some(ta => ta.trustedAddress.toLowerCase() === toKey);
       
-      if (!isTrusted && !blocked) {
+      // Only warn if address is not trusted AND not a platform address
+      if (!isTrusted && !isPlatform && !blocked) {
         warnings.push(`Recipient address is not in your trusted list`);
       }
       
