@@ -11,6 +11,7 @@ interface TwitterCredentials {
 
 class SocialMediaScheduler {
   private isRunning: boolean = false;
+  private cronTasks: ReturnType<typeof cron.schedule>[] = [];
 
   async postToTwitter(credentials: TwitterCredentials, content: string, accountUsername: string): Promise<{ success: boolean; postUrl?: string; externalPostId?: string; error?: string }> {
     try {
@@ -196,18 +197,27 @@ class SocialMediaScheduler {
   start() {
     console.log('🎬 Starting Social Media Scheduler...');
     
-    cron.schedule('0 */3 * * *', async () => {
+    const hourlyTask = cron.schedule('0 */3 * * *', async () => {
       console.log('⏰ 3-hour cron job triggered');
       await this.processScheduledPosts();
     });
+    this.cronTasks.push(hourlyTask);
 
-    cron.schedule('*/5 * * * *', async () => {
+    const minuteTask = cron.schedule('*/5 * * * *', async () => {
       await this.processScheduledPosts();
     });
+    this.cronTasks.push(minuteTask);
 
     console.log('✅ Social Media Scheduler started successfully');
     console.log('📅 Will post every 3 hours at: 00:00, 03:00, 06:00, 09:00, 12:00, 15:00, 18:00, 21:00');
     console.log('🔍 Checking for due posts every 5 minutes');
+  }
+
+  stop() {
+    console.log('🛑 Stopping Social Media Scheduler...');
+    this.cronTasks.forEach(task => task.stop());
+    this.cronTasks = [];
+    console.log('✅ Social Media Scheduler stopped');
   }
 }
 
