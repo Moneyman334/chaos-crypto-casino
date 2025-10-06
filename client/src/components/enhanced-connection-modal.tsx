@@ -122,8 +122,28 @@ export default function EnhancedConnectionModal({
     setSelectedWallet('coinbase');
     
     try {
-      if (window.ethereum && (window.ethereum as any)?.isCoinbaseWallet) {
-        await window.ethereum.request({ method: 'eth_requestAccounts' });
+      if (!window.ethereum) {
+        window.open('https://www.coinbase.com/wallet', '_blank');
+        setConnectionError('Please install Coinbase Wallet extension');
+        return;
+      }
+
+      // Get Coinbase provider specifically (handles multiple wallet providers)
+      let coinbaseProvider = null;
+      
+      // Check if there are multiple wallet providers
+      if ((window.ethereum as any).providers?.length > 0) {
+        // Find Coinbase in the providers array
+        coinbaseProvider = (window.ethereum as any).providers.find(
+          (p: any) => p.isCoinbaseWallet
+        );
+      } else if ((window.ethereum as any).isCoinbaseWallet) {
+        // Single Coinbase wallet
+        coinbaseProvider = window.ethereum;
+      }
+
+      if (coinbaseProvider) {
+        await coinbaseProvider.request({ method: 'eth_requestAccounts' });
         onClose();
       } else {
         window.open('https://www.coinbase.com/wallet', '_blank');
