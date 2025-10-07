@@ -4533,6 +4533,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== FEE SERVICE ====================
+
+  // Get user's fee structure based on subscription tier
+  app.get("/api/fees/user/:walletAddress", async (req, res) => {
+    try {
+      const { walletAddress } = req.params;
+      const { feeService } = await import("./fee-service");
+      const fees = await feeService.getUserFees(walletAddress);
+      res.json(fees);
+    } catch (error) {
+      console.error("Failed to get user fees:", error);
+      res.status(500).json({ error: "Failed to get user fees" });
+    }
+  });
+
+  // Calculate fee breakdown for a transaction
+  app.post("/api/fees/calculate", async (req, res) => {
+    try {
+      const { walletAddress, amount, feeType } = req.body;
+      const { feeService } = await import("./fee-service");
+      const breakdown = await feeService.getFeeBreakdown(walletAddress, parseFloat(amount), feeType);
+      res.json(breakdown);
+    } catch (error) {
+      console.error("Failed to calculate fee:", error);
+      res.status(500).json({ error: "Failed to calculate fee" });
+    }
+  });
+
   // ==================== PRODUCT VARIANTS ====================
   
   // Get variants for product

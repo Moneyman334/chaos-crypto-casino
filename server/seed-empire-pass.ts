@@ -28,6 +28,9 @@ export async function seedEmpirePassPlans() {
         stakingRequired: '0',
         tradingFee: '0.5',
         paymentFee: '2.0',
+        marketplaceFee: '2.5',
+        nftLaunchpadFee: '7.5',
+        withdrawalFee: '0.1',
         maxDailyTrades: '10',
         features: {
           botAccess: false,
@@ -62,6 +65,9 @@ export async function seedEmpirePassPlans() {
         stakingRequired: '1000',
         tradingFee: '0.3',
         paymentFee: '1.5',
+        marketplaceFee: '2.0',
+        nftLaunchpadFee: '6.0',
+        withdrawalFee: '0.05',
         maxDailyTrades: '50',
         priceETH: '0.01',
         features: {
@@ -101,6 +107,9 @@ export async function seedEmpirePassPlans() {
         stakingRequired: '10000',
         tradingFee: '0.2',
         paymentFee: '1.0',
+        marketplaceFee: '1.5',
+        nftLaunchpadFee: '5.0',
+        withdrawalFee: '0',
         maxDailyTrades: 'unlimited',
         priceETH: '0.03',
         features: {
@@ -145,6 +154,9 @@ export async function seedEmpirePassPlans() {
         stakingRequired: '100000',
         tradingFee: '0.1',
         paymentFee: '0.5',
+        marketplaceFee: '1.0',
+        nftLaunchpadFee: '3.0',
+        withdrawalFee: '0',
         maxDailyTrades: 'unlimited',
         priceETH: '0.1',
         features: {
