@@ -7521,6 +7521,72 @@ contract ${defaultSymbol} is ERC721, Ownable {
     }
   });
 
+  // ==================== NFT LAUNCHPAD SERVICE ====================
+
+  // Calculate launchpad fees for a mint
+  app.post("/api/launchpad/fees/calculate", async (req, res) => {
+    try {
+      const { mintPrice, quantity } = req.body;
+      const { nftLaunchpadService } = await import("./nft-launchpad-service");
+      const fees = nftLaunchpadService.calculateMintFees(
+        parseFloat(mintPrice),
+        parseInt(quantity)
+      );
+      res.json(fees);
+    } catch (error) {
+      console.error("Failed to calculate launchpad fees:", error);
+      res.status(500).json({ error: "Failed to calculate fees" });
+    }
+  });
+
+  // Get project fee breakdown
+  app.post("/api/launchpad/project/fees", async (req, res) => {
+    try {
+      const { totalMints, mintPrice } = req.body;
+      const { nftLaunchpadService } = await import("./nft-launchpad-service");
+      const breakdown = nftLaunchpadService.getProjectFeeBreakdown(
+        parseInt(totalMints),
+        parseFloat(mintPrice)
+      );
+      res.json(breakdown);
+    } catch (error) {
+      console.error("Failed to get project breakdown:", error);
+      res.status(500).json({ error: "Failed to get project breakdown" });
+    }
+  });
+
+  // Estimate project revenue
+  app.post("/api/launchpad/estimate", async (req, res) => {
+    try {
+      const { totalSupply, mintPrice, estimatedSellThrough } = req.body;
+      const { nftLaunchpadService } = await import("./nft-launchpad-service");
+      const estimate = nftLaunchpadService.estimateProjectRevenue(
+        parseInt(totalSupply),
+        parseFloat(mintPrice),
+        parseFloat(estimatedSellThrough || '100')
+      );
+      res.json(estimate);
+    } catch (error) {
+      console.error("Failed to estimate revenue:", error);
+      res.status(500).json({ error: "Failed to estimate revenue" });
+    }
+  });
+
+  // Calculate optimal mint price
+  app.post("/api/launchpad/optimal-price", async (req, res) => {
+    try {
+      const { desiredEarningsPerNft } = req.body;
+      const { nftLaunchpadService } = await import("./nft-launchpad-service");
+      const pricing = nftLaunchpadService.calculateOptimalMintPrice(
+        parseFloat(desiredEarningsPerNft)
+      );
+      res.json(pricing);
+    } catch (error) {
+      console.error("Failed to calculate optimal price:", error);
+      res.status(500).json({ error: "Failed to calculate optimal price" });
+    }
+  });
+
   // ============================================================================
   // YIELD FARMING ROUTES
   // ============================================================================
