@@ -4605,6 +4605,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== REVENUE OPTIMIZATION ====================
+
+  // Get total revenue for period
+  app.post("/api/revenue/total", async (req, res) => {
+    try {
+      const { startDate, endDate } = req.body;
+      const { revenueService } = await import("./revenue-service");
+      const revenue = await revenueService.calculateTotalRevenue(
+        new Date(startDate),
+        new Date(endDate)
+      );
+      res.json(revenue);
+    } catch (error) {
+      console.error("Failed to calculate revenue:", error);
+      res.status(500).json({ error: "Failed to calculate revenue" });
+    }
+  });
+
+  // Get revenue growth
+  app.post("/api/revenue/growth", async (req, res) => {
+    try {
+      const { startDate, endDate } = req.body;
+      const { revenueService } = await import("./revenue-service");
+      const growth = await revenueService.calculateRevenueGrowth(
+        new Date(startDate),
+        new Date(endDate)
+      );
+      res.json(growth);
+    } catch (error) {
+      console.error("Failed to calculate growth:", error);
+      res.status(500).json({ error: "Failed to calculate growth" });
+    }
+  });
+
+  // Get revenue projections
+  app.get("/api/revenue/projections", async (req, res) => {
+    try {
+      const { revenueService } = await import("./revenue-service");
+      const projections = await revenueService.getRevenueProjections();
+      res.json(projections);
+    } catch (error) {
+      console.error("Failed to get projections:", error);
+      res.status(500).json({ error: "Failed to get projections" });
+    }
+  });
+
+  // Get top revenue streams
+  app.post("/api/revenue/top-streams", async (req, res) => {
+    try {
+      const { startDate, endDate } = req.body;
+      const { revenueService } = await import("./revenue-service");
+      const streams = await revenueService.getTopRevenueStreams(
+        new Date(startDate),
+        new Date(endDate)
+      );
+      res.json(streams);
+    } catch (error) {
+      console.error("Failed to get top streams:", error);
+      res.status(500).json({ error: "Failed to get top streams" });
+    }
+  });
+
   // ==================== PRODUCT VARIANTS ====================
   
   // Get variants for product
