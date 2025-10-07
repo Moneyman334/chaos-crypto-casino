@@ -5,12 +5,25 @@ import { neon } from "@neondatabase/serverless";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { SecurityFortress } from "./security-fortress";
+import { FortressShield } from "./fortress-shield";
 import cors from "cors";
 
 const app = express();
 
 // Apply CORS before other middleware
 app.use(cors(SecurityFortress.CORS_CONFIG));
+
+// 🛡️ FORTRESS SHIELD LAYER 1: DDoS Protection
+app.use(FortressShield.ddosProtection);
+
+// 🛡️ FORTRESS SHIELD LAYER 2: Honeypot Traps
+app.use(FortressShield.honeypotTrap);
+
+// 🛡️ FORTRESS SHIELD LAYER 3: Advanced Threat Detection
+app.use(FortressShield.advancedThreatDetection);
+
+// 🛡️ FORTRESS SHIELD LAYER 4: Request Integrity Check
+app.use(FortressShield.requestIntegrityCheck);
 
 // Security headers fortress
 app.use(SecurityFortress.securityHeaders);
@@ -52,6 +65,12 @@ app.use(
     },
   })
 );
+
+// 🛡️ FORTRESS SHIELD LAYER 5: CSRF Protection
+app.use(FortressShield.csrfProtection);
+
+// 🛡️ FORTRESS SHIELD LAYER 6: Security Audit Logging
+app.use(FortressShield.securityAuditLog);
 
 // Redact sensitive fields from objects for logging
 function redactSensitiveFields(obj: any): any {
