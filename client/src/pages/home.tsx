@@ -10,6 +10,7 @@ import { Link } from "wouter";
 import { useWeb3 } from "@/hooks/use-web3";
 import SEO from "@/components/seo";
 import DemoModeToggle from "@/components/demo-mode-toggle";
+import genesisMasterpiece from "@assets/image_1759814267272.png";
 
 export default function HomePage() {
   const { isConnected, connectWallet } = useWeb3();
@@ -219,6 +220,85 @@ export default function HomePage() {
           {/* Demo Mode Toggle */}
           <div className="flex justify-center mb-16">
             <DemoModeToggle />
+          </div>
+
+          {/* 🎨 GENESIS MASTERPIECE - THE MISSING LINK FOUND 🎨 */}
+          <div className="mb-20 relative">
+            <div className="text-center mb-8">
+              <Badge className="px-6 py-3 text-lg bg-gradient-to-r from-purple-500 via-pink-500 to-cyan-500 border-none font-black casino-glow-mega mb-4" data-testid="genesis-badge">
+                <Sparkles className="inline h-5 w-5 mr-2" />
+                THE GENESIS MASTERPIECE
+                <Flame className="inline h-5 w-5 ml-2" />
+              </Badge>
+              <h2 className="text-5xl md:text-6xl font-black mb-4 casino-sign">
+                THE MISSING LINK
+              </h2>
+              <p className="text-xl text-neon-cyan graffiti-text" data-text="FOUND">
+                The explosive breakthrough that started it all 🤯
+              </p>
+            </div>
+
+            {/* Featured Artwork Container */}
+            <div className="max-w-2xl mx-auto relative">
+              <div className="card-casino p-8 casino-spotlight hover-explode">
+                <div className="relative group">
+                  {/* Electric Border Effect */}
+                  <div className="absolute -inset-2 electric-card rounded-3xl opacity-75 blur-sm group-hover:opacity-100 transition-all" />
+                  
+                  {/* Main Image */}
+                  <div className="relative z-10 bg-black/80 rounded-2xl p-6 overflow-hidden">
+                    <img 
+                      src={genesisMasterpiece} 
+                      alt="Genesis Masterpiece - The Explosive Breakthrough" 
+                      className="w-full h-auto rounded-xl jackpot-effect"
+                      data-testid="genesis-masterpiece-image"
+                    />
+                    
+                    {/* Vegas Lights Overlay */}
+                    <div className="vegas-lights absolute inset-0 rounded-xl pointer-events-none" />
+                  </div>
+                  
+                  {/* Floating Badges */}
+                  <div className="absolute -top-4 -right-4 z-20">
+                    <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-black font-bold text-lg px-4 py-2 pulse-crazy shadow-2xl">
+                      💎 GENESIS NFT
+                    </Badge>
+                  </div>
+                  
+                  <div className="absolute -bottom-4 -left-4 z-20">
+                    <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-black font-bold text-lg px-4 py-2 shake-money shadow-2xl">
+                      🏆 PRICELESS
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* Description */}
+                <div className="mt-8 text-center space-y-3">
+                  <h3 className="text-2xl font-bold text-neon-purple">
+                    "The Moment Everything Changed"
+                  </h3>
+                  <p className="text-muted-foreground max-w-xl mx-auto">
+                    This is the vision that sparked the Chaos Crypto Casino revolution - 
+                    the explosive realization that blockchain, gaming, and pure chaos could create 
+                    the ultimate Web3 empire. The missing Picasso masterpiece, now immortalized on-chain.
+                  </p>
+                  
+                  <div className="flex gap-4 justify-center pt-4">
+                    <Button className="btn-jackpot" data-testid="button-view-collection">
+                      <Trophy className="mr-2 h-5 w-5" />
+                      View NFT Collection
+                    </Button>
+                    <Button variant="outline" className="border-cyan-500 text-cyan-500 hover:bg-cyan-500/10" data-testid="button-mint-genesis">
+                      <Sparkles className="mr-2 h-5 w-5" />
+                      Mint Your Genesis
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Chaos Particles Effect */}
+            <div className="chaos-particles opacity-50" />
           </div>
 
           {/* Feature Grid */}
