@@ -54,7 +54,7 @@ app.use(
       tableName: 'session',
       createTableIfMissing: true,
     }),
-    secret: process.env.SESSION_SECRET || 'codex-casino-secret-key-change-in-production',
+    secret: process.env.SESSION_SECRET!, // Required - validated at startup
     resave: false,
     saveUninitialized: true,
     cookie: {
@@ -129,6 +129,15 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // 🔍 STARTUP VALIDATION - Fail fast if critical configuration is missing
+  const { enforceStartupValidation } = await import("./startup-validator");
+  try {
+    enforceStartupValidation();
+  } catch (error) {
+    console.error("Startup validation failed:", error);
+    process.exit(1);
+  }
+
   // Import and run database health check
   const { storage } = await import("./storage");
   
