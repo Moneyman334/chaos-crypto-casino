@@ -198,9 +198,6 @@ app.use((req, res, next) => {
     console.error("Failed to initialize price service:", error);
   }
 
-  // Use secure error handler
-  app.use(SecurityFortress.secureErrorHandler);
-
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
@@ -209,6 +206,10 @@ app.use((req, res, next) => {
   } else {
     serveStatic(app);
   }
+
+  // Global error handler - must be last middleware after all routes and Vite
+  const { globalErrorHandler } = await import("./error-handler");
+  app.use(globalErrorHandler);
 
   // ALWAYS serve the app on the port specified in the environment variable PORT
   // Other ports are firewalled. Default to 5000 if not specified.
