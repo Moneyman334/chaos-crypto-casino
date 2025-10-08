@@ -100,11 +100,13 @@ import BridgePage from "@/pages/bridge";
 import { ProtectedRoute } from "@/components/protected-route";
 import { useDevAutoLogin } from "@/hooks/use-dev-auto-login";
 import { useDevWalletAutoConnect } from "@/hooks/use-dev-wallet-auto-connect";
+import MultiChainDashboard from "@/pages/MultiChainDashboard";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={HomePage} />
+      <Route path="/multi-chain" component={MultiChainDashboard} />
       <Route path="/empire" component={EmpireDashboard} />
       <Route path="/vaults" component={HouseVaultsPage} />
       <Route path="/auto-compound" component={AutoCompoundPage} />

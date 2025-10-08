@@ -59,6 +59,7 @@ import {
 } from "@shared/schema";
 import { eq, and, sql, desc, lte, gte, or, isNull } from "drizzle-orm";
 import { SecurityFortress } from "./security-fortress";
+import { multiChainService } from "./multi-chain-service";
 
 // Ethereum address validation schema
 const ethereumAddressSchema = z.string()
@@ -138,10 +139,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/health", (req, res) => {
     res.json({ 
       status: "healthy", 
-      services: ["transactions", "wallets", "tokens", "networks", "authentication", "prices"],
+      services: ["transactions", "wallets", "tokens", "networks", "authentication", "prices", "multi-chain"],
       database: "connected",
       timestamp: new Date().toISOString()
     });
+  });
+
+  // Multi-Chain Portfolio API
+  app.get("/api/portfolio/:address", async (req, res) => {
+    try {
+      const { address } = req.params;
+      
+      // Validate Ethereum address format
+      if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
+        return res.status(400).json({ error: "Invalid Ethereum address" });
+      }
+
+      const portfolio = await multiChainService.getPortfolio(address);
+      res.json(portfolio);
+    } catch (error: any) {
+      console.error("Portfolio fetch error:", error);
+      res.status(500).json({ 
+        error: "Failed to fetch portfolio", 
+        message: error.message 
+      });
+    }
+  });
+
+  // Multi-Chain Wallet Balances API
+  app.get("/api/wallets/balances/:address", async (req, res) => {
+    try {
+      const { address } = req.params;
+      
+      // Validate Ethereum address format
+      if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
+        return res.status(400).json({ error: "Invalid Ethereum address" });
+      }
+
+      const balances = await multiChainService.getWalletBalances(address);
+      res.json(balances);
+    } catch (error: any) {
+      console.error("Wallet balances fetch error:", error);
+      res.status(500).json({ 
+        error: "Failed to fetch wallet balances", 
+        message: error.message 
+      });
+    }
   });
 
   // Get real-time crypto prices
