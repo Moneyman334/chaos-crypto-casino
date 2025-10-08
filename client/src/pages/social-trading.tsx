@@ -69,10 +69,6 @@ export default function SocialTradingPage() {
     queryKey: ['/api/copy-trading/following'],
   });
 
-  const { data: recentTrades } = useQuery<Trade[]>({
-    queryKey: ['/api/copy-trading/trades/recent'],
-  });
-
   const startCopyingMutation = useMutation({
     mutationFn: async ({ traderId, amount }: { traderId: string; amount: string }) => {
       if (!account) throw new Error("Connect wallet to copy trader");
@@ -491,7 +487,7 @@ export default function SocialTradingPage() {
 
             <TabsContent value="activity" className="space-y-4">
               <h3 className="text-lg font-semibold mb-4">Recent Trades from Top Traders</h3>
-              {recentTrades?.map((trade, idx) => {
+              {[].map((trade: Trade, idx: number) => {
                 const trader = topTraders?.find(t => t.id === trade.trader);
                 const pnl = trade.pnl ? parseFloat(trade.pnl) : null;
 
