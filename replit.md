@@ -42,6 +42,7 @@ The backend is an Express.js and TypeScript REST API with modular routes, using 
 - **Marketplace System**: Peer-to-peer trading for NFTs, Tokens, and Products.
 
 ### Trading & Automation
+- **DEX Aggregator**: Revolutionary swap engine powered by 1inch API aggregating 300+ DEX sources for best price routing. Supports 8 major chains (Ethereum, BSC, Polygon, Arbitrum, Optimism, Base, Avalanche, Fantom) with live quotes, slippage protection, and 0.3% platform fee. Features automatic fallback to CoinGecko pricing when 1inch unavailable.
 - **Buy & Trade Crypto Platform**: Comprehensive trading interface with real-time order book, multiple order types, various trading pairs, and trading statistics.
 - **Auto Trading Bot**: AI-powered bot with real-time activity feed, demo/live modes, five strategies, emergency stop, performance dashboard, and risk management.
 - **House Vaults System**: Player-owned liquidity for ETH staking with varying APY and lock periods.

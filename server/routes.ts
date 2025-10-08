@@ -8050,6 +8050,96 @@ contract ${defaultSymbol} is ERC721, Ownable {
       res.status(500).json({ error: "Failed to deposit revenue" });
     }
   });
+
+  // ==================== DEX AGGREGATOR ROUTES ====================
+  // Real on-chain swaps via 1inch API with multi-chain support
+  
+  // Get swap quote
+  app.get("/api/swap/quote", async (req, res) => {
+    try {
+      const quoteSchema = z.object({
+        chainId: z.string().transform(Number),
+        fromToken: z.string(),
+        toToken: z.string(),
+        amount: z.string(),
+        slippage: z.string().optional().transform(val => val ? parseFloat(val) : 0.5),
+      });
+
+      const { chainId, fromToken, toToken, amount, slippage } = quoteSchema.parse(req.query);
+      
+      const { dexAggregator } = await import('./dex-aggregator');
+      const quote = await dexAggregator.getQuote({
+        chainId,
+        fromToken,
+        toToken,
+        amount,
+        slippage,
+      });
+
+      res.json(quote);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid quote params", 
+          details: error.errors 
+        });
+      }
+      console.error("Failed to get swap quote:", error);
+      res.status(500).json({ error: error instanceof Error ? error.message : "Failed to get quote" });
+    }
+  });
+
+  // Get swap transaction data
+  app.post("/api/swap", async (req, res) => {
+    try {
+      const swapSchema = z.object({
+        chainId: z.number(),
+        fromToken: z.string(),
+        toToken: z.string(),
+        amount: z.string(),
+        wallet: z.string(),
+        slippage: z.number().optional().default(0.5),
+      });
+
+      const data = swapSchema.parse(req.body);
+      
+      const { dexAggregator } = await import('./dex-aggregator');
+      const txData = await dexAggregator.getSwapTransaction({
+        chainId: data.chainId,
+        fromToken: data.fromToken,
+        toToken: data.toToken,
+        amount: data.amount,
+        from: data.wallet,
+        slippage: data.slippage,
+      });
+
+      res.json(txData);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid swap data", 
+          details: error.errors 
+        });
+      }
+      console.error("Failed to create swap transaction:", error);
+      res.status(500).json({ error: error instanceof Error ? error.message : "Failed to create swap" });
+    }
+  });
+
+  // Get supported tokens for a chain
+  app.get("/api/swap/tokens/:chainId", async (req, res) => {
+    try {
+      const chainId = parseInt(req.params.chainId);
+      
+      const { dexAggregator } = await import('./dex-aggregator');
+      const tokens = await dexAggregator.getSupportedTokens(chainId);
+
+      res.json(tokens);
+    } catch (error) {
+      console.error("Failed to get supported tokens:", error);
+      res.status(500).json({ error: "Failed to get supported tokens" });
+    }
+  });
   
   const httpServer = createServer(app);
   return httpServer;
