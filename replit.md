@@ -30,8 +30,10 @@ The backend is an Express.js and TypeScript REST API with modular routes, using 
 ## Feature Specifications
 
 ### Web3 & Blockchain
+- **22-Chain Multi-Chain Infrastructure**: Full support for 22 major blockchain networks including Ethereum, Polygon, BSC, Avalanche, Arbitrum, Optimism, Solana, Base, Fantom, Cosmos, Polkadot, Cardano, Algorand, Near, Sui, Aptos, Tezos, Celo, Harmony, Stellar, Cronos, and Starknet. Powered by Alchemy, Infura, and QuickNode RPC providers for sub-50ms latency and zero downtime.
+- **Cross-Chain Bridge Integration**: Native support for Wormhole (30+ chains), LayerZero (40+ chains), Axelar (50+ chains), and Chainlink CCIP for seamless asset transfers across all supported networks.
 - **Auto-Deploy System**: One-click token (ERC-20) and NFT (ERC-721) deployment with IPFS readiness.
-- **Codex Wallet Nexus**: Multi-wallet management (MetaMask, Coinbase Wallet), unified interface, primary wallet designation, session persistence, balance aggregation, and multi-chain support (EVM).
+- **Codex Wallet Nexus**: Advanced multi-chain wallet management supporting MetaMask, Coinbase Wallet, and 22+ blockchain networks. Features unified interface, primary wallet designation, session persistence, balance aggregation across all chains, and automatic chain switching.
 - **CODEX ECOSYSTEM**: Platform token (CDX), four NFT collections, four staking pools with NFT multipliers, eight AI-powered Living Achievements, and a Relics System with 9 soulbound artifacts providing ecosystem boosts. Includes a **Forge System** for crafting relics.
 - **Empire Vault - DAO Treasury**: Revolutionary profit-sharing system that pools 60-80% of ALL platform revenue (marketplace, trading bot, launchpad, e-commerce, staking fees, subscriptions) and distributes directly to CDX stakers and NFT holders. Features: automatic share calculation based on CDX stake with NFT boost multipliers (1.1x-2x) and Relic boosts (1.15x-1.6x), weekly distributions, governance voting, claim rewards UI with casino effects. Users become profit-sharing owners - the more you stake, the bigger your share!
 - **Advanced Wallet Security Protection**: Database-persisted system with Transaction Validation Engine, Velocity Limits, Emergency Lockdown, Fraud Detection, Persistent Blacklist/Whitelist, Spending Limits, and AI Sentinel Monitoring.
