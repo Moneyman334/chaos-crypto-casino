@@ -58,6 +58,15 @@ import {
   type InsertCopyRelationship,
   type CopyTrade,
   type InsertCopyTrade,
+  marginPositions,
+  leverageSettings,
+  liquidationHistory,
+  type MarginPosition,
+  type InsertMarginPosition,
+  type LeverageSetting,
+  type InsertLeverageSetting,
+  type LiquidationHistory,
+  type InsertLiquidationHistory,
   houseVaults,
   housePositions,
   houseDistributions,
@@ -381,6 +390,21 @@ export interface IStorage {
   getCopyTradesByRelationship(relationshipId: string, limit?: number): Promise<CopyTrade[]>;
   createCopyTrade(copyTrade: InsertCopyTrade): Promise<CopyTrade>;
   updateCopyTrade(id: string, updates: Partial<InsertCopyTrade>): Promise<CopyTrade | undefined>;
+
+  // Margin/Futures Trading methods
+  getMarginPosition(id: string): Promise<MarginPosition | undefined>;
+  getUserMarginPositions(userId: string, status?: string): Promise<MarginPosition[]>;
+  getMarginPositionsByPair(tradingPair: string, status?: string): Promise<MarginPosition[]>;
+  createMarginPosition(position: InsertMarginPosition): Promise<MarginPosition>;
+  updateMarginPosition(id: string, updates: Partial<InsertMarginPosition>): Promise<MarginPosition | undefined>;
+  closeMarginPosition(id: string, closePrice: string, realizedPnl: string): Promise<MarginPosition | undefined>;
+  
+  getUserLeverageSettings(userId: string): Promise<LeverageSetting | undefined>;
+  createOrUpdateLeverageSettings(settings: InsertLeverageSetting): Promise<LeverageSetting>;
+  
+  getLiquidationHistory(userId: string, limit?: number): Promise<LiquidationHistory[]>;
+  createLiquidationRecord(liquidation: InsertLiquidationHistory): Promise<LiquidationHistory>;
+  getTotalLiquidations(userId: string): Promise<number>;
   
   // House Vault methods
   getAllHouseVaults(): Promise<HouseVault[]>;
@@ -2811,6 +2835,112 @@ export class PostgreSQLStorage implements IStorage {
       .where(eq(copyTrades.id, id))
       .returning();
     return updated;
+  }
+
+  // Margin/Futures Trading methods
+  async getMarginPosition(id: string) {
+    const [position] = await db.select().from(marginPositions).where(eq(marginPositions.id, id));
+    return position;
+  }
+
+  async getUserMarginPositions(userId: string, status?: string) {
+    if (status) {
+      const positions = await db.select().from(marginPositions)
+        .where(and(
+          eq(marginPositions.userId, userId),
+          eq(marginPositions.status, status)
+        ))
+        .orderBy(desc(marginPositions.openedAt));
+      return positions;
+    }
+    const positions = await db.select().from(marginPositions)
+      .where(eq(marginPositions.userId, userId))
+      .orderBy(desc(marginPositions.openedAt));
+    return positions;
+  }
+
+  async getMarginPositionsByPair(tradingPair: string, status?: string) {
+    if (status) {
+      const positions = await db.select().from(marginPositions)
+        .where(and(
+          eq(marginPositions.tradingPair, tradingPair),
+          eq(marginPositions.status, status)
+        ))
+        .orderBy(desc(marginPositions.openedAt));
+      return positions;
+    }
+    const positions = await db.select().from(marginPositions)
+      .where(eq(marginPositions.tradingPair, tradingPair))
+      .orderBy(desc(marginPositions.openedAt));
+    return positions;
+  }
+
+  async createMarginPosition(position: InsertMarginPosition) {
+    const [created] = await db.insert(marginPositions).values(position).returning();
+    return created;
+  }
+
+  async updateMarginPosition(id: string, updates: Partial<InsertMarginPosition>) {
+    const [updated] = await db.update(marginPositions)
+      .set({ ...updates, lastUpdatedAt: new Date() })
+      .where(eq(marginPositions.id, id))
+      .returning();
+    return updated;
+  }
+
+  async closeMarginPosition(id: string, closePrice: string, realizedPnl: string) {
+    const [closed] = await db.update(marginPositions)
+      .set({
+        status: 'closed',
+        currentPrice: closePrice,
+        realizedPnl,
+        closedAt: new Date(),
+        lastUpdatedAt: new Date()
+      })
+      .where(eq(marginPositions.id, id))
+      .returning();
+    return closed;
+  }
+
+  async getUserLeverageSettings(userId: string) {
+    const [settings] = await db.select().from(leverageSettings)
+      .where(eq(leverageSettings.userId, userId));
+    return settings;
+  }
+
+  async createOrUpdateLeverageSettings(settings: InsertLeverageSetting) {
+    const existing = await this.getUserLeverageSettings(settings.userId);
+    
+    if (existing) {
+      const [updated] = await db.update(leverageSettings)
+        .set({ ...settings, updatedAt: new Date() })
+        .where(eq(leverageSettings.userId, settings.userId))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db.insert(leverageSettings).values(settings).returning();
+      return created;
+    }
+  }
+
+  async getLiquidationHistory(userId: string, limit: number = 50) {
+    const history = await db.select().from(liquidationHistory)
+      .where(eq(liquidationHistory.userId, userId))
+      .orderBy(desc(liquidationHistory.liquidatedAt))
+      .limit(limit);
+    return history;
+  }
+
+  async createLiquidationRecord(liquidation: InsertLiquidationHistory) {
+    const [created] = await db.insert(liquidationHistory).values(liquidation).returning();
+    return created;
+  }
+
+  async getTotalLiquidations(userId: string) {
+    const result = await db.select({ count: sql<number>`count(*)` })
+      .from(liquidationHistory)
+      .where(eq(liquidationHistory.userId, userId));
+    return result[0]?.count || 0;
   }
   
   // House Vault methods
