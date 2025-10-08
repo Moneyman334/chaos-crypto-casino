@@ -6336,8 +6336,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dbClient.select({ count: sql<number>`count(*)::int` })
           .from(botTrades),
         dbClient.select({
-          totalPnL: sql<string>`COALESCE(SUM(CAST(pnl AS NUMERIC)), 0)::text`,
-          winningTrades: sql<number>`COUNT(CASE WHEN CAST(pnl AS NUMERIC) > 0 THEN 1 ELSE NULL END)::int`,
+          totalPnL: sql<string>`COALESCE(SUM(CAST(profit AS NUMERIC)), 0)::text`,
+          winningTrades: sql<number>`COUNT(CASE WHEN CAST(profit AS NUMERIC) > 0 THEN 1 ELSE NULL END)::int`,
           totalCount: sql<number>`COUNT(*)::int`
         })
           .from(botTrades)
@@ -6356,7 +6356,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .from(postHistory)
           .where(eq(postHistory.status, 'published')),
         dbClient.select({ 
-          total: sql<number>`COALESCE(SUM(CAST(likes AS INTEGER) + CAST(retweets AS INTEGER) + CAST(replies AS INTEGER)), 0)::int` 
+          total: sql<number>`COALESCE(SUM(
+            COALESCE((engagement->>'likes')::int, 0) + 
+            COALESCE((engagement->>'retweets')::int, 0) + 
+            COALESCE((engagement->>'replies')::int, 0)
+          ), 0)::int` 
         })
           .from(postHistory)
           .where(eq(postHistory.status, 'published'))
