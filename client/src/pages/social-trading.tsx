@@ -62,25 +62,24 @@ export default function SocialTradingPage() {
   const [sortBy, setSortBy] = useState("return");
 
   const { data: topTraders } = useQuery<Trader[]>({
-    queryKey: ['/api/social-trading/traders', sortBy],
+    queryKey: ['/api/copy-trading/leaderboard', sortBy],
   });
 
   const { data: myCopyPositions } = useQuery<CopyPosition[]>({
-    queryKey: ['/api/social-trading/positions', account],
-    enabled: !!account,
+    queryKey: ['/api/copy-trading/following'],
   });
 
   const { data: recentTrades } = useQuery<Trade[]>({
-    queryKey: ['/api/social-trading/trades'],
+    queryKey: ['/api/copy-trading/trades/recent'],
   });
 
   const startCopyingMutation = useMutation({
     mutationFn: async ({ traderId, amount }: { traderId: string; amount: string }) => {
       if (!account) throw new Error("Connect wallet to copy trader");
-      return apiRequest('POST', '/api/social-trading/copy', {
-        follower: account,
-        trader: traderId,
-        allocatedAmount: amount,
+      return apiRequest('POST', '/api/copy-trading/follow', {
+        traderId: traderId,
+        copyPercentage: 100,
+        maxCopyAmount: amount
       });
     },
     onSuccess: () => {
@@ -88,8 +87,8 @@ export default function SocialTradingPage() {
         title: "Copy Trading Started!",
         description: "You are now copying this trader's moves",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/social-trading/traders'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/social-trading/positions', account] });
+      queryClient.invalidateQueries({ queryKey: ['/api/copy-trading/leaderboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/copy-trading/following'] });
       setSelectedTrader(null);
       setCopyAmount("");
     },
@@ -103,18 +102,16 @@ export default function SocialTradingPage() {
   });
 
   const stopCopyingMutation = useMutation({
-    mutationFn: async (positionId: string) => {
-      return apiRequest('POST', '/api/social-trading/stop', {
-        positionId,
-        follower: account,
-      });
+    mutationFn: async (relationshipId: string) => {
+      return apiRequest('POST', `/api/copy-trading/unfollow/${relationshipId}`, {});
     },
     onSuccess: () => {
       toast({
         title: "Copy Trading Stopped",
         description: "You have stopped copying this trader",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/social-trading/positions', account] });
+      queryClient.invalidateQueries({ queryKey: ['/api/copy-trading/following'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/copy-trading/leaderboard'] });
     },
     onError: (error: Error) => {
       toast({

@@ -2680,6 +2680,139 @@ export class PostgreSQLStorage implements IStorage {
     return trades;
   }
   
+  // Copy Trading methods
+  async getTraderProfile(userId: string) {
+    const [profile] = await db.select().from(traderProfiles)
+      .where(eq(traderProfiles.userId, userId));
+    return profile;
+  }
+  
+  async getTraderProfileById(id: string) {
+    const [profile] = await db.select().from(traderProfiles)
+      .where(eq(traderProfiles.id, id));
+    return profile;
+  }
+  
+  async getAllPublicTraders(filters?: { sortBy?: 'totalReturn' | 'winRate' | 'totalFollowers'; limit?: number }) {
+    const sortBy = filters?.sortBy || 'totalReturn';
+    const limit = filters?.limit || 20;
+    
+    let orderByClause;
+    if (sortBy === 'totalReturn') {
+      orderByClause = desc(traderProfiles.totalReturn);
+    } else if (sortBy === 'winRate') {
+      orderByClause = desc(traderProfiles.winRate);
+    } else {
+      orderByClause = desc(traderProfiles.totalFollowers);
+    }
+    
+    const traders = await db.select().from(traderProfiles)
+      .where(eq(traderProfiles.isPublic, true))
+      .orderBy(orderByClause)
+      .limit(limit);
+    return traders;
+  }
+  
+  async createOrUpdateTraderProfile(profile: InsertTraderProfile) {
+    const existing = await this.getTraderProfile(profile.userId);
+    
+    if (existing) {
+      const [updated] = await db.update(traderProfiles)
+        .set({ ...profile, updatedAt: new Date() })
+        .where(eq(traderProfiles.userId, profile.userId))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db.insert(traderProfiles).values(profile).returning();
+      return created;
+    }
+  }
+  
+  async updateTraderStats(userId: string, stats: Partial<InsertTraderProfile>) {
+    const [updated] = await db.update(traderProfiles)
+      .set({ ...stats, updatedAt: new Date() })
+      .where(eq(traderProfiles.userId, userId))
+      .returning();
+    return updated;
+  }
+  
+  async getCopyRelationship(followerId: string, traderId: string) {
+    const [relationship] = await db.select().from(copyRelationships)
+      .where(and(
+        eq(copyRelationships.followerId, followerId),
+        eq(copyRelationships.traderId, traderId)
+      ));
+    return relationship;
+  }
+  
+  async getUserCopyRelationships(userId: string) {
+    const relationships = await db.select().from(copyRelationships)
+      .where(eq(copyRelationships.followerId, userId))
+      .orderBy(desc(copyRelationships.createdAt));
+    return relationships;
+  }
+  
+  async getTraderFollowers(traderId: string) {
+    const followers = await db.select().from(copyRelationships)
+      .where(and(
+        eq(copyRelationships.traderId, traderId),
+        eq(copyRelationships.status, 'active')
+      ))
+      .orderBy(desc(copyRelationships.createdAt));
+    return followers;
+  }
+  
+  async createCopyRelationship(relationship: InsertCopyRelationship) {
+    const [created] = await db.insert(copyRelationships).values(relationship).returning();
+    return created;
+  }
+  
+  async updateCopyRelationship(id: string, updates: Partial<InsertCopyRelationship>) {
+    const [updated] = await db.update(copyRelationships)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(copyRelationships.id, id))
+      .returning();
+    return updated;
+  }
+  
+  async stopCopyRelationship(id: string) {
+    await db.update(copyRelationships)
+      .set({ status: 'stopped', stoppedAt: new Date(), updatedAt: new Date() })
+      .where(eq(copyRelationships.id, id));
+  }
+  
+  async getCopyTrade(id: string) {
+    const [copyTrade] = await db.select().from(copyTrades)
+      .where(eq(copyTrades.id, id));
+    return copyTrade;
+  }
+  
+  async getCopyTradesByRelationship(relationshipId: string, limit?: number) {
+    let query = db.select().from(copyTrades)
+      .where(eq(copyTrades.relationshipId, relationshipId))
+      .orderBy(desc(copyTrades.executedAt));
+    
+    if (limit) {
+      query = query.limit(limit);
+    }
+    
+    const trades = await query;
+    return trades;
+  }
+  
+  async createCopyTrade(copyTrade: InsertCopyTrade) {
+    const [created] = await db.insert(copyTrades).values(copyTrade).returning();
+    return created;
+  }
+  
+  async updateCopyTrade(id: string, updates: Partial<InsertCopyTrade>) {
+    const [updated] = await db.update(copyTrades)
+      .set(updates)
+      .where(eq(copyTrades.id, id))
+      .returning();
+    return updated;
+  }
+  
   // House Vault methods
   async getAllHouseVaults() {
     const vaults = await db.select().from(houseVaults).where(eq(houseVaults.status, 'active'));

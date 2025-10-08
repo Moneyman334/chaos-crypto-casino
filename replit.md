@@ -44,6 +44,7 @@ The backend is an Express.js and TypeScript REST API with modular routes, using 
 ### Trading & Automation
 - **DEX Aggregator**: Revolutionary swap engine powered by 1inch API aggregating 300+ DEX sources for best price routing. Supports 8 major chains (Ethereum, BSC, Polygon, Arbitrum, Optimism, Base, Avalanche, Fantom) with live quotes, slippage protection, and 0.3% platform fee. Features automatic fallback to CoinGecko pricing when 1inch unavailable.
 - **Buy & Trade Crypto Platform**: Comprehensive trading interface with real-time order book, multiple order types, various trading pairs, and trading statistics.
+- **Copy Trading System**: Revolutionary social trading platform where users follow top traders and automatically copy their trades. Features: trader leaderboard sorted by performance, public trader profiles with statistics, follow/unfollow traders with customizable settings, auto-copy execution, copy trade history, follower earnings tracking, and 10% revenue share for traders (5% platform fee). Viral growth mechanism built-in.
 - **Auto Trading Bot**: AI-powered bot with real-time activity feed, demo/live modes, five strategies, emergency stop, performance dashboard, and risk management.
 - **House Vaults System**: Player-owned liquidity for ETH staking with varying APY and lock periods.
 - **Yield Farming System**: LP token staking platform with 4 active farm pools, including deposit/withdraw, real-time reward calculation, harvest, auto-compound, and TVL tracking.

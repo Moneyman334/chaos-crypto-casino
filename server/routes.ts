@@ -21,7 +21,10 @@ import {
   insertCustomerTierAssignmentSchema,
   insertProductRecommendationSchema,
   insertPreOrderSchema,
-  insertRecentlyViewedSchema
+  insertRecentlyViewedSchema,
+  insertTraderProfileSchema,
+  insertCopyRelationshipSchema,
+  insertCopyTradeSchema
 } from "@shared/schema";
 import { nftService } from "./nft";
 import rateLimit from "express-rate-limit";
@@ -3049,6 +3052,220 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Failed to fetch performance metrics:", error);
       res.status(500).json({ error: "Failed to fetch performance metrics" });
+    }
+  });
+
+  // ========================
+  // Copy Trading Routes
+  // ========================
+  
+  // Get trader leaderboard (public traders sorted by performance)
+  app.get("/api/copy-trading/leaderboard", async (req, res) => {
+    try {
+      const sortBy = (req.query.sortBy as 'totalReturn' | 'winRate' | 'totalFollowers') || 'totalReturn';
+      const limit = parseInt(req.query.limit as string) || 20;
+      
+      const traders = await storage.getAllPublicTraders({ sortBy, limit });
+      
+      // Enhance trader data with user info for frontend
+      const enhancedTraders = await Promise.all(traders.map(async (trader) => {
+        const user = await storage.getUser(trader.userId);
+        const wallets = await storage.getWalletsByUserId(trader.userId);
+        return {
+          ...trader,
+          username: user?.username || 'Unknown',
+          address: wallets[0]?.address || trader.userId
+        };
+      }));
+      
+      res.json(enhancedTraders);
+    } catch (error) {
+      console.error("Failed to fetch trader leaderboard:", error);
+      res.status(500).json({ error: "Failed to fetch trader leaderboard" });
+    }
+  });
+  
+  // Get trader profile
+  app.get("/api/copy-trading/trader/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const profile = await storage.getTraderProfile(userId);
+      
+      if (!profile) {
+        return res.status(404).json({ error: "Trader profile not found" });
+      }
+      
+      res.json(profile);
+    } catch (error) {
+      console.error("Failed to fetch trader profile:", error);
+      res.status(500).json({ error: "Failed to fetch trader profile" });
+    }
+  });
+  
+  // Create or update trader profile
+  app.post("/api/copy-trading/trader", tradingRateLimit, async (req, res) => {
+    try {
+      const profileData = insertTraderProfileSchema.parse(req.body);
+      const profile = await storage.createOrUpdateTraderProfile(profileData);
+      res.json(profile);
+    } catch (error: any) {
+      console.error("Failed to create/update trader profile:", error);
+      res.status(400).json({ error: error.message || "Failed to create/update trader profile" });
+    }
+  });
+  
+  // Follow a trader (create copy relationship)
+  app.post("/api/copy-trading/follow", tradingRateLimit, async (req, res) => {
+    try {
+      // Get authenticated user ID from session
+      const followerId = req.session?.userId;
+      if (!followerId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+      
+      const { traderId, copyPercentage, maxCopyAmount } = req.body;
+      
+      // Check if already following
+      const existing = await storage.getCopyRelationship(followerId, traderId);
+      
+      if (existing && existing.status === 'active') {
+        return res.status(400).json({ error: "Already following this trader" });
+      }
+      
+      // Get trader profile ID
+      const traderProfile = await storage.getTraderProfile(traderId);
+      if (!traderProfile) {
+        return res.status(404).json({ error: "Trader profile not found" });
+      }
+      
+      const relationshipData = {
+        followerId,
+        traderId,
+        traderProfileId: traderProfile.id,
+        copyAmount: maxCopyAmount || "1000",
+        copyPercentage: String(copyPercentage || 100),
+        status: 'active' as const
+      };
+      
+      const relationship = await storage.createCopyRelationship(relationshipData);
+      
+      // Update trader's follower count
+      const trader = await storage.getTraderProfile(traderId);
+      if (trader) {
+        await storage.updateTraderStats(traderId, {
+          totalFollowers: String((parseInt(trader.totalFollowers) || 0) + 1)
+        });
+      }
+      
+      res.json(relationship);
+    } catch (error: any) {
+      console.error("Failed to follow trader:", error);
+      res.status(400).json({ error: error.message || "Failed to follow trader" });
+    }
+  });
+  
+  // Unfollow a trader (stop copy relationship)
+  app.post("/api/copy-trading/unfollow/:relationshipId", tradingRateLimit, async (req, res) => {
+    try {
+      const { relationshipId } = req.params;
+      
+      // Get authenticated user ID from session
+      const followerId = req.session?.userId;
+      if (!followerId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+      
+      // Get the relationship by ID
+      const allRelationships = await storage.getUserCopyRelationships(followerId);
+      const relationship = allRelationships.find(r => r.id === relationshipId);
+      
+      if (!relationship) {
+        return res.status(404).json({ error: "Relationship not found" });
+      }
+      
+      await storage.stopCopyRelationship(relationshipId);
+      
+      // Update trader's follower count
+      const trader = await storage.getTraderProfile(relationship.traderId);
+      const currentFollowers = parseInt(trader?.totalFollowers || "0");
+      if (trader && currentFollowers > 0) {
+        await storage.updateTraderStats(relationship.traderId, {
+          totalFollowers: String(currentFollowers - 1)
+        });
+      }
+      
+      res.json({ success: true, message: "Successfully unfollowed trader" });
+    } catch (error) {
+      console.error("Failed to unfollow trader:", error);
+      res.status(500).json({ error: "Failed to unfollow trader" });
+    }
+  });
+  
+  // Get user's copy relationships (traders they follow)
+  app.get("/api/copy-trading/following/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const relationships = await storage.getUserCopyRelationships(userId);
+      res.json(relationships);
+    } catch (error) {
+      console.error("Failed to fetch copy relationships:", error);
+      res.status(500).json({ error: "Failed to fetch copy relationships" });
+    }
+  });
+  
+  // Get trader's followers
+  app.get("/api/copy-trading/followers/:traderId", async (req, res) => {
+    try {
+      const { traderId } = req.params;
+      const followers = await storage.getTraderFollowers(traderId);
+      res.json(followers);
+    } catch (error) {
+      console.error("Failed to fetch followers:", error);
+      res.status(500).json({ error: "Failed to fetch followers" });
+    }
+  });
+  
+  // Get copy trades for a relationship
+  app.get("/api/copy-trading/trades/:relationshipId", async (req, res) => {
+    try {
+      const { relationshipId } = req.params;
+      const limit = parseInt(req.query.limit as string) || 50;
+      const copyTrades = await storage.getCopyTradesByRelationship(relationshipId, limit);
+      res.json(copyTrades);
+    } catch (error) {
+      console.error("Failed to fetch copy trades:", error);
+      res.status(500).json({ error: "Failed to fetch copy trades" });
+    }
+  });
+  
+  // Update copy relationship settings
+  app.patch("/api/copy-trading/relationship/:id", tradingRateLimit, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      
+      const relationship = await storage.updateCopyRelationship(id, updates);
+      
+      if (!relationship) {
+        return res.status(404).json({ error: "Relationship not found" });
+      }
+      
+      res.json(relationship);
+    } catch (error) {
+      console.error("Failed to update copy relationship:", error);
+      res.status(500).json({ error: "Failed to update copy relationship" });
+    }
+  });
+  
+  // Create copy trade (when trader makes a trade, this creates copies for followers)
+  app.post("/api/copy-trading/execute", tradingRateLimit, async (req, res) => {
+    try {
+      const copyTradeData = insertCopyTradeSchema.parse(req.body);
+      const copyTrade = await storage.createCopyTrade(copyTradeData);
+      res.json(copyTrade);
+    } catch (error: any) {
+      console.error("Failed to execute copy trade:", error);
+      res.status(400).json({ error: error.message || "Failed to execute copy trade" });
     }
   });
 
