@@ -651,6 +651,70 @@ export const copyTrades = pgTable("copy_trades", {
   createdAtIdx: index("copy_trades_created_at_idx").on(table.createdAt),
 }));
 
+// Futures/Margin Trading System
+export const marginPositions = pgTable("margin_positions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  tradingPair: text("trading_pair").notNull(), // BTC/USDT, ETH/USDT, etc.
+  side: text("side").notNull(), // long, short
+  leverage: text("leverage").notNull(), // 5, 10, 20
+  entryPrice: text("entry_price").notNull(),
+  currentPrice: text("current_price").notNull(),
+  positionSize: text("position_size").notNull(), // Amount in base currency
+  collateral: text("collateral").notNull(), // Margin posted
+  liquidationPrice: text("liquidation_price").notNull(), // Auto-close price
+  unrealizedPnl: text("unrealized_pnl").notNull().default("0"),
+  realizedPnl: text("realized_pnl").default("0"),
+  fees: text("fees").notNull().default("0"),
+  status: text("status").notNull().default("open"), // open, closed, liquidated
+  marginType: text("margin_type").notNull().default("isolated"), // isolated, cross
+  stopLoss: text("stop_loss"), // Optional SL price
+  takeProfit: text("take_profit"), // Optional TP price
+  openedAt: timestamp("opened_at").defaultNow(),
+  closedAt: timestamp("closed_at"),
+  lastUpdatedAt: timestamp("last_updated_at").defaultNow(),
+}, (table) => ({
+  userIdx: index("margin_positions_user_idx").on(table.userId),
+  pairIdx: index("margin_positions_pair_idx").on(table.tradingPair),
+  statusIdx: index("margin_positions_status_idx").on(table.status),
+  openedAtIdx: index("margin_positions_opened_at_idx").on(table.openedAt),
+}));
+
+export const leverageSettings = pgTable("leverage_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id).unique(),
+  maxLeverage: text("max_leverage").notNull().default("20"), // Max allowed leverage
+  preferredLeverage: text("preferred_leverage").notNull().default("10"),
+  marginMode: text("margin_mode").notNull().default("isolated"), // isolated, cross
+  riskLevel: text("risk_level").notNull().default("medium"), // low, medium, high
+  autoDeleverageEnabled: text("auto_deleverage_enabled").notNull().default("true"),
+  liquidationWarningEnabled: text("liquidation_warning_enabled").notNull().default("true"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  userIdx: index("leverage_settings_user_idx").on(table.userId),
+}));
+
+export const liquidationHistory = pgTable("liquidation_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  positionId: varchar("position_id").notNull().references(() => marginPositions.id),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  tradingPair: text("trading_pair").notNull(),
+  side: text("side").notNull(),
+  leverage: text("leverage").notNull(),
+  entryPrice: text("entry_price").notNull(),
+  liquidationPrice: text("liquidation_price").notNull(),
+  positionSize: text("position_size").notNull(),
+  lossAmount: text("loss_amount").notNull(), // Total loss including collateral
+  remainingCollateral: text("remaining_collateral").default("0"),
+  liquidationType: text("liquidation_type").notNull().default("auto"), // auto, forced, manual
+  liquidatedAt: timestamp("liquidated_at").defaultNow(),
+}, (table) => ({
+  userIdx: index("liquidation_history_user_idx").on(table.userId),
+  positionIdx: index("liquidation_history_position_idx").on(table.positionId),
+  liquidatedAtIdx: index("liquidation_history_liquidated_at_idx").on(table.liquidatedAt),
+}));
+
 export const insertTraderProfileSchema = createInsertSchema(traderProfiles).omit({
   id: true,
   createdAt: true,
@@ -2691,3 +2755,29 @@ export type EmpireGovernanceProposal = typeof empireGovernanceProposals.$inferSe
 export type InsertEmpireGovernanceProposal = z.infer<typeof insertEmpireGovernanceProposalSchema>;
 export type EmpireGovernanceVote = typeof empireGovernanceVotes.$inferSelect;
 export type InsertEmpireGovernanceVote = z.infer<typeof insertEmpireGovernanceVoteSchema>;
+
+// Margin Trading Insert Schemas
+export const insertMarginPositionSchema = createInsertSchema(marginPositions).omit({
+  id: true,
+  openedAt: true,
+  lastUpdatedAt: true,
+});
+
+export const insertLeverageSettingSchema = createInsertSchema(leverageSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertLiquidationHistorySchema = createInsertSchema(liquidationHistory).omit({
+  id: true,
+  liquidatedAt: true,
+});
+
+// Margin Trading Types
+export type MarginPosition = typeof marginPositions.$inferSelect;
+export type InsertMarginPosition = z.infer<typeof insertMarginPositionSchema>;
+export type LeverageSetting = typeof leverageSettings.$inferSelect;
+export type InsertLeverageSetting = z.infer<typeof insertLeverageSettingSchema>;
+export type LiquidationHistory = typeof liquidationHistory.$inferSelect;
+export type InsertLiquidationHistory = z.infer<typeof insertLiquidationHistorySchema>;
