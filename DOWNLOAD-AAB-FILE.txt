@@ -1,0 +1,72 @@
+🚀 DOWNLOAD YOUR ANDROID APP BUNDLE (AAB FILE)
+
+========================================
+STEP 1: CLICK THIS LINK
+========================================
+
+https://github.com/Moneyman334/chaos-crypto-casino/actions
+
+========================================
+STEP 2: DOWNLOAD THE AAB
+========================================
+
+1. Click the TOP green checkmark ✅ (latest successful build)
+2. Scroll down to "Artifacts" section at the bottom
+3. Click "app-release-aab" to download (35 MB ZIP file)
+
+========================================
+STEP 3: UNZIP ON YOUR MAC
+========================================
+
+1. Go to Downloads folder
+2. Find the downloaded ZIP file
+3. Double-click to unzip it
+4. Inside you'll find: app-release.aab
+
+THIS IS THE FILE YOU NEED!
+
+========================================
+STEP 4: UPLOAD TO GOOGLE PLAY
+========================================
+
+1. Go to: https://play.google.com/console
+2. Select your app → Internal testing → Create new release
+3. Remove any .txt files (click X)
+4. Drag the app-release.aab file to upload area
+5. Add release notes
+6. Click Save → Review → Start rollout
+
+========================================
+IMPORTANT NOTES
+========================================
+
+✅ File MUST end in .aab (NOT .txt, NOT .zip)
+✅ If you rename a file, it doesn't change the actual file type
+✅ You need the REAL .aab file from GitHub Actions
+✅ The file is about 35 MB in size
+
+========================================
+QUICK LINKS
+========================================
+
+Download AAB: https://github.com/Moneyman334/chaos-crypto-casino/actions
+Upload to Google Play: https://play.google.com/console
+
+========================================
+TROUBLESHOOTING
+========================================
+
+Problem: "Upload a valid app bundle" error
+Solution: Make sure you're uploading the .aab file, not .txt or .zip
+
+Problem: Can't find .aab file
+Solution: Re-download from GitHub Actions and unzip the ZIP file
+
+Problem: File is frozen/locked
+Solution: Download a fresh copy from GitHub Actions link above
+
+========================================
+
+Created: October 9, 2025
+Build Status: Success ✅
+Your app is ready to launch!
