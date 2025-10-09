@@ -1,0 +1,128 @@
+🚀 COMPLETE GUIDE: UPLOAD YOUR APP TO GOOGLE PLAY
+==================================================
+
+Follow these steps IN ORDER. Do not skip any step.
+
+==================================================
+PART 1: DOWNLOAD THE APP FILE (On Your Mac)
+==================================================
+
+1. Open Safari or Chrome browser
+
+2. Go to this URL:
+   https://github.com/Moneyman334/chaos-crypto-casino/actions
+
+3. Click the TOP green checkmark ✅ (first one in the list)
+
+4. Scroll ALL THE WAY DOWN to the bottom of the page
+
+5. Find section called "Artifacts"
+
+6. Click "app-release-aab" to download
+   (This downloads a file called "app-release-aab.zip" - about 35 MB)
+
+7. The file downloads to your Downloads folder
+
+==================================================
+PART 2: UNZIP THE FILE (On Your Mac)
+==================================================
+
+8. Open Finder (click the blue/white face icon)
+
+9. Click "Downloads" in the left sidebar
+
+10. Find the file: "app-release-aab.zip"
+
+11. Double-click it to UNZIP it
+
+12. A NEW file appears: "app-release.aab" (NO .zip at the end)
+    THIS IS YOUR APP FILE!
+
+==================================================
+PART 3: UPLOAD TO GOOGLE PLAY (On Your Phone or Mac)
+==================================================
+
+13. Go to: https://play.google.com/console
+
+14. Sign in with your Google account (if not already)
+
+15. Click on your app: "Chaos Crypto Casino"
+
+16. Click "Internal testing" in the left sidebar
+
+17. Click "Create new release" button
+
+18. If there's any old file showing (like .txt or .zip):
+    - Click the X to remove it
+
+19. DRAG the "app-release.aab" file (from step 12) into the upload box
+    - On Mac: Drag from Finder window
+    - The file MUST be "app-release.aab" (NOT .zip, NOT .txt)
+
+20. Wait for green checkmark ✅ to appear
+
+21. In "Release notes" box, paste this:
+    
+    Initial release v1.0.1 - Multi-chain Web3 blockchain platform
+    
+    Features:
+    • 22+ blockchain support (Ethereum, Polygon, BSC, Solana, etc.)
+    • NFT marketplace & smart contract generators
+    • Margin/Futures trading (up to 20x leverage)
+    • Copy Trading & AI Auto Trading Bot
+    • DEX Aggregator & DeFi features
+    • Multi-crypto e-commerce (300+ currencies)
+    • Real-time price tracking & analytics
+
+22. Click "Save" button
+
+23. Click "Review release" button
+
+24. Click "Start rollout to Internal testing" button
+
+25. DONE! Your app is submitted! 🎉
+
+==================================================
+TROUBLESHOOTING
+==================================================
+
+Problem: "Upload a valid app bundle" error
+Solution: Make sure file ends in .aab (NOT .zip, NOT .txt)
+         You must UNZIP the downloaded file first!
+
+Problem: Can't find .aab file on Mac
+Solution: Look in Downloads folder for "app-release.aab"
+         If you only see .zip, double-click it to unzip
+
+Problem: File won't upload
+Solution: Remove any existing files (click X), then try again
+         Make sure you're dragging the .aab file, not .zip
+
+==================================================
+WHAT HAPPENS NEXT
+==================================================
+
+✅ Google reviews your app (1-3 days)
+✅ You get Internal Testing link
+✅ Share with testers to try it
+✅ Fix any bugs found
+✅ Promote to Production
+✅ Your app goes LIVE on Google Play Store! 🚀
+
+==================================================
+IMPORTANT FILE TYPES
+==================================================
+
+❌ app-release-aab.zip = Zipped file (won't work)
+❌ android-build.yml = Build instructions (won't work)
+❌ DOWNLOAD-AAB-FILE.txt = Text guide (won't work)
+✅ app-release.aab = YOUR APP (this works!)
+
+==================================================
+
+Created: October 9, 2025
+Build Status: Success ✅
+Package: com.chaoscrypto.casino
+Version: 1.0.1 (Code: 2)
+
+You're ONE upload away from launching your app!
