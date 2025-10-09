@@ -1,0 +1,95 @@
+====================================================================
+CHAOS CRYPTO CASINO - APP STORE DEPLOYMENT QUICK GUIDE
+====================================================================
+
+APP INFO:
+- Name: Chaos Crypto Casino - Web3 Blockchain Empire
+- Package: com.chaoscrypto.casino
+- Version: 1.0.1 (Code: 2)
+- Repo: https://github.com/Moneyman334/chaos-crypto-casino
+
+====================================================================
+STEP 1: DOWNLOAD AAB
+====================================================================
+
+GitHub Actions: https://github.com/Moneyman334/chaos-crypto-casino/actions
+
+1. Click latest successful build (green checkmark)
+2. Scroll to bottom → Artifacts
+3. Download "app-release-aab"
+4. Unzip → Get app-release.aab
+
+====================================================================
+STEP 2: UPLOAD TO GOOGLE PLAY CONSOLE
+====================================================================
+
+URL: https://play.google.com/console
+
+1. Select your app
+2. Go to: Internal testing (left sidebar)
+3. Click: "Create new release"
+4. Upload: app-release.aab
+5. Add release notes:
+
+   "Initial release v1.0.1 - Web3 blockchain platform with 
+   multi-chain wallet support, NFT marketplace, margin/futures 
+   trading, AI trading bot, and DeFi features"
+
+6. Click: Save → Review → Start rollout
+
+====================================================================
+STEP 3: COMPLETE STORE LISTING
+====================================================================
+
+Main Store Listing:
+
+APP NAME:
+Chaos Crypto Casino - Web3 Blockchain
+
+SHORT DESCRIPTION:
+Multi-chain Web3 platform with trading, NFTs, DeFi & crypto payments
+
+CATEGORY:
+Primary: Finance | Secondary: Tools
+
+REQUIRED GRAPHICS:
+- App Icon: 512x512 PNG
+- Feature Graphic: 1024x500 PNG  
+- Screenshots: 2-8 phone screenshots
+
+====================================================================
+TIMELINE
+====================================================================
+
+TODAY:
+- Upload AAB to Google Play Console
+- Complete store listing
+- Submit for internal testing
+
+THIS WEEK:
+- Google approval (1-3 days)
+- Internal testing
+- Bug fixes
+
+NEXT WEEK:
+- Promote to Production
+- Public launch
+
+====================================================================
+IMPORTANT LINKS
+====================================================================
+
+GitHub: https://github.com/Moneyman334/chaos-crypto-casino
+Actions: https://github.com/Moneyman334/chaos-crypto-casino/actions
+Google Play: https://play.google.com/console
+Apple Dev: https://developer.apple.com
+
+====================================================================
+CURRENT STATUS
+====================================================================
+
+✅ AAB Built Successfully (Version Code 2)
+✅ AAB Downloaded & Verified
+⏳ NEXT: Upload to Google Play Console NOW!
+
+====================================================================
