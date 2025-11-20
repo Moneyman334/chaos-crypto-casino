@@ -5,10 +5,13 @@ workflows:
     instance_type: mac_mini_m1
     integrations:
       app_store_connect: codemagic
-    environment:
+        environment:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.getchaospay.app
+        apple_id: kingszized@icloud.com
+        xcode_project: ios/App/App.xcodeproj
+        team_id: UCXFC48DX7
       vars:
         XCODE_WORKSPACE: "ios/App/App.xcworkspace"
         XCODE_SCHEME: "App"
