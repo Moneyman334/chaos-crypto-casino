@@ -1,7 +1,7 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.getchaospay.app',
+  appId: 'com.omniversesyndicate.pay',
   appName: 'Chaos Crypto Casino',
   webDir: 'dist/public',
   bundledWebRuntime: false,

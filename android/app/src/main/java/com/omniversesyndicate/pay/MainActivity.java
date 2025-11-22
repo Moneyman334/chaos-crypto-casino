@@ -1,4 +1,4 @@
-package com.getchaospay.app;
+package com.omniversesyndicate.pay;
 
 import com.getcapacitor.BridgeActivity;
 
